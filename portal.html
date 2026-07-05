@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buyer Login — deals.seller</title>
+  <meta name="description" content="Login or register as a buyer on the deals.seller deal portal.">
+  <link rel="stylesheet" href="css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    body { background: none; animation: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="auth-bg" id="portal-body">
+
+  <div class="auth-card" id="portal-card">
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#5c6bc0,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;box-shadow:0 8px 20px rgba(92,107,192,0.35);">
+        <i class="ph-fill ph-storefront" style="font-size:1.8rem;color:white;"></i>
+      </div>
+      <div style="font-size:0.8rem;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:1px;">deals.seller</div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar" id="auth-tab-bar">
+      <button class="tab-btn active" id="show-login" onclick="switchTab('login')">Log In</button>
+      <button class="tab-btn" id="show-register" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- ── LOGIN VIEW ── -->
+    <div id="login-view">
+      <div class="auth-title">Welcome back 👋</div>
+      <div class="auth-subtitle">Sign in to your buyer account</div>
+
+      <input type="text" class="auth-input" id="login-identifier" placeholder="Email or Mobile Number" autocomplete="username">
+      <input type="password" class="auth-input" id="login-password" placeholder="Password" autocomplete="current-password">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;font-size:0.82rem;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:#4b5563;">
+          <input type="checkbox" id="remember-me" style="accent-color:#7c3aed;"> Remember me
+        </label>
+        <a href="#" style="color:#7c3aed;font-weight:700;text-decoration:none;" id="forgot-password-link">Forgot password?</a>
+      </div>
+
+      <button class="auth-btn" onclick="handleLogin()" id="login-btn">
+        <i class="ph-bold ph-sign-in" style="margin-right:6px;"></i> Sign In
+      </button>
+
+      <div class="divider">or</div>
+
+      <button class="auth-btn-outline" onclick="startPasskeyLogin()" id="passkey-login-btn">
+        <i id="passkey-icon" class="ph-bold ph-fingerprint"></i>
+        <div id="passkey-status" class="hidden" style="display:flex;align-items:center;gap:6px;">
+          <i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i>
+        </div>
+        Quick Login (Biometric / FaceID)
+      </button>
+
+      <div id="login-error" class="hidden" style="margin-top:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:0.85rem;color:#dc2626;font-weight:600;"></div>
+    </div>
+
+    <!-- ── REGISTER VIEW ── -->
+    <div id="register-view" class="hidden">
+      <div class="auth-title">Create Account 🎉</div>
+      <div class="auth-subtitle">Join and start earning cashback today</div>
+
+      <input type="text" class="auth-input" id="reg-fullname" placeholder="Full Name" autocomplete="name">
+      <input type="tel" class="auth-input" id="reg-mobile" placeholder="Mobile Number (+91)" maxlength="10" autocomplete="tel">
+      <input type="text" class="auth-input" id="reg-refcode" placeholder="Referral Code (optional)">
+      <input type="email" class="auth-input" id="reg-email" placeholder="Email Address" autocomplete="email">
+      <input type="password" class="auth-input" id="reg-password" placeholder="Create Password" autocomplete="new-password">
+      <input type="password" class="auth-input" id="reg-confirm-password" placeholder="Confirm Password" autocomplete="new-password">
+
+      <div style="margin-bottom:16px;">
+        <div class="form-label" style="margin-bottom:8px;">Verification Method</div>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="verify-method" value="email" checked>
+            <span>Email OTP</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="verify-method" value="sms">
+            <span>SMS OTP</span>
+          </label>
+        </div>
+      </div>
+
+      <label class="check-label" style="margin-bottom:16px;">
+        <input type="checkbox" id="terms-check" style="accent-color:#7c3aed;">
+        <span>I agree to the <a href="#" style="color:#7c3aed;font-weight:700;">Terms & Conditions</a> and <a href="#" style="color:#7c3aed;font-weight:700;">Privacy Policy</a></span>
+      </label>
+
+      <button class="auth-btn" onclick="handleRegister()" id="register-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+        <i class="ph-bold ph-user-plus" style="margin-right:6px;"></i> Create Account
+      </button>
+
+      <div id="register-error" class="hidden" style="margin-top:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:0.85rem;color:#dc2626;font-weight:600;"></div>
+      <div id="register-success" class="hidden" style="margin-top:12px;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 14px;font-size:0.85rem;color:#15803d;font-weight:600;text-align:center;">
+        <i class="ph-fill ph-check-circle" style="display:block;font-size:1.8rem;margin-bottom:6px;"></i>
+        Account created! Please check your email/SMS for verification.
+      </div>
+    </div>
+
+    <!-- Back to home -->
+    <div style="text-align:center;margin-top:20px;">
+      <a href="index.html" style="font-size:0.82rem;color:#9ca3af;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" id="back-home-link">
+        <i class="ph-bold ph-arrow-left"></i> Back to Home
+      </a>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script>
+    function switchTab(tab) {
+      const loginView = document.getElementById('login-view');
+      const registerView = document.getElementById('register-view');
+      const loginBtn = document.getElementById('show-login');
+      const registerBtn = document.getElementById('show-register');
+      if (tab === 'login') {
+        loginView.classList.remove('hidden');
+        registerView.classList.add('hidden');
+        loginBtn.classList.add('active');
+        registerBtn.classList.remove('active');
+      } else {
+        registerView.classList.remove('hidden');
+        loginView.classList.add('hidden');
+        registerBtn.classList.add('active');
+        loginBtn.classList.remove('active');
+      }
+    }
+
+    function handleLogin() {
+      const identifier = document.getElementById('login-identifier').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const errEl = document.getElementById('login-error');
+      if (!identifier || !password) {
+        errEl.textContent = 'Please fill in all fields.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      const btn = document.getElementById('login-btn');
+      btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;margin-right:6px;"></i> Signing in...';
+      btn.disabled = true;
+      errEl.classList.add('hidden');
+      setTimeout(() => {
+        btn.innerHTML = '<i class="ph-bold ph-sign-in" style="margin-right:6px;"></i> Sign In';
+        btn.disabled = false;
+        errEl.textContent = 'Demo mode: No real authentication configured.';
+        errEl.classList.remove('hidden');
+      }, 1800);
+    }
+
+    function handleRegister() {
+      const name = document.getElementById('reg-fullname').value.trim();
+      const mobile = document.getElementById('reg-mobile').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm-password').value;
+      const terms = document.getElementById('terms-check').checked;
+      const errEl = document.getElementById('register-error');
+      const successEl = document.getElementById('register-success');
+
+      if (!name || !mobile || !email || !password) {
+        errEl.textContent = 'Please fill in all required fields.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (password !== confirm) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!terms) {
+        errEl.textContent = 'Please accept the Terms & Conditions.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      const btn = document.getElementById('register-btn');
+      btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;margin-right:6px;"></i> Creating...';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.classList.add('hidden');
+        successEl.classList.remove('hidden');
+      }, 1800);
+    }
+  </script>
+</body>
+</html>

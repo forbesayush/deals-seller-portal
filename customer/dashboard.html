@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Auth guard: redirect to login if no session -->
+  <script>
+    (function(){
+      try{
+        const s=JSON.parse(sessionStorage.getItem('jm_session'));
+        if(!s||Date.now()>s.expiresAt||s.role!=='buyer'){
+          sessionStorage.removeItem('jm_session');
+          window.location.replace('../login.html');
+        }
+      }catch(e){window.location.replace('../login.html');}
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — deals.seller</title>
+  <meta name="description" content="Buyer dashboard for managing orders, rewards, and cashback on deals.seller.">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --sidebar-w: 220px;
+      --sidebar-bg: #13111a;
+      --sidebar-text: #94a3b8;
+      --sidebar-active: #6366f1;
+      --header-h: 60px;
+      --content-bg: #f0f2f5;
+      --white: #ffffff;
+      --radius: 12px;
+    }
+    body { font-family: 'Quicksand', sans-serif; background: var(--content-bg); color: #1f2937; display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* ─── SIDEBAR ─── */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      min-height: 100vh;
+      position: fixed;
+      top: 0; left: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 200;
+      transition: transform 0.3s;
+    }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .sidebar-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: white; font-weight: 700;
+    }
+    .sidebar-brand-text { line-height: 1.2; }
+    .sidebar-brand-text strong { color: white; font-size: 0.95rem; display: block; }
+    .sidebar-brand-text span  { color: var(--sidebar-text); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    .sidebar-section-label {
+      padding: 16px 16px 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(148,163,184,0.5);
+    }
+    .sidebar-nav { flex: 1; padding-bottom: 16px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      color: var(--sidebar-text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 0;
+      transition: all 0.15s;
+      position: relative;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; }
+    .nav-item.active { background: rgba(99,102,241,0.12); color: #818cf8; border-left-color: #6366f1; }
+    .nav-item i { font-size: 1.05rem; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto;
+      background: #6366f1;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 99px;
+      line-height: 1.4;
+    }
+
+    .sidebar-user {
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-avatar {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .user-name { color: #e2e8f0; font-size: 0.85rem; font-weight: 700; }
+    .user-badge { color: #22c55e; font-size: 0.68rem; font-weight: 700; }
+
+    /* ─── MAIN LAYOUT ─── */
+    #main-wrap {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ─── TOP HEADER ─── */
+    #top-header {
+      height: var(--header-h);
+      background: var(--white);
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .page-title { font-size: 1.05rem; font-weight: 700; color: #1e1b4b; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-bell {
+      width: 36px; height: 36px;
+      background: #f3f4f6;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #6b7280; cursor: pointer;
+      border: none; font-size: 1.1rem;
+      transition: all 0.2s;
+    }
+    .header-bell:hover { background: #e5e7eb; }
+    .new-order-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: #1e1b4b;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .new-order-btn:hover { background: #312e81; transform: translateY(-1px); }
+
+    /* ─── ANNOUNCEMENT BAR ─── */
+    #announcement-bar {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white;
+      padding: 10px 28px;
+      font-size: 0.83rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dismiss-btn { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 1rem; }
+
+    /* ─── CONTENT ─── */
+    #content { padding: 28px; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── STAT CARDS ─── */
+    .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.07); }
+    .stat-icon {
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem;
+      margin-bottom: 12px;
+    }
+    .stat-value { font-size: 1.3rem; font-weight: 700; color: #1f2937; }
+    .stat-label { font-size: 0.78rem; color: #6b7280; font-weight: 600; margin-top: 2px; }
+    .stat-sub { font-size: 0.72rem; font-weight: 700; margin-top: 6px; }
+
+    /* ─── SECTION HEADER ─── */
+    .section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-hdr h2 { font-size: 0.85rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; }
+    .view-all-link { font-size: 0.8rem; color: #6366f1; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .view-all-link:hover { text-decoration: underline; }
+
+    /* ─── HOT DEALS SCROLL ─── */
+    .hot-deals-scroll {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 28px;
+      scrollbar-width: thin;
+    }
+    .hot-deal-card {
+      min-width: 190px;
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid #f1f5f9;
+      overflow: hidden;
+      transition: all 0.2s;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .hot-deal-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+    .hot-deal-img {
+      height: 110px;
+      background: #f8fafc;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .hot-deal-img img { max-height: 100%; object-fit: contain; }
+    .hot-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: #22c55e; color: white;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 99px;
+    }
+    .hot-deal-info { padding: 10px 12px; }
+    .hot-deal-name { font-size: 0.78rem; font-weight: 700; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hot-deal-platform { font-size: 0.7rem; color: #9ca3af; font-weight: 600; margin-top: 2px; }
+    .hot-deal-price { font-size: 0.88rem; font-weight: 700; color: #6366f1; margin-top: 4px; }
+
+    /* ─── ORDERS TABLE ─── */
+    .orders-table-wrap {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid #f1f5f9;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .table-controls {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f3f4f6;
+      background: #fafafa;
+    }
+    .table-search {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .table-search:focus { border-color: #6366f1; }
+    .table-select {
+      padding: 8px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.83rem;
+      outline: none;
+      cursor: pointer;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 11px 14px;
+      text-align: left;
+      font-size: 0.73rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9ca3af;
+      background: #fafafa;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.15s; }
+    tbody tr:hover { background: #fafafa; }
+    tbody td { padding: 12px 14px; font-size: 0.84rem; vertical-align: top; }
+    .order-id { font-weight: 700; color: #4f46e5; font-size: 0.82rem; }
+    .order-product { font-size: 0.75rem; color: #9ca3af; font-weight: 600; margin-top: 2px; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-filled  { background: #dbeafe; color: #1d4ed8; }
+    .status-paid    { background: #dcfce7; color: #15803d; }
+    .status-cancelled { background: #fef2f2; color: #dc2626; }
+    .status-pending { background: #fef9c3; color: #92400e; }
+    .running-tag { font-size: 0.72rem; color: #6366f1; font-weight: 700; display: block; margin-top: 4px; }
+    .action-icon {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .act-edit   { background: #dbeafe; color: #1d4ed8; }
+    .act-view   { background: #f3f4f6; color: #374151; }
+    .act-del    { background: #fef2f2; color: #dc2626; }
+    .act-appeal { background: #fef9c3; color: #92400e; }
+    .payout-amount { font-weight: 700; color: #1f2937; }
+
+    /* ─── ACTIVE DEALS PAGE ─── */
+    .filter-bar {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9;
+      flex-wrap: wrap;
+    }
+    .filter-bar label { font-size: 0.78rem; font-weight: 700; color: #6b7280; white-space: nowrap; }
+    .filter-select {
+      padding: 8px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .filter-btn {
+      padding: 8px 20px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .deal-row {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid #f1f5f9;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 32px 70px 1fr 120px 120px 140px;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      transition: all 0.2s;
+    }
+    .deal-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); transform: translateY(-1px); }
+    .deal-num { font-weight: 700; color: #9ca3af; font-size: 0.85rem; }
+    .deal-img-wrap { width: 60px; height: 60px; background: #f8fafc; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .deal-img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .deal-name { font-weight: 700; color: #1f2937; font-size: 0.88rem; }
+    .deal-code { font-size: 0.73rem; color: #9ca3af; font-weight: 600; margin-top: 2px; background: #f3f4f6; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+    .platform-badge { font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; margin-top: 6px; display: inline-block; }
+    .badge-amazon  { background: #fff7ed; color: #c2410c; }
+    .badge-flipkart{ background: #eff6ff; color: #1d4ed8; }
+    .badge-blinkit { background: #fefce8; color: #a16207; }
+    .deal-type { font-weight: 600; color: #374151; font-size: 0.85rem; }
+    .deal-price { font-weight: 700; color: #1f2937; font-size: 0.9rem; }
+    .slots-badge {
+      font-size: 0.8rem; font-weight: 700;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .slots-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .slot-red  { color: #dc2626; } .slot-red .slots-dot  { background: #dc2626; }
+    .slot-orange { color: #ea580c; } .slot-orange .slots-dot { background: #ea580c; }
+    .slot-green { color: #16a34a; } .slot-green .slots-dot { background: #16a34a; }
+    .req-deal-btn {
+      padding: 8px 16px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .req-deal-btn:hover { background: #4f46e5; transform: translateY(-1px); }
+
+    /* ─── REWARDS ─── */
+    .wallet-card {
+      background: linear-gradient(135deg, #1e1b4b, #312e81, #4c1d95);
+      border-radius: 20px;
+      padding: 28px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .wallet-card::before {
+      content: '';
+      position: absolute;
+      right: -40px; top: -40px;
+      width: 160px; height: 160px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+    .wallet-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
+    .wallet-balance { font-size: 3rem; font-weight: 700; line-height: 1.1; }
+    .wallet-balance span { font-size: 1.1rem; opacity: 0.8; }
+    .wallet-stats { display: flex; gap: 0; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 16px; }
+    .wallet-stat { flex: 1; }
+    .wallet-stat + .wallet-stat { border-left: 1px solid rgba(255,255,255,0.15); padding-left: 20px; }
+    .wallet-stat-label { font-size: 0.72rem; opacity: 0.6; font-weight: 600; }
+    .wallet-stat-value { font-size: 1.2rem; font-weight: 700; margin-top: 2px; }
+    .wallet-inr { margin-top: 14px; font-size: 0.85rem; opacity: 0.8; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .wallet-inr-val { font-size: 1.4rem; font-weight: 700; color: #86efac; }
+    .withdraw-card { background: var(--white); border-radius: var(--radius); border: 1px solid #f1f5f9; padding: 20px; margin-bottom: 20px; }
+    .withdraw-card h3 { font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .withdraw-card p { font-size: 0.85rem; color: #6b7280; font-weight: 600; }
+    .reach-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 20px; background: #f3f4f6; color: #9ca3af;
+      border: none; border-radius: 10px;
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.85rem;
+      margin-top: 12px; cursor: not-allowed;
+    }
+    .tab-bar2 { display: flex; background: #f3f4f6; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+    .tab2-btn {
+      flex: 1; padding: 9px; border: none; background: transparent;
+      border-radius: 9px; font-family: 'Quicksand', sans-serif; font-weight: 700;
+      font-size: 0.82rem; color: #6b7280; cursor: pointer; transition: all 0.2s;
+    }
+    .tab2-btn.active { background: var(--white); color: #6366f1; box-shadow: 0 2px 6px rgba(0,0,0,0.07); }
+    .activity-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid #f3f4f6;
+    }
+    .activity-icon { width: 36px; height: 36px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #22c55e; flex-shrink: 0; }
+    .activity-main { flex: 1; }
+    .activity-title { font-weight: 700; font-size: 0.85rem; color: #1f2937; }
+    .activity-date  { font-size: 0.75rem; color: #9ca3af; font-weight: 600; margin-top: 2px; }
+    .activity-amount { font-weight: 700; color: #16a34a; font-size: 0.9rem; }
+
+    /* ─── HISTORY PAGE ─── */
+    .history-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+    .history-stat-card { background: var(--white); border-radius: var(--radius); padding: 20px; border: 1px solid #f1f5f9; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .order-row {
+      background: var(--white); border-radius: var(--radius); border: 1px solid #f1f5f9;
+      padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .order-row-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .order-row-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6; }
+    .meta-label { font-size: 0.72rem; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .meta-value { font-size: 0.85rem; font-weight: 700; color: #1f2937; margin-top: 2px; }
+    .order-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6; }
+    .order-act-btn {
+      padding: 6px 14px; border: none; border-radius: 8px;
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.78rem;
+      cursor: pointer; display: flex; align-items: center; gap: 5px;
+    }
+    .act-help   { background: #6366f1; color: white; }
+    .act-refund { background: #f59e0b; color: white; }
+    .act-cancel { background: #ef4444; color: white; }
+    .act-appeal { background: #8b5cf6; color: white; }
+
+    /* ─── SETTINGS ─── */
+    .settings-grid { display: grid; grid-template-columns: 220px 1fr; gap: 20px; }
+    .settings-sidebar { display: flex; flex-direction: column; gap: 4px; }
+    .settings-nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border: none; background: transparent;
+      border-radius: 10px; font-family: 'Quicksand', sans-serif;
+      font-weight: 700; font-size: 0.88rem; color: #6b7280;
+      cursor: pointer; text-align: left; transition: all 0.2s;
+    }
+    .settings-nav-btn.active { background: #6366f1; color: white; }
+    .settings-nav-btn:hover:not(.active) { background: #f3f4f6; }
+    .settings-content { background: var(--white); border-radius: var(--radius); padding: 24px; border: 1px solid #f1f5f9; }
+    .settings-pane { display: none; }
+    .settings-pane.active { display: block; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 700; font-size: 0.82rem; color: #374151; margin-bottom: 6px; }
+    .form-input2 {
+      width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb;
+      border-radius: 10px; font-family: 'Quicksand', sans-serif; font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s; background: #fafafa;
+    }
+    .form-input2:focus { border-color: #6366f1; background: white; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .locked-banner {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
+      padding: 14px 18px; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 12px;
+      font-size: 0.85rem; color: #dc2626; font-weight: 600;
+    }
+    .save-btn {
+      padding: 12px 28px; background: #6366f1; color: white;
+      border: none; border-radius: 10px; font-family: 'Quicksand', sans-serif;
+      font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+    }
+    .save-btn:hover { background: #4f46e5; transform: translateY(-1px); }
+
+    /* ─── WHATS NEW ─── */
+    .news-card {
+      background: var(--white); border-radius: var(--radius); border: 1px solid #f1f5f9;
+      padding: 20px 24px; margin-bottom: 12px;
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .news-type {
+      padding: 4px 12px; border-radius: 99px; font-size: 0.73rem; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .type-feature { background: #dbeafe; color: #1d4ed8; }
+    .type-improvement { background: #dcfce7; color: #15803d; }
+    .type-fix { background: #fef9c3; color: #92400e; }
+
+    /* ─── HELP ─── */
+    .ticket-form {
+      background: var(--white); border-radius: var(--radius); padding: 24px; border: 1px solid #f1f5f9; margin-bottom: 20px;
+    }
+    .help-tab-bar { display: flex; border-bottom: 2px solid #f3f4f6; margin-bottom: 16px; gap: 0; }
+    .help-tab {
+      padding: 10px 20px; border: none; background: transparent;
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.85rem;
+      color: #9ca3af; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .help-tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+    .empty-state { text-align: center; padding: 40px 20px; color: #9ca3af; }
+    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+    /* ─── APPEALS ─── */
+    .appeals-empty {
+      background: var(--white); border-radius: var(--radius); border: 1px solid #f1f5f9;
+      padding: 48px 24px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1024px) {
+      .stat-cards { grid-template-columns: repeat(2,1fr); }
+      .history-stats { grid-template-columns: 1fr 1fr; }
+      .settings-grid { grid-template-columns: 1fr; }
+      .deal-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.open { transform: translateX(0); }
+      #main-wrap { margin-left: 0; }
+      .stat-cards { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════ SIDEBAR ════════════ -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">DS</div>
+      <div class="sidebar-brand-text">
+        <strong>deals.seller</strong>
+        <span>Portal</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Menu</div>
+      <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard', this)">
+        <i class="ph-fill ph-squares-four"></i> Dashboard
+      </a>
+      <a class="nav-item" data-page="active-deals" onclick="navigate('active-deals', this)">
+        <i class="ph-bold ph-tag"></i> Active Deals
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item" data-page="rewards" onclick="navigate('rewards', this)">
+        <i class="ph-bold ph-gift"></i> Rewards
+      </a>
+      <a class="nav-item" data-page="history" onclick="navigate('history', this)">
+        <i class="ph-bold ph-clock-counter-clockwise"></i> History
+      </a>
+      <a class="nav-item" data-page="whatsnew" onclick="navigate('whatsnew', this)">
+        <i class="ph-bold ph-star"></i> Whats New
+      </a>
+      <a class="nav-item" data-page="help" onclick="navigate('help', this)">
+        <i class="ph-bold ph-chat-circle-dots"></i> Help
+      </a>
+      <a class="nav-item" data-page="appeals" onclick="navigate('appeals', this)">
+        <i class="ph-bold ph-lightning"></i> My Appeals
+      </a>
+
+      <div class="sidebar-section-label" style="margin-top:8px;">Settings</div>
+      <a class="nav-item" data-page="profile" onclick="navigate('profile', this)">
+        <i class="ph-bold ph-user"></i> Profile
+      </a>
+      <a class="nav-item" style="color:#ef4444;" href="#" onclick="doLogout()">
+        <i class="ph-bold ph-sign-out"></i> Logout
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">A</div>
+      <div>
+        <div class="user-name" id="dash-user-name">Loading...</div>
+        <div class="user-badge">✓ Verified Member</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ════════════ MAIN WRAPPER ════════════ -->
+  <div id="main-wrap">
+
+    <!-- Announcement Bar -->
+    <div id="announcement-bar">
+      <span>ℹ️ Thanks for shopping with us..!!</span>
+      <button class="dismiss-btn" onclick="this.parentElement.style.display='none'">✕</button>
+    </div>
+
+    <!-- Top Header -->
+    <header id="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:#6b7280;display:none;" id="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <i class="ph-bold ph-list"></i>
+        </button>
+        <span class="page-title" id="current-page-title">Dashboard</span>
+      </div>
+      <div class="header-actions">
+        <button class="header-bell" title="Notifications"><i class="ph-bold ph-bell"></i></button>
+        <a href="orderform.html" class="new-order-btn" id="new-order-header-btn">
+          <i class="ph-bold ph-plus"></i> New Order
+        </a>
+      </div>
+    </header>
+
+    <!-- ════════════ CONTENT AREA ════════════ -->
+    <div id="content">
+
+      <!-- ── PAGE: DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+        <!-- Stat Cards -->
+        <div class="stat-cards">
+          <div class="stat-card" onclick="navigate('active-deals', document.querySelector('[data-page=active-deals]'))">
+            <div class="stat-icon" style="background:#ede9fe;color:#7c3aed;"><i class="ph-bold ph-tag"></i></div>
+            <div class="stat-value">3</div>
+            <div class="stat-label">Active Deals</div>
+            <div class="stat-sub" style="color:#7c3aed;">→ Browse Now</div>
+          </div>
+          <div class="stat-card" onclick="navigate('history', document.querySelector('[data-page=history]'))">
+            <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="ph-bold ph-receipt"></i></div>
+            <div class="stat-value">5</div>
+            <div class="stat-label">Total Orders</div>
+            <div class="stat-sub" style="color:#16a34a;">₹473 Paid</div>
+          </div>
+          <div class="stat-card" onclick="navigate('rewards', document.querySelector('[data-page=rewards]'))">
+            <div class="stat-icon" style="background:#fef9c3;color:#92400e;"><i class="ph-bold ph-coin"></i></div>
+            <div class="stat-value">50</div>
+            <div class="stat-label">Reward Coins</div>
+            <div class="stat-sub" style="color:#92400e;">= ₹1.25 INR</div>
+          </div>
+          <div class="stat-card" onclick="navigate('history', document.querySelector('[data-page=history]'))">
+            <div class="stat-icon" style="background:#fef2f2;color:#dc2626;"><i class="ph-bold ph-arrow-u-up-left"></i></div>
+            <div class="stat-value">0</div>
+            <div class="stat-label">Pending Refunds</div>
+            <div class="stat-sub" style="color:#dc2626;">All Clear ✓</div>
+          </div>
+        </div>
+
+        <!-- Hot Deals Section -->
+        <div class="section-hdr">
+          <h2>🔥 Deals For You</h2>
+          <a class="view-all-link" onclick="navigate('active-deals', document.querySelector('[data-page=active-deals]'))">View All →</a>
+        </div>
+        <div class="hot-deals-scroll">
+          <div class="hot-deal-card">
+            <div class="hot-deal-img">
+              <div style="font-size:2rem;">📦</div>
+              <span class="hot-badge">Hot</span>
+            </div>
+            <div class="hot-deal-info">
+              <div class="hot-deal-name">Blinkit_Floor_TabletStand_360°</div>
+              <div class="hot-deal-platform">Blinkit</div>
+              <div class="hot-deal-price">₹1,299</div>
+            </div>
+          </div>
+          <div class="hot-deal-card">
+            <div class="hot-deal-img">
+              <div style="font-size:2rem;">🔋</div>
+              <span class="hot-badge">Hot</span>
+            </div>
+            <div class="hot-deal-info">
+              <div class="hot-deal-name">Philips_AA_ZincChloride_Battery</div>
+              <div class="hot-deal-platform">Amazon</div>
+              <div class="hot-deal-price">₹200</div>
+            </div>
+          </div>
+          <div class="hot-deal-card">
+            <div class="hot-deal-img">
+              <div style="font-size:2rem;">🔌</div>
+              <span class="hot-badge">Hot</span>
+            </div>
+            <div class="hot-deal-info">
+              <div class="hot-deal-name">Philips_Usb2C_Premium_Braided_Cable</div>
+              <div class="hot-deal-platform">Amazon</div>
+              <div class="hot-deal-price">₹450</div>
+            </div>
+          </div>
+          <div class="hot-deal-card">
+            <div class="hot-deal-img">
+              <div style="font-size:2rem;">🧴</div>
+              <span class="hot-badge">Hot</span>
+            </div>
+            <div class="hot-deal-info">
+              <div class="hot-deal-name">ZY_Adhesive_Glue_Az</div>
+              <div class="hot-deal-platform">Amazon</div>
+              <div class="hot-deal-price">₹449</div>
+            </div>
+          </div>
+          <div class="hot-deal-card">
+            <div class="hot-deal-img">
+              <div style="font-size:2rem;">🧂</div>
+              <span class="hot-badge">Hot</span>
+            </div>
+            <div class="hot-deal-info">
+              <div class="hot-deal-name">ZY_Epsom_Salt_Az</div>
+              <div class="hot-deal-platform">Amazon</div>
+              <div class="hot-deal-price">₹399</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent History -->
+        <div class="section-hdr">
+          <h2>Recent History</h2>
+          <a class="view-all-link" onclick="navigate('history', document.querySelector('[data-page=history]'))">View All →</a>
+        </div>
+        <div class="orders-table-wrap">
+          <div class="table-controls">
+            <input type="text" class="table-search" placeholder="Order ID...">
+            <select class="table-select">
+              <option>All Statuses</option>
+              <option>Order Form Filled</option>
+              <option>Paid</option>
+              <option>Cancelled</option>
+            </select>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Details</th>
+                <th>Dates</th>
+                <th>Status</th>
+                <th>Payout</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="order-id">402-0025862-2109921</div>
+                  <div class="order-product">ANT_COSMOS_3MODE_GAMING_CONTROLLER</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Shivam Raj</div>
+                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;font-weight:600;">Sub: 26 Jun</div>
+                  <span class="running-tag">9 Days Running</span>
+                </td>
+                <td><span class="status-pill status-filled">● Order Form Filled</span></td>
+                <td><span class="payout-amount">₹1,141.05</span></td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="action-icon act-edit" title="Refund"><i class="ph-bold ph-note-pencil"></i></button>
+                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
+                    <button class="action-icon act-del" title="Cancel"><i class="ph-bold ph-x"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="order-id">406-1422779-1212359</div>
+                  <div class="order-product">PNC_GREYSHOEWASHINGBAG_AZ</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
+                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;font-weight:600;">Sub: 17 Jun</div>
+                  <span class="running-tag">19 Days Running</span>
+                </td>
+                <td><span class="status-pill status-filled">● Order Form Filled</span></td>
+                <td><span class="payout-amount">₹229.00</span></td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="action-icon act-edit" title="Refund"><i class="ph-bold ph-note-pencil"></i></button>
+                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
+                    <button class="action-icon act-del" title="Cancel"><i class="ph-bold ph-x"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="order-id">402-0437892-3137934</div>
+                  <div class="order-product">PNC_BLACKHEADREMOVER_AZ</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush</div>
+                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;font-weight:600;">Sub: 18 May</div>
+                  <div style="font-size:0.75rem;color:#22c55e;font-weight:700;">Ref: 01 Jun</div>
+                </td>
+                <td><span class="status-pill status-paid">● Paid</span></td>
+                <td><span class="payout-amount">₹276.00</span></td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="order-id">402-5031051-7769965</div>
+                  <div class="order-product">PNC_BLACKHEADREMOVER_AZ</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
+                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;font-weight:600;">Sub: 18 May</div>
+                  <div style="font-size:0.75rem;color:#dc2626;font-weight:700;">Not Eligible (&gt;45 Days)</div>
+                </td>
+                <td><span class="status-pill status-cancelled">● Cancelled</span></td>
+                <td><span class="payout-amount">₹0.00</span></td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="action-icon act-appeal" title="Appeal"><i class="ph-bold ph-lightning"></i></button>
+                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="order-id">403-1863178-4809140</div>
+                  <div class="order-product">PNC_KAPOOREXCH_AZ</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
+                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
+                </td>
+                <td>
+                  <div style="font-size:0.8rem;font-weight:600;">Sub: 07 May</div>
+                  <div style="font-size:0.75px;color:#22c55e;font-weight:700;">Ref: 23 May</div>
+                </td>
+                <td><span class="status-pill status-paid">● Paid</span></td>
+                <td><span class="payout-amount">₹197.00</span></td>
+                <td>
+                  <div style="display:flex;gap:4px;">
+                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PAGE: ACTIVE DEALS ── -->
+      <div class="page" id="page-active-deals">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">Available Deals</h1>
+        <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:20px;">Explore campaigns with open slots. Act fast to secure your spot!</p>
+
+        <div class="filter-bar">
+          <label>Brand Name</label>
+          <select class="filter-select"><option>All Brands</option><option>DZ</option><option>Philips</option><option>Zaylore</option></select>
+          <label>Platform</label>
+          <select class="filter-select"><option>All Platforms</option><option>Amazon</option><option>Flipkart</option><option>Blinkit</option></select>
+          <label>Sort By</label>
+          <select class="filter-select"><option>Most Recent</option><option>Price Low→High</option><option>Slots Available</option></select>
+          <button class="filter-btn"><i class="ph-bold ph-funnel"></i> Apply</button>
+          <button style="background:#f3f4f6;border:none;border-radius:8px;padding:8px 10px;cursor:pointer;color:#6b7280;font-size:0.9rem;" title="Reset"><i class="ph-bold ph-arrows-clockwise"></i></button>
+        </div>
+
+        <!-- Table header -->
+        <div style="display:grid;grid-template-columns:32px 70px 1fr 120px 120px 140px;gap:16px;padding:8px 20px;font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;">
+          <span>#</span><span></span><span>Product</span><span>Deal Details</span><span>Original Price</span><span style="text-align:center;">Available Slots</span><span>Action</span>
+        </div>
+
+        <div class="deal-row" id="deal-1">
+          <span class="deal-num">1</span>
+          <div class="deal-img-wrap"><div style="font-size:2rem;">📦</div></div>
+          <div>
+            <div class="deal-name">DZ</div>
+            <div class="deal-code">Blinkit_Floor_TabletStand_360°</div>
+            <span class="platform-badge badge-blinkit">BLINKIT</span>
+            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
+          </div>
+          <div class="deal-type">Review</div>
+          <div class="deal-price">₹1,299</div>
+          <div class="slots-badge slot-red"><span class="slots-dot"></span> 4 left</div>
+          <button class="req-deal-btn">Request Deal</button>
+        </div>
+
+        <div class="deal-row" id="deal-2">
+          <span class="deal-num">2</span>
+          <div class="deal-img-wrap"><div style="font-size:2rem;">🔌</div></div>
+          <div>
+            <div class="deal-name">Philips</div>
+            <div class="deal-code">Philips_Usb2C_Premium_Braided_Cable_1.5M</div>
+            <span class="platform-badge badge-amazon">AMAZON</span>
+            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
+          </div>
+          <div>
+            <div class="deal-type">Review</div>
+            <div class="deal-type" style="margin-top:40px;">Rating</div>
+          </div>
+          <div>
+            <div class="deal-price">₹450</div>
+            <div class="deal-price" style="margin-top:40px;">₹450</div>
+          </div>
+          <div>
+            <div class="slots-badge slot-red"><span class="slots-dot"></span> 4 left</div>
+            <div class="slots-badge slot-orange" style="margin-top:40px;"><span class="slots-dot"></span> 5 left</div>
+          </div>
+          <div>
+            <button class="req-deal-btn">Request Deal</button>
+            <button class="req-deal-btn" style="margin-top:36px;">Request Deal</button>
+          </div>
+        </div>
+
+        <div class="deal-row" id="deal-3">
+          <span class="deal-num">3</span>
+          <div class="deal-img-wrap"><div style="font-size:2rem;">🧴</div></div>
+          <div>
+            <div class="deal-name">Zaylore</div>
+            <div class="deal-code">ZY_Adhesive_Glue_Az</div>
+            <span class="platform-badge badge-amazon">AMAZON</span>
+            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
+          </div>
+          <div class="deal-type">Review</div>
+          <div class="deal-price">₹449</div>
+          <div class="slots-badge slot-orange"><span class="slots-dot"></span> 3 left</div>
+          <button class="req-deal-btn">Request Deal</button>
+        </div>
+      </div>
+
+      <!-- ── PAGE: REWARDS ── -->
+      <div class="page" id="page-rewards">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;">Rewards Wallet</h1>
+            <p style="color:#6b7280;font-size:0.9rem;font-weight:600;">Manage your coins, referrals, and withdrawals.</p>
+          </div>
+          <button style="padding:8px 18px;border:1.5px solid #6366f1;color:#6366f1;background:transparent;border-radius:10px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;">
+            <i class="ph-bold ph-book-open"></i> Terms &amp; Rules
+          </button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;">
+          <div>
+            <div class="wallet-card">
+              <div class="wallet-label">Total Balance</div>
+              <div class="wallet-balance">50 <span>COINS</span></div>
+              <div class="wallet-stats">
+                <div class="wallet-stat">
+                  <div class="wallet-stat-label">Pending Orders</div>
+                  <div class="wallet-stat-value">⏳ 40</div>
+                </div>
+                <div class="wallet-stat">
+                  <div class="wallet-stat-label">Pending Refs</div>
+                  <div class="wallet-stat-value">👥 0</div>
+                </div>
+              </div>
+              <div class="wallet-inr">
+                <span>Value (INR)</span>
+                <span class="wallet-inr-val">₹1.25</span>
+              </div>
+            </div>
+            <div class="withdraw-card">
+              <h3><i class="ph-bold ph-bank" style="color:#6366f1;"></i> Withdraw</h3>
+              <p>Transfer your coin balance to your bank account. Minimum <strong>400 coins</strong> required.</p>
+              <button class="reach-btn"><i class="ph-bold ph-lock"></i> Reach 400 Coins</button>
+            </div>
+          </div>
+          <div>
+            <div class="tab-bar2">
+              <button class="tab2-btn active" onclick="switchRewardTab(this,'rw-history')">History</button>
+              <button class="tab2-btn" onclick="switchRewardTab(this,'rw-orders')">Orders</button>
+              <button class="tab2-btn" onclick="switchRewardTab(this,'rw-referrals')">Referrals</button>
+              <button class="tab2-btn" onclick="switchRewardTab(this,'rw-withdrawals')">Withdrawals</button>
+            </div>
+            <div id="rw-history">
+              <div class="activity-item">
+                <div class="activity-icon"><i class="ph-bold ph-arrow-fat-down"></i></div>
+                <div class="activity-main">
+                  <div class="activity-title">Order Bonus</div>
+                  <div class="activity-date">29 Jun 2026, 12:47 PM</div>
+                </div>
+                <div class="activity-amount">+25</div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-icon"><i class="ph-bold ph-arrow-fat-down"></i></div>
+                <div class="activity-main">
+                  <div class="activity-title">Order Bonus</div>
+                  <div class="activity-date">29 Jun 2026, 12:47 PM</div>
+                </div>
+                <div class="activity-amount">+25</div>
+              </div>
+            </div>
+            <div id="rw-orders" class="hidden">
+              <div class="activity-item"><div class="activity-icon" style="background:#fef9c3;color:#92400e;"><i class="ph-bold ph-package"></i></div><div class="activity-main"><div class="activity-title">#402-0025862-2109921</div><div class="activity-date">26 Jun 2026</div></div><div style="font-size:0.8rem;color:#9ca3af;font-weight:600;">Pending</div></div>
+              <div class="activity-item"><div class="activity-icon" style="background:#fef9c3;color:#92400e;"><i class="ph-bold ph-package"></i></div><div class="activity-main"><div class="activity-title">#406-1422779-1212359</div><div class="activity-date">17 Jun 2026</div></div><div style="font-size:0.8rem;color:#9ca3af;font-weight:600;">Pending</div></div>
+              <div class="activity-item"><div class="activity-icon"><i class="ph-bold ph-package"></i></div><div class="activity-main"><div class="activity-title">#402-0437892-3137934</div><div class="activity-date">18 May 2026</div></div><div class="activity-amount">+20</div></div>
+              <div class="activity-item"><div class="activity-icon" style="background:#fef2f2;color:#dc2626;"><i class="ph-bold ph-package"></i></div><div class="activity-main"><div class="activity-title">#402-5031051-7769965</div><div class="activity-date">18 May 2026</div></div><div style="font-size:0.8rem;color:#dc2626;font-weight:700;">Cancelled</div></div>
+              <div class="activity-item"><div class="activity-icon"><i class="ph-bold ph-package"></i></div><div class="activity-main"><div class="activity-title">#403-1863178-4809140</div><div class="activity-date">07 May 2026</div></div><div class="activity-amount">+20</div></div>
+            </div>
+            <div id="rw-referrals" class="hidden">
+              <div class="empty-state"><i class="ph-bold ph-users"></i><div>No referrals yet</div></div>
+            </div>
+            <div id="rw-withdrawals" class="hidden">
+              <div class="empty-state"><i class="ph-bold ph-bank"></i><div>No withdrawals yet</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAGE: HISTORY ── -->
+      <div class="page" id="page-history">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:20px;">Order History</h1>
+        <div class="history-stats">
+          <div class="history-stat-card">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:40px;height:40px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#7c3aed;"><i class="ph-bold ph-receipt"></i></div>
+              <div><div style="font-size:0.72rem;color:#9ca3af;font-weight:700;text-transform:uppercase;">Total Orders</div><div style="font-size:1.5rem;font-weight:700;color:#1f2937;">5</div></div>
+            </div>
+          </div>
+          <div class="history-stat-card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:40px;height:40px;background:#bbf7d0;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#16a34a;"><i class="ph-bold ph-wallet"></i></div>
+              <div><div style="font-size:0.72rem;color:#16a34a;font-weight:700;text-transform:uppercase;">Paid (Mediator)</div><div style="font-size:1.5rem;font-weight:700;color:#15803d;">₹473.00</div></div>
+            </div>
+          </div>
+          <div class="history-stat-card" style="background:linear-gradient(135deg,#fff7ed,#fed7aa);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:40px;height:40px;background:#fdba74;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#c2410c;"><i class="ph-bold ph-clock"></i></div>
+              <div><div style="font-size:0.72rem;color:#c2410c;font-weight:700;text-transform:uppercase;">Pending</div><div style="font-size:1.5rem;font-weight:700;color:#c2410c;">₹0.00</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div style="background:white;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid #f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+          <input type="text" style="flex:1;padding:9px 14px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.85rem;outline:none;" placeholder="Order ID, Product, Brand...">
+          <select style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;"><option>All Platforms</option><option>Amazon</option><option>Flipkart</option><option>Blinkit</option></select>
+          <select style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;"><option>All Statuses</option><option>Order Form Filled</option><option>Paid</option><option>Cancelled</option></select>
+          <button style="padding:9px 18px;background:#6366f1;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;"><i class="ph-bold ph-funnel"></i> Filter</button>
+          <button style="padding:9px 16px;background:#22c55e;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
+        </div>
+
+        <!-- Order Rows -->
+        <div class="order-row">
+          <div class="order-row-header">
+            <div>
+              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">Ant | Amazon</div>
+              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Ant_Cosmos_3Mode_Gaming_Controller</div>
+              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">402-0025862-2109921</span></div>
+              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Image Review | Ordered: 26 Jun 2026 | Submitted: 26 Jun 2026, 06:03 PM</div>
+            </div>
+            <span class="status-pill status-filled" style="flex-shrink:0;">● ORDER FILLED</span>
+          </div>
+          <div class="order-row-meta">
+            <div><div class="meta-label">User & Mediator</div><div class="meta-value">Shivam Raj</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Mediator: Aman Pandey</div></div>
+            <div><div class="meta-label">Pricing</div><div class="meta-value">₹1,141.05 Final</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Total: ₹1,441.05 | Less: -₹300</div></div>
+            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#6366f1;margin-top:2px;">9 Days Running</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Refund form pending</div></div>
+          </div>
+          <div class="order-actions">
+            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
+            <button class="order-act-btn act-refund"><i class="ph-bold ph-note-pencil"></i> Refund</button>
+            <button class="order-act-btn act-cancel"><i class="ph-bold ph-x"></i> Cancel</button>
+          </div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-row-header">
+            <div>
+              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">PNC/ADK | Amazon</div>
+              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">PNC_GreyShoewashingBag_Az</div>
+              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">406-1422779-1212359</span></div>
+              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Review | Ordered: 16 Jun 2026 | Submitted: 17 Jun 2026, 03:55 AM</div>
+            </div>
+            <span class="status-pill status-filled" style="flex-shrink:0;">● ORDER FILLED</span>
+          </div>
+          <div class="order-row-meta">
+            <div><div class="meta-label">User & Mediator</div><div class="meta-value">Ayush Chatterjee</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Mediator: Aman Pandey</div></div>
+            <div><div class="meta-label">Pricing</div><div class="meta-value">₹229.00 Final</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Total: ₹249 | Less: -₹20</div></div>
+            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#6366f1;margin-top:2px;">19 Days Running</div></div>
+          </div>
+          <div class="order-actions">
+            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
+            <button class="order-act-btn act-refund"><i class="ph-bold ph-note-pencil"></i> Refund</button>
+            <button class="order-act-btn act-cancel"><i class="ph-bold ph-x"></i> Cancel</button>
+          </div>
+        </div>
+
+        <div class="order-row">
+          <div class="order-row-header">
+            <div>
+              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">PNC | Amazon</div>
+              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">PNC_BlackheadRemover_Az</div>
+              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">402-5031051-7769965</span></div>
+              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Review | Submitted: 18 May 2026</div>
+            </div>
+            <span class="status-pill status-cancelled" style="flex-shrink:0;">● Cancelled</span>
+          </div>
+          <div class="order-row-meta">
+            <div><div class="meta-label">Reason</div><div class="meta-value" style="color:#dc2626;">User Cancelled</div><div style="font-size:0.73rem;color:#9ca3af;">Cancelled by Amazon</div></div>
+            <div><div class="meta-label">Pricing</div><div class="meta-value">₹0.00 Final</div><div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Penalty: 100%</div></div>
+            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#dc2626;margin-top:2px;">Not Eligible (&gt;45 Days)</div></div>
+          </div>
+          <div class="order-actions">
+            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
+            <button class="order-act-btn act-appeal"><i class="ph-bold ph-lightning"></i> Appeal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAGE: WHATS NEW ── -->
+      <div class="page" id="page-whatsnew">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">What's New</h1>
+        <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:24px;">Discover the latest features, improvements, and fixes we've rolled out for you.</p>
+
+        <div class="news-card">
+          <span class="news-type type-feature">Feature</span>
+          <div>
+            <div style="font-weight:700;color:#1f2937;margin-bottom:4px;">We have a new update</div>
+            <div style="font-size:0.78rem;color:#9ca3af;font-weight:600;margin-bottom:8px;">Feb 26, 2026</div>
+            <div style="font-size:0.88rem;color:#4b5563;font-weight:600;">Now you can check the penalty details in more clear way. Also now you can bulk mark as paid your users at once in single click.</div>
+          </div>
+        </div>
+        <div class="news-card">
+          <span class="news-type type-improvement">Improvement</span>
+          <div>
+            <div style="font-weight:700;color:#1f2937;margin-bottom:4px;">Update UI</div>
+            <div style="font-size:0.78rem;color:#9ca3af;font-weight:600;margin-bottom:8px;">Feb 25, 2026</div>
+            <div style="font-size:0.88rem;color:#4b5563;font-weight:600;">If you are seeing this means you have been granted special access to our latest new detailed improved UI.</div>
+            <div style="font-size:0.85rem;color:#6366f1;font-weight:700;margin-top:8px;">💬 Kindly give your feedback on how it was.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAGE: HELP ── -->
+      <div class="page" id="page-help">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">Help &amp; Support</h1>
+        <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:24px;">Raise tickets regarding your orders and communicate directly with your mediator.</p>
+
+        <div class="ticket-form">
+          <h3 style="font-weight:700;color:#1f2937;margin-bottom:16px;">Create New Ticket</h3>
+          <div class="form-group">
+            <label class="form-label">Subject (Must include Order ID) *</label>
+            <input type="text" class="form-input2" placeholder="e.g. Issue with Order #402-0025862-2109921">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Issue Details</label>
+            <textarea class="form-input2" rows="4" placeholder="Describe your issue in detail..." style="resize:none;"></textarea>
+          </div>
+          <button class="save-btn"><i class="ph-bold ph-paper-plane-tilt" style="margin-right:6px;"></i>Submit Ticket</button>
+        </div>
+
+        <div class="help-tab-bar">
+          <button class="help-tab active" onclick="switchHelpTab(this,'h-open')">Open Tickets <span style="background:#6366f1;color:white;font-size:0.65rem;padding:2px 7px;border-radius:99px;margin-left:4px;">0</span></button>
+          <button class="help-tab" onclick="switchHelpTab(this,'h-closed')">Closed <span style="background:#e5e7eb;color:#6b7280;font-size:0.65rem;padding:2px 7px;border-radius:99px;margin-left:4px;">0</span></button>
+        </div>
+        <div id="h-open"><div class="empty-state"><i class="ph-bold ph-chat-circle-dots"></i><div>No open tickets at the moment.</div></div></div>
+        <div id="h-closed" class="hidden"><div class="empty-state"><i class="ph-bold ph-check-circle"></i><div>No closed tickets.</div></div></div>
+      </div>
+
+      <!-- ── PAGE: MY APPEALS ── -->
+      <div class="page" id="page-appeals">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">My Appeals</h1>
+        <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:24px;">Track the status of your order refund appeals.</p>
+        <div class="appeals-empty">
+          <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:2rem;color:#9ca3af;">
+            <i class="ph-bold ph-lightning"></i>
+          </div>
+          <div style="font-size:1.05rem;font-weight:700;color:#1f2937;margin-bottom:6px;">No Appeals Found</div>
+          <div style="font-size:0.88rem;color:#6b7280;font-weight:600;margin-bottom:20px;">You haven't submitted any appeals for your orders yet.</div>
+          <button class="save-btn" onclick="navigate('history', document.querySelector('[data-page=history]'))">View Order History</button>
+        </div>
+      </div>
+
+      <!-- ── PAGE: PROFILE ── -->
+      <div class="page" id="page-profile">
+        <h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">Account Settings</h1>
+        <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:20px;">Manage your profile, security preferences, and payment details.</p>
+
+        <div class="locked-banner">
+          <div style="width:40px;height:40px;background:#fecaca;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ph-fill ph-lock" style="font-size:1.2rem;"></i></div>
+          <div><strong>Dashboard Locked.</strong> You must save your <strong>Payment Details</strong> (Bank or UPI) to unlock your dashboard and features.</div>
+        </div>
+
+        <div class="settings-grid">
+          <!-- Settings Nav -->
+          <div class="settings-sidebar">
+            <button class="settings-nav-btn" onclick="switchSettingsTab(this,'s-profile')">
+              <i class="ph-bold ph-user"></i> Profile Info
+            </button>
+            <button class="settings-nav-btn" onclick="switchSettingsTab(this,'s-security')">
+              <i class="ph-bold ph-shield-check"></i> Security
+            </button>
+            <button class="settings-nav-btn active" onclick="switchSettingsTab(this,'s-payment')">
+              <i class="ph-bold ph-credit-card"></i> Payment Details
+            </button>
+          </div>
+          <!-- Settings Content -->
+          <div class="settings-content">
+            <!-- Profile Info -->
+            <div class="settings-pane" id="s-profile">
+              <h3 style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:1rem;">Profile Information</h3>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input2" value="Ayush Chatterjee"></div>
+                <div class="form-group"><label class="form-label">Mobile</label><input type="tel" class="form-input2" value="9123337436"></div>
+                <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input2" value="alwaysayushsourav162@gmail.com"></div>
+                <div class="form-group"><label class="form-label">Referral Code</label><input type="text" class="form-input2" value="" placeholder="No referral code"></div>
+              </div>
+              <button class="save-btn">Save Profile</button>
+            </div>
+            <!-- Security -->
+            <div class="settings-pane" id="s-security">
+              <h3 style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:1rem;">Security Settings</h3>
+              <div class="form-group"><label class="form-label">Current Password</label><input type="password" class="form-input2" placeholder="Enter current password"></div>
+              <div class="form-group"><label class="form-label">New Password</label><input type="password" class="form-input2" placeholder="Enter new password"></div>
+              <div class="form-group"><label class="form-label">Confirm New Password</label><input type="password" class="form-input2" placeholder="Confirm new password"></div>
+              <button class="save-btn">Update Password</button>
+            </div>
+            <!-- Payment Details -->
+            <div class="settings-pane active" id="s-payment">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><i class="ph-bold ph-credit-card" style="color:#6366f1;font-size:1.1rem;"></i><h3 style="font-weight:700;color:#1f2937;font-size:1rem;">Payout Details</h3></div>
+              <p style="font-size:0.85rem;color:#6b7280;font-weight:600;margin-bottom:16px;">Enter your bank details or UPI ID to receive refunds and commissions.</p>
+
+              <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:0.83rem;color:#92400e;font-weight:600;display:flex;align-items:flex-start;gap:8px;">
+                <i class="ph-fill ph-warning-circle" style="font-size:1rem;flex-shrink:0;margin-top:1px;"></i>
+                <span><strong>Crucial:</strong> Double-check your details before saving. Incorrect details may lead to delayed or lost funds. If you need to change this later, OTP verification will be required.</span>
+              </div>
+
+              <div style="margin-bottom:20px;">
+                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="ph-bold ph-buildings"></i> Bank Transfer</div>
+                <div class="form-grid">
+                  <div class="form-group"><label class="form-label">Bank Name</label><input type="text" class="form-input2" placeholder="e.g. HDFC Bank"></div>
+                  <div class="form-group"><label class="form-label">Account Holder Name</label><input type="text" class="form-input2" placeholder="As per bank records"></div>
+                  <div class="form-group"><label class="form-label">Account Number</label><input type="text" class="form-input2" placeholder="1234567890"></div>
+                  <div class="form-group"><label class="form-label">IFSC Code</label><input type="text" class="form-input2" placeholder="HDFC0001234"></div>
+                </div>
+              </div>
+
+              <div style="border-top:1px solid #f3f4f6;padding-top:16px;margin-bottom:20px;">
+                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="ph-bold ph-qr-code"></i> UPI Details</div>
+                <div class="form-group"><label class="form-label">UPI ID</label><input type="text" class="form-input2" placeholder="yourname@upi"></div>
+              </div>
+
+              <button class="save-btn" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;" onclick="handleSavePayment()">
+                <i class="ph-bold ph-lock-open"></i> Save &amp; Unlock Dashboard
+              </button>
+              <div id="payment-success" style="display:none;margin-top:12px;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px;text-align:center;font-weight:700;color:#15803d;font-size:0.88rem;">
+                ✅ Payment details saved! Dashboard unlocked.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main-wrap -->
+
+  <script>
+    const pageTitles = {
+      'dashboard': 'Dashboard',
+      'active-deals': 'Active Deals',
+      'rewards': 'Rewards Wallet',
+      'history': 'Order History',
+      'whatsnew': "What's New",
+      'help': 'Help & Support',
+      'appeals': 'My Appeals',
+      'profile': 'Settings'
+    };
+
+    function doLogout(){
+      sessionStorage.removeItem('jm_session');
+      window.location.href='../login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Auth Guard
+      const s = sessionStorage.getItem('jm_session');
+      if (!s) { window.location.href = '../login.html'; return; }
+      
+      // Show logged-in user name
+      try {
+        const data = JSON.parse(s);
+        if (data && data.name) document.getElementById('dash-user-name').textContent = data.name;
+      } catch (e) {}
+    });
+
+    function navigate(pageId, el) {
+      // Hide all pages
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      // Show target
+      const target = document.getElementById('page-' + pageId);
+      if (target) target.classList.add('active');
+      // Update sidebar active
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      if (el) el.classList.add('active');
+      // Update page title
+      document.getElementById('current-page-title').textContent = pageTitles[pageId] || pageId;
+    }
+
+    function switchRewardTab(btn, tabId) {
+      document.querySelectorAll('.tab2-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ['rw-history','rw-orders','rw-referrals','rw-withdrawals'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function switchHelpTab(btn, tabId) {
+      document.querySelectorAll('.help-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ['h-open','h-closed'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', id !== tabId);
+      });
+    }
+
+    function switchSettingsTab(btn, tabId) {
+      document.querySelectorAll('.settings-nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ['s-profile','s-security','s-payment'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active', id === tabId);
+      });
+    }
+
+    function handleSavePayment() {
+      const btn = event.target.closest('button');
+      btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Saving...';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.style.display = 'none';
+        document.getElementById('payment-success').style.display = 'block';
+        document.querySelector('.locked-banner').style.display = 'none';
+      }, 1800);
+    }
+  </script>
+  <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</body>
+</html>

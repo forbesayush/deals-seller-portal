@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — deals.seller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --sidebar-bg: #0f0c29;
+      --sidebar-w: 230px;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --bg: #f0f2f8;
+      --white: #ffffff;
+      --radius: 12px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    body { font-family: 'Quicksand', sans-serif; background: var(--bg); color: #1f2937; display: flex; min-height: 100vh; }
+
+    /* ═══ SIDEBAR ═══ */
+    #sidebar {
+      width: var(--sidebar-w); background: var(--sidebar-bg);
+      min-height: 100vh; position: fixed; top: 0; left: 0;
+      display: flex; flex-direction: column; z-index: 300;
+    }
+    .sb-brand {
+      padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .sb-logo {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 1rem; font-weight: 700;
+    }
+    .sb-title { color: white; font-size: 0.92rem; font-weight: 700; line-height: 1.2; }
+    .sb-sub { color: rgba(255,255,255,0.4); font-size: 0.68rem; font-weight: 600; }
+
+    .sb-section { padding: 12px 18px 4px; font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.3); }
+    .sb-nav { flex: 1; padding: 4px 0 12px; }
+    .sb-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 18px; color: rgba(255,255,255,0.55);
+      font-size: 0.86rem; font-weight: 600; cursor: pointer;
+      border-left: 3px solid transparent; transition: all 0.15s; text-decoration: none;
+    }
+    .sb-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); }
+    .sb-item.active { background: rgba(99,102,241,0.15); color: #a5b4fc; border-left-color: var(--accent); }
+    .sb-item i { font-size: 1rem; width: 18px; }
+    .sb-badge { margin-left: auto; background: var(--accent); color: white; font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+
+    .sb-user { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 10px; }
+    .sb-avatar { width: 34px; height: 34px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+
+    /* ═══ MAIN ═══ */
+    #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    /* Top Bar */
+    #topbar {
+      height: 58px; background: var(--white); border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .topbar-title { font-size: 1rem; font-weight: 700; color: #1e1b4b; display: flex; align-items: center; gap: 8px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .tb-btn {
+      padding: 7px 16px; border: none; border-radius: 9px;
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.82rem;
+      cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .tb-green { background: #dcfce7; color: #15803d; }
+    .tb-green:hover { background: #bbf7d0; }
+    .tb-blue  { background: var(--accent); color: white; }
+    .tb-blue:hover { background: #4f46e5; }
+    .tb-red   { background: #fef2f2; color: #dc2626; }
+    .tb-red:hover { background: #fee2e2; }
+    .notif-btn { width: 34px; height: 34px; background: #f3f4f6; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6b7280; cursor: pointer; font-size: 1rem; position: relative; }
+
+    /* ═══ CONTENT ═══ */
+    #content { padding: 24px 28px; flex: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { margin-bottom: 22px; }
+    .page-title { font-size: 1.5rem; font-weight: 700; color: #1e1b4b; }
+    .page-sub { font-size: 0.88rem; color: #6b7280; font-weight: 600; margin-top: 4px; }
+
+    /* ═══ STAT GRID ═══ */
+    .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--white); border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); border: 1px solid #f1f5f9; position: relative; overflow: hidden;
+    }
+    .stat-card::after { content: ''; position: absolute; right: -20px; top: -20px; width: 80px; height: 80px; border-radius: 50%; opacity: 0.08; }
+    .sc-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-bottom: 12px; }
+    .sc-value { font-size: 1.6rem; font-weight: 700; color: #1f2937; line-height: 1; }
+    .sc-label { font-size: 0.78rem; color: #9ca3af; font-weight: 600; margin-top: 4px; }
+    .sc-change { font-size: 0.75rem; font-weight: 700; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+
+    /* ═══ CARD PANEL ═══ */
+    .card {
+      background: var(--white); border-radius: var(--radius);
+      border: 1px solid #f1f5f9; box-shadow: var(--shadow);
+    }
+    .card-header {
+      padding: 16px 20px; border-bottom: 1px solid #f3f4f6;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 0.9rem; font-weight: 700; color: #1f2937; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 0; }
+
+    /* ═══ FILTER BAR ═══ */
+    .filter-row {
+      padding: 14px 20px; background: #fafafa; border-bottom: 1px solid #f3f4f6;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .fi { padding: 7px 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-family: 'Quicksand', sans-serif; font-size: 0.83rem; outline: none; background: white; }
+    .fi:focus { border-color: var(--accent); }
+    .fi-search { flex: 1; min-width: 160px; }
+    .btn-sm {
+      padding: 7px 14px; border: none; border-radius: 8px;
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.8rem;
+      cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-success { background: #dcfce7; color: #15803d; }
+    .btn-success:hover { background: #bbf7d0; }
+    .btn-danger  { background: #fef2f2; color: #dc2626; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-warning { background: #fef9c3; color: #92400e; }
+    .btn-gray    { background: #f3f4f6; color: #6b7280; }
+    .btn-gray:hover { background: #e5e7eb; }
+
+    /* ═══ TABLE ═══ */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    thead th {
+      padding: 10px 14px; text-align: left;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #9ca3af;
+      background: #fafafa; border-bottom: 1px solid #f3f4f6;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.12s; }
+    tbody tr:hover { background: #f9fafb; }
+    td { padding: 11px 14px; vertical-align: middle; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 99px; font-size: 0.71rem; font-weight: 700; white-space: nowrap;
+    }
+    .p-filled    { background: #dbeafe; color: #1d4ed8; }
+    .p-paid      { background: #dcfce7; color: #15803d; }
+    .p-cancelled { background: #fef2f2; color: #dc2626; }
+    .p-pending   { background: #fef9c3; color: #92400e; }
+    .p-review    { background: #ede9fe; color: #6d28d9; }
+    .p-active    { background: #dcfce7; color: #15803d; }
+    .p-suspended { background: #fef2f2; color: #dc2626; }
+
+    .action-btns { display: flex; gap: 4px; align-items: center; }
+    .ico-btn {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+    }
+    .ico-view { background: #f3f4f6; color: #374151; }
+    .ico-edit { background: #dbeafe; color: #1d4ed8; }
+    .ico-del  { background: #fef2f2; color: #dc2626; }
+    .ico-pay  { background: #dcfce7; color: #15803d; }
+
+    /* ═══ USER DETAILS MODAL ═══ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 1000; display: none; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white; border-radius: 20px; width: 90%; max-width: 700px;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+      animation: modal-in 0.25s ease;
+    }
+    @keyframes modal-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 1.05rem; font-weight: 700; color: #1e1b4b; }
+    .modal-close { background: none; border: none; font-size: 1.2rem; color: #9ca3af; cursor: pointer; padding: 4px; }
+    .modal-body { padding: 24px; }
+
+    /* ═══ REFUND TIMELINE ═══ */
+    .refund-card {
+      background: var(--white); border-radius: var(--radius); border: 1px solid #f1f5f9;
+      box-shadow: var(--shadow); padding: 20px; margin-bottom: 14px;
+    }
+    .timeline-track {
+      height: 6px; background: #e5e7eb; border-radius: 99px; margin: 12px 0; overflow: hidden;
+    }
+    .timeline-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
+    .timeline-steps { display: flex; justify-content: space-between; }
+    .tl-step { flex: 1; text-align: center; font-size: 0.7rem; font-weight: 700; }
+    .tl-step .dot { width: 10px; height: 10px; border-radius: 50%; margin: 0 auto 4px; border: 2px solid #e5e7eb; background: white; }
+    .tl-step.done .dot { background: #22c55e; border-color: #22c55e; }
+    .tl-step.active .dot { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+    .tl-step.done span { color: #16a34a; }
+    .tl-step.active span { color: var(--accent); }
+    .tl-step span { color: #9ca3af; }
+
+    /* ═══ OVERVIEW CHARTS MOCK ═══ */
+    .mini-bar { display: flex; align-items: flex-end; gap: 4px; height: 48px; }
+    .bar-col {
+      flex: 1; background: linear-gradient(to top, var(--accent), var(--accent2));
+      border-radius: 3px 3px 0 0; opacity: 0.75;
+      transition: opacity 0.2s;
+    }
+    .bar-col:hover { opacity: 1; }
+
+    /* ═══ INLINE EDIT ═══ */
+    .edit-input {
+      padding: 6px 10px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      font-family: 'Quicksand', sans-serif; font-size: 0.83rem; outline: none; width: 100%;
+    }
+    .edit-input:focus { border-color: var(--accent); }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: #9ca3af; }
+    .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+
+    @media(max-width:1024px) { .stat-grid { grid-template-columns: repeat(2,1fr); } }
+    @media(max-width:768px)  { #sidebar { display: none; } #main { margin-left: 0; } }
+  </style>
+</head>
+<body>
+
+<!-- ════════════ SIDEBAR ════════════ -->
+<aside id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">DS</div>
+    <div><div class="sb-title">Admin Panel</div><div class="sb-sub">deals.seller</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Overview</div>
+    <a class="sb-item active" onclick="navigate('overview',this)"><i class="ph-fill ph-gauge"></i> Dashboard</a>
+    <a class="sb-item" onclick="navigate('users',this)"><i class="ph-bold ph-users"></i> Users <span class="sb-badge" id="sb-users-badge">4</span></a>
+
+    <div class="sb-section">Orders</div>
+    <a class="sb-item" onclick="navigate('orders',this)"><i class="ph-bold ph-receipt"></i> All Orders <span class="sb-badge" id="sb-orders-badge">8</span></a>
+    <a class="sb-item" onclick="navigate('refunds',this)"><i class="ph-bold ph-arrow-counter-clockwise"></i> Refunds <span class="sb-badge" id="sb-refund-badge" style="background:#ef4444;">3</span></a>
+    <a class="sb-item" onclick="navigate('pending',this)"><i class="ph-bold ph-clock"></i> Pending Review</a>
+
+    <div class="sb-section">Management</div>
+    <a class="sb-item" onclick="navigate('deals',this)"><i class="ph-bold ph-tag"></i> Deals</a>
+    <a class="sb-item" onclick="navigate('reports',this)"><i class="ph-bold ph-chart-bar"></i> Reports</a>
+    <a class="sb-item" onclick="navigate('settings',this)"><i class="ph-bold ph-gear"></i> Settings</a>
+    <a class="sb-item" style="color:#ef4444;margin-top:8px;" href="../login.html"><i class="ph-bold ph-sign-out"></i> Logout</a>
+  </nav>
+  <div class="sb-user">
+    <div class="sb-avatar">A</div>
+    <div>
+      <div style="color:white;font-size:0.82rem;font-weight:700;" id="admin-name-sb">Admin</div>
+      <div style="color:rgba(255,255,255,0.4);font-size:0.68rem;font-weight:600;">Owner</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════════ MAIN ════════════ -->
+<div id="main">
+  <header id="topbar">
+    <div class="topbar-title">
+      <span id="topbar-title-text">Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <button class="tb-btn tb-green" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export Orders CSV</button>
+      <button class="tb-btn tb-green" onclick="exportAllUsers()"><i class="ph-bold ph-download-simple"></i> Export Users CSV</button>
+      <button class="notif-btn" title="Notifications"><i class="ph-bold ph-bell"></i></button>
+    </div>
+  </header>
+
+  <div id="content">
+
+    <!-- ══════════ PAGE: OVERVIEW ══════════ -->
+    <div class="page active" id="page-overview">
+      <div class="page-header">
+        <div class="page-title">Welcome back, <span id="admin-name-header">Admin</span> 👋</div>
+        <div class="page-sub">Here's what's happening across your portal today.</div>
+      </div>
+
+      <!-- Stat Cards -->
+      <div class="stat-grid" id="overview-stats">
+        <div class="stat-card">
+          <div class="sc-icon" style="background:#ede9fe;color:#7c3aed;"><i class="ph-bold ph-users"></i></div>
+          <div class="sc-value" id="stat-total-users">4</div>
+          <div class="sc-label">Total Registered Users</div>
+          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> 2 this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="ph-bold ph-receipt"></i></div>
+          <div class="sc-value" id="stat-total-orders">8</div>
+          <div class="sc-label">Total Orders</div>
+          <div class="sc-change" style="color:#6366f1;"><i class="ph-bold ph-clock"></i> 3 pending review</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:#dcfce7;color:#16a34a;"><i class="ph-bold ph-wallet"></i></div>
+          <div class="sc-value" id="stat-paid-amt">₹670</div>
+          <div class="sc-label">Total Paid Out</div>
+          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> ₹473 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon" style="background:#fef2f2;color:#dc2626;"><i class="ph-bold ph-warning"></i></div>
+          <div class="sc-value" id="stat-pending-amt">₹12,454</div>
+          <div class="sc-label">Pending Payouts</div>
+          <div class="sc-change" style="color:#f59e0b;"><i class="ph-bold ph-clock"></i> 5 orders waiting</div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div class="card" style="padding:18px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Revenue This Month</div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;">
+            <div>
+              <div style="font-size:1.6rem;font-weight:700;color:#1f2937;">₹9,424</div>
+              <div style="font-size:0.78rem;color:#22c55e;font-weight:700;margin-top:4px;">↑ 18% vs last month</div>
+            </div>
+            <div class="mini-bar">
+              <div class="bar-col" style="height:30%"></div><div class="bar-col" style="height:55%"></div><div class="bar-col" style="height:40%"></div>
+              <div class="bar-col" style="height:70%"></div><div class="bar-col" style="height:60%"></div><div class="bar-col" style="height:90%"></div><div class="bar-col" style="height:100%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Orders by Platform</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
+              <span style="font-weight:700;width:60px;color:#c2410c;">Amazon</span>
+              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:75%;height:100%;background:#fb923c;border-radius:99px;"></div></div>
+              <span style="font-weight:700;color:#c2410c;">6</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
+              <span style="font-weight:700;width:60px;color:#1d4ed8;">Flipkart</span>
+              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:12%;height:100%;background:#60a5fa;border-radius:99px;"></div></div>
+              <span style="font-weight:700;color:#1d4ed8;">1</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
+              <span style="font-weight:700;width:60px;color:#a16207;">Blinkit</span>
+              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:12%;height:100%;background:#fbbf24;border-radius:99px;"></div></div>
+              <span style="font-weight:700;color:#a16207;">1</span>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px;">
+          <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Refund Requests</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Pending</span><span style="font-weight:700;color:#f59e0b;">1</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Under Review</span><span style="font-weight:700;color:#6366f1;">1</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Resolved</span><span style="font-weight:700;color:#22c55e;">1</span></div>
+            <div style="border-top:1px solid #f3f4f6;padding-top:6px;display:flex;justify-content:space-between;font-size:0.85rem;"><span style="font-weight:700;color:#1f2937;">Total Value</span><span style="font-weight:700;color:#dc2626;">₹9,490</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders Quick View -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><i class="ph-bold ph-receipt" style="color:var(--accent);"></i> Recent Orders</div>
+          <button class="btn-sm btn-gray" onclick="navigate('orders',document.querySelector('[data-p=orders]'))">View All →</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="overview-orders-table">
+            <thead><tr><th>#</th><th>Order ID</th><th>Product Code</th><th>Platform</th><th>User</th><th>Amount</th><th>Deduction</th><th>Final Payout</th><th>Status</th><th>Submitted</th></tr></thead>
+            <tbody id="overview-orders-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: USERS ══════════ -->
+    <div class="page" id="page-users">
+      <div class="page-header">
+        <div class="page-title">Registered Users</div>
+        <div class="page-sub">Manage all buyer accounts — view orders, suspend or activate users.</div>
+      </div>
+      <div class="card">
+        <div class="filter-row">
+          <input type="text" class="fi fi-search" placeholder="Search name, email, mobile..." id="user-search" oninput="renderUsers()">
+          <select class="fi" id="user-status-filter" onchange="renderUsers()">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
+          <button class="btn-sm btn-success" onclick="exportAllUsers()"><i class="ph-bold ph-download-simple"></i> Export CSV</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Mobile</th><th>Joined</th><th>Total Orders</th><th>Total Paid</th><th>Pending</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: ORDERS ══════════ -->
+    <div class="page" id="page-orders">
+      <div class="page-header">
+        <div class="page-title">All Orders</div>
+        <div class="page-sub">Track every order — amounts, deductions, status, and refund eligibility.</div>
+      </div>
+
+      <!-- Summary Totals -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;" id="orders-totals"></div>
+
+      <div class="card">
+        <div class="filter-row">
+          <input type="text" class="fi fi-search" placeholder="Order ID, product code, user..." id="order-search" oninput="renderOrders()">
+          <select class="fi" id="order-platform-filter" onchange="renderOrders()">
+            <option value="">All Platforms</option>
+            <option>Amazon</option><option>Flipkart</option><option>Blinkit</option>
+          </select>
+          <select class="fi" id="order-status-filter" onchange="renderOrders()">
+            <option value="">All Statuses</option>
+            <option value="order_filled">Order Filled</option>
+            <option value="paid">Paid</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="under_review">Under Review</option>
+            <option value="pending_review">Pending Review</option>
+          </select>
+          <button class="btn-sm btn-primary" onclick="renderOrders()"><i class="ph-bold ph-funnel"></i> Filter</button>
+          <button class="btn-sm btn-success" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export CSV</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Order No</th><th>Product Code</th><th>Platform</th><th>Deal Type</th>
+                <th>User</th><th>Mediator</th><th>Order Date</th><th>Submitted</th>
+                <th>Amount (₹)</th><th>Deduction (₹)</th><th>Final Payout (₹)</th>
+                <th>Status</th><th>Screenshot</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orders-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: REFUNDS ══════════ -->
+    <div class="page" id="page-refunds">
+      <div class="page-header">
+        <div class="page-title">Refund Management</div>
+        <div class="page-sub">Track and process refund requests. Processing window: <strong>24–48 hours</strong> after review.</div>
+      </div>
+
+      <!-- Refund timeline legend -->
+      <div style="background:white;border-radius:12px;border:1px solid #f1f5f9;padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow);">
+        <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:12px;">⏱️ Standard Refund Timeline</div>
+        <div style="display:flex;align-items:center;gap:0;">
+          <div style="flex:1;text-align:center;">
+            <div style="width:28px;height:28px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1d4ed8;margin:0 auto 4px;font-size:0.75rem;font-weight:700;">1</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#1d4ed8;">Submitted</div>
+            <div style="font-size:0.65rem;color:#9ca3af;">0–6 hrs</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e5e7eb;"></div>
+          <div style="flex:1;text-align:center;">
+            <div style="width:28px;height:28px;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#7c3aed;margin:0 auto 4px;font-size:0.75rem;font-weight:700;">2</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#7c3aed;">Under Review</div>
+            <div style="font-size:0.65rem;color:#9ca3af;">6–24 hrs</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e5e7eb;"></div>
+          <div style="flex:1;text-align:center;">
+            <div style="width:28px;height:28px;background:#fef9c3;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#92400e;margin:0 auto 4px;font-size:0.75rem;font-weight:700;">3</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#92400e;">Processing</div>
+            <div style="font-size:0.65rem;color:#9ca3af;">24–36 hrs</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e5e7eb;"></div>
+          <div style="flex:1;text-align:center;">
+            <div style="width:28px;height:28px;background:#fff7ed;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#c2410c;margin:0 auto 4px;font-size:0.75rem;font-weight:700;">4</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#c2410c;">Approval</div>
+            <div style="font-size:0.65rem;color:#9ca3af;">36–48 hrs</div>
+          </div>
+          <div style="flex:1;height:2px;background:#e5e7eb;"></div>
+          <div style="flex:1;text-align:center;">
+            <div style="width:28px;height:28px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#15803d;margin:0 auto 4px;font-size:0.75rem;font-weight:700;">✓</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#15803d;">Resolved</div>
+            <div style="font-size:0.65rem;color:#9ca3af;">&lt;48 hrs</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="refunds-list"></div>
+    </div>
+
+    <!-- ══════════ PAGE: PENDING ══════════ -->
+    <div class="page" id="page-pending">
+      <div class="page-header">
+        <div class="page-title">Pending Review</div>
+        <div class="page-sub">Orders waiting for admin review before marking as paid.</div>
+      </div>
+      <div class="card">
+        <div class="filter-row">
+          <button class="btn-sm btn-success" onclick="markAllPaid()"><i class="ph-bold ph-check-circle"></i> Mark All as Paid</button>
+          <button class="btn-sm btn-success" onclick="exportAllOrders('pending_review')"><i class="ph-bold ph-download-simple"></i> Export Pending</button>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th><input type="checkbox" id="select-all-pending" onchange="toggleSelectAll(this)"></th><th>Order No</th><th>Product Code</th><th>User</th><th>Platform</th><th>Amount</th><th>Deduction</th><th>Final</th><th>Submitted</th><th>Screenshot</th><th>Actions</th></tr></thead>
+          <tbody id="pending-table-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: DEALS ══════════ -->
+    <div class="page" id="page-deals">
+      <div class="page-header">
+        <div class="page-title">Deal Management</div>
+        <div class="page-sub">Add, edit, and toggle active deals visible to buyers.</div>
+      </div>
+      <div class="card" style="padding:20px;margin-bottom:16px;">
+        <div style="font-weight:700;color:#1f2937;margin-bottom:14px;font-size:0.9rem;">+ Add New Deal</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 120px 120px;gap:10px;margin-bottom:12px;">
+          <input type="text" class="fi" placeholder="Brand Name" id="deal-brand">
+          <input type="text" class="fi" placeholder="Product Code" id="deal-code">
+          <select class="fi" id="deal-platform"><option>Amazon</option><option>Flipkart</option><option>Blinkit</option></select>
+          <input type="number" class="fi" placeholder="Price ₹" id="deal-price">
+          <input type="number" class="fi" placeholder="Slots" id="deal-slots">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <select class="fi" id="deal-type-new"><option value="Review">Review</option><option value="Rating">Rating</option><option value="Image Review">Image Review</option></select>
+          <input type="text" class="fi" placeholder="Product URL" id="deal-url">
+        </div>
+        <button class="btn-sm btn-primary" onclick="addDeal()"><i class="ph-bold ph-plus"></i> Add Deal</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><i class="ph-bold ph-tag" style="color:var(--accent);"></i> All Deals</div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>#</th><th>Brand</th><th>Code</th><th>Platform</th><th>Type</th><th>Price</th><th>Slots</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="deals-table-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: REPORTS ══════════ -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <div class="page-title">Reports & Export</div>
+        <div class="page-sub">Generate and download detailed reports for your records.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <div class="card" style="padding:24px;text-align:center;">
+          <div style="width:56px;height:56px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#1d4ed8;"><i class="ph-bold ph-receipt"></i></div>
+          <div style="font-weight:700;color:#1f2937;margin-bottom:6px;">All Orders Report</div>
+          <div style="font-size:0.82rem;color:#6b7280;font-weight:600;margin-bottom:14px;">Order No, Code, User, Amounts, Status, Dates</div>
+          <button class="btn-sm btn-success" style="margin:0 auto;" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
+        </div>
+        <div class="card" style="padding:24px;text-align:center;">
+          <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#16a34a;"><i class="ph-bold ph-users"></i></div>
+          <div style="font-weight:700;color:#1f2937;margin-bottom:6px;">Users Report</div>
+          <div style="font-size:0.82rem;color:#6b7280;font-weight:600;margin-bottom:14px;">Name, Email, Mobile, Orders, Paid Amounts</div>
+          <button class="btn-sm btn-success" style="margin:0 auto;" onclick="exportAllUsers()"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
+        </div>
+        <div class="card" style="padding:24px;text-align:center;">
+          <div style="width:56px;height:56px;background:#fef9c3;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:1.5rem;color:#92400e;"><i class="ph-bold ph-arrow-counter-clockwise"></i></div>
+          <div style="font-weight:700;color:#1f2937;margin-bottom:6px;">Refunds Report</div>
+          <div style="font-size:0.82rem;color:#6b7280;font-weight:600;margin-bottom:14px;">Refund ID, Order, User, Amount, Status, Timeline</div>
+          <button class="btn-sm btn-success" style="margin:0 auto;" onclick="exportRefunds()"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ PAGE: SETTINGS ══════════ -->
+    <div class="page" id="page-settings">
+      <div class="page-header"><div class="page-title">Admin Settings</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card" style="padding:24px;">
+          <div style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:0.95rem;">Change Admin Password</div>
+          <div style="margin-bottom:12px;"><label style="font-size:0.8rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Current Password</label><input type="password" class="fi" style="width:100%;" placeholder="Current password"></div>
+          <div style="margin-bottom:12px;"><label style="font-size:0.8rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">New Password</label><input type="password" class="fi" style="width:100%;" placeholder="Min 8 characters"></div>
+          <div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Confirm New Password</label><input type="password" class="fi" style="width:100%;" placeholder="Confirm password"></div>
+          <button class="btn-sm btn-primary">Update Password</button>
+        </div>
+        <div class="card" style="padding:24px;">
+          <div style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:0.95rem;">Portal Settings</div>
+          <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;font-size:0.88rem;color:#374151;">New Registrations</div><div style="font-size:0.78rem;color:#9ca3af;font-weight:600;">Allow new buyer sign-ups</div></div>
+            <input type="checkbox" checked style="accent-color:#6366f1;transform:scale(1.3);">
+          </div>
+          <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;font-size:0.88rem;color:#374151;">Mediator Registrations</div><div style="font-size:0.78rem;color:#9ca3af;font-weight:600;">Allow mediator applications</div></div>
+            <input type="checkbox" style="accent-color:#6366f1;transform:scale(1.3);">
+          </div>
+          <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;font-size:0.88rem;color:#374151;">Maintenance Mode</div><div style="font-size:0.78rem;color:#9ca3af;font-weight:600;">Lock portal for all buyers</div></div>
+            <input type="checkbox" style="accent-color:#ef4444;transform:scale(1.3);">
+          </div>
+          <button class="btn-sm btn-primary">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ════════════ USER DETAIL MODAL ════════════ -->
+<div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeModal('user-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="user-modal-title">User Details</div>
+      <button class="modal-close" onclick="closeModal('user-modal')"><i class="ph-bold ph-x"></i></button>
+    </div>
+    <div class="modal-body" id="user-modal-body"></div>
+  </div>
+</div>
+
+<!-- ════════════ ORDER DETAIL MODAL ════════════ -->
+<div class="modal-overlay" id="order-modal" onclick="if(event.target===this)closeModal('order-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="order-modal-title">Order Details</div>
+      <button class="modal-close" onclick="closeModal('order-modal')"><i class="ph-bold ph-x"></i></button>
+    </div>
+    <div class="modal-body" id="order-modal-body"></div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script>
+// ── AUTH GUARD ──
+document.addEventListener('DOMContentLoaded', () => {
+  const session = getSession();
+  if (!session || session.role !== 'admin') {
+    window.location.href = '../login.html';
+    return;
+  }
+  document.getElementById('admin-name-sb').textContent = session.name || 'Admin';
+  document.getElementById('admin-name-header').textContent = session.name || 'Admin';
+  initPanel();
+});
+
+let DEALS_DATA = [
+  { id: 'DL001', brand: 'DZ', code: 'Blinkit_Floor_TabletStand_360°', platform: 'Blinkit', type: 'Review', price: 1299, slots: 4, active: true },
+  { id: 'DL002', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Review', price: 450, slots: 4, active: true },
+  { id: 'DL003', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Rating', price: 450, slots: 5, active: true },
+  { id: 'DL004', brand: 'Zaylore', code: 'ZY_Adhesive_Glue_Az', platform: 'Amazon', type: 'Review', price: 449, slots: 3, active: true },
+  { id: 'DL005', brand: 'Zaylore', code: 'ZY_Epsom_Salt_Az', platform: 'Amazon', type: 'Review', price: 399, slots: 6, active: false },
+];
+
+function initPanel() {
+  renderOverview();
+  renderUsers();
+  renderOrders();
+  renderRefunds();
+  renderPending();
+  renderDeals();
+}
+
+// ── NAVIGATION ──
+const pageTitles2 = { overview:'Dashboard', users:'Users', orders:'All Orders', refunds:'Refunds', pending:'Pending Review', deals:'Deals', reports:'Reports', settings:'Settings' };
+
+function navigate(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('topbar-title-text').textContent = pageTitles2[id] || id;
+}
+
+// ── RENDER OVERVIEW ──
+function renderOverview() {
+  const orders = getOrders();
+  const users = getBuyersFromStorage();
+  const paid = orders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+  const pending = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+  document.getElementById('stat-total-users').textContent = users.length;
+  document.getElementById('stat-total-orders').textContent = orders.length;
+  document.getElementById('stat-paid-amt').textContent = '₹' + paid.toLocaleString('en-IN', {minimumFractionDigits:0});
+  document.getElementById('stat-pending-amt').textContent = '₹' + pending.toLocaleString('en-IN', {minimumFractionDigits:0});
+
+  const tbody = document.getElementById('overview-orders-body');
+  const buyers = getBuyersFromStorage();
+  tbody.innerHTML = orders.slice(0,6).map((o,i) => {
+    const user = buyers.find(b => b.id === o.userId);
+    return `<tr>
+      <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
+      <td><div style="font-weight:700;color:#4f46e5;font-size:0.8rem;">${o.orderNo}</div></td>
+      <td><span style="font-size:0.72rem;background:#f3f4f6;padding:2px 8px;border-radius:6px;font-weight:700;">${o.productCode}</span></td>
+      <td><span class="pill ${o.platform==='Amazon'?'p-pending':o.platform==='Flipkart'?'p-filled':'p-review'}">${o.platform}</span></td>
+      <td style="font-weight:600;">${user?.name||o.userId}</td>
+      <td style="font-weight:700;">₹${o.amount.toFixed(2)}</td>
+      <td style="color:#dc2626;font-weight:700;">-₹${o.deduction.toFixed(2)}</td>
+      <td style="color:#16a34a;font-weight:700;">₹${o.finalPayout.toFixed(2)}</td>
+      <td>${statusPill(o.status)}</td>
+      <td style="color:#9ca3af;font-size:0.78rem;">${o.submittedDate}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── RENDER USERS ──
+function renderUsers() {
+  const buyers = getBuyersFromStorage();
+  const orders = getOrders();
+  const search = document.getElementById('user-search')?.value?.toLowerCase() || '';
+  const statusF = document.getElementById('user-status-filter')?.value || '';
+
+  const filtered = buyers.filter(b => {
+    const matchS = !search || b.name.toLowerCase().includes(search) || b.email.includes(search) || b.mobile.includes(search);
+    const matchSt = !statusF || b.status === statusF;
+    return matchS && matchSt;
+  });
+
+  const tbody = document.getElementById('users-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = filtered.map((b, i) => {
+    const userOrders = orders.filter(o => o.userId === b.id);
+    const totalPaid = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+    const pendingAmt = userOrders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+    return `<tr>
+      <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
+      <td>
+        <div style="font-weight:700;color:#1f2937;">${b.name}</div>
+        <div style="font-size:0.72rem;color:#9ca3af;">${b.id} ${b.verified ? '✓' : ''}</div>
+      </td>
+      <td style="font-size:0.82rem;">${b.email}</td>
+      <td style="font-weight:600;">${b.mobile}</td>
+      <td style="font-size:0.8rem;color:#6b7280;">${b.joined}</td>
+      <td style="font-weight:700;text-align:center;">${userOrders.length}</td>
+      <td style="color:#16a34a;font-weight:700;">₹${totalPaid.toFixed(2)}</td>
+      <td style="color:#f59e0b;font-weight:700;">₹${pendingAmt.toFixed(2)}</td>
+      <td><span class="pill ${b.status==='active'?'p-active':'p-suspended'}">${b.status}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="ico-btn ico-view" title="View Orders" onclick="viewUserOrders('${b.id}','${b.name}')"><i class="ph-bold ph-eye"></i></button>
+          <button class="ico-btn ${b.status==='active'?'ico-del':'ico-pay'}" title="${b.status==='active'?'Suspend':'Activate'}" onclick="toggleUserStatus('${b.id}')">
+            <i class="ph-bold ${b.status==='active'?'ph-prohibit':'ph-check-circle'}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><i class="ph-bold ph-users"></i><div>No users found</div></div></td></tr>';
+}
+
+// ── RENDER ORDERS ──
+function renderOrders() {
+  const orders = getOrders();
+  const buyers = getBuyersFromStorage();
+  const search = document.getElementById('order-search')?.value?.toLowerCase() || '';
+  const platformF = document.getElementById('order-platform-filter')?.value || '';
+  const statusF = document.getElementById('order-status-filter')?.value || '';
+
+  const filtered = orders.filter(o => {
+    const user = buyers.find(b => b.id === o.userId);
+    const matchS = !search || o.orderNo.toLowerCase().includes(search) || o.productCode.toLowerCase().includes(search) || (user?.name||'').toLowerCase().includes(search);
+    const matchP = !platformF || o.platform === platformF;
+    const matchSt = !statusF || o.status === statusF;
+    return matchS && matchP && matchSt;
+  });
+
+  // Totals
+  const totals = document.getElementById('orders-totals');
+  if (totals) {
+    const totalAmt = filtered.reduce((s,o)=>s+o.amount,0);
+    const totalDed = filtered.reduce((s,o)=>s+o.deduction,0);
+    const totalPay = filtered.reduce((s,o)=>s+o.finalPayout,0);
+    const totalPaid = filtered.filter(o=>o.status==='paid').reduce((s,o)=>s+o.finalPayout,0);
+    const totalPend = filtered.filter(o=>o.status!=='paid'&&o.status!=='cancelled').reduce((s,o)=>s+o.finalPayout,0);
+    totals.innerHTML = [
+      ['Total Orders', filtered.length, '#6366f1','#ede9fe','ph-receipt'],
+      ['Total Amount', '₹'+totalAmt.toFixed(2), '#1d4ed8','#dbeafe','ph-currency-inr'],
+      ['Total Deduction', '-₹'+totalDed.toFixed(2), '#dc2626','#fef2f2','ph-minus-circle'],
+      ['Total Final', '₹'+totalPay.toFixed(2), '#92400e','#fef9c3','ph-wallet'],
+      ['Total Paid', '₹'+totalPaid.toFixed(2), '#15803d','#dcfce7','ph-check-circle'],
+    ].map(([label,val,color,bg,icon]) => `
+      <div style="background:white;border-radius:10px;padding:14px;border:1px solid #f1f5f9;box-shadow:var(--shadow);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div style="width:30px;height:30px;background:${bg};border-radius:8px;display:flex;align-items:center;justify-content:center;color:${color};font-size:0.85rem;"><i class="ph-bold ${icon}"></i></div>
+          <div style="font-size:0.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;">${label}</div>
+        </div>
+        <div style="font-size:1.1rem;font-weight:700;color:${color};">${val}</div>
+      </div>
+    `).join('');
+  }
+
+  const tbody = document.getElementById('orders-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = filtered.map((o, i) => {
+    const user = buyers.find(b => b.id === o.userId);
+    return `<tr>
+      <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
+      <td><div style="font-weight:700;color:#4f46e5;font-size:0.78rem;">${o.orderNo}</div></td>
+      <td><span style="font-size:0.7rem;background:#f3f4f6;padding:2px 7px;border-radius:5px;font-weight:700;">${o.productCode}</span></td>
+      <td><span class="pill ${o.platform==='Amazon'?'p-pending':o.platform==='Flipkart'?'p-filled':'p-review'}">${o.platform}</span></td>
+      <td style="font-size:0.8rem;font-weight:600;">${o.dealType}</td>
+      <td>
+        <div style="font-weight:700;font-size:0.82rem;">${user?.name||o.userId}</div>
+        <div style="font-size:0.7rem;color:#9ca3af;">${user?.email||''}</div>
+      </td>
+      <td style="font-size:0.8rem;font-weight:600;">${o.mediator}</td>
+      <td style="font-size:0.78rem;color:#6b7280;">${o.orderDate}</td>
+      <td style="font-size:0.78rem;color:#6b7280;">${o.submittedDate}</td>
+      <td style="font-weight:700;">₹${o.amount.toFixed(2)}</td>
+      <td style="color:#dc2626;font-weight:700;">-₹${o.deduction.toFixed(2)}</td>
+      <td style="color:#16a34a;font-weight:700;font-size:0.9rem;">₹${o.finalPayout.toFixed(2)}</td>
+      <td>${statusPill(o.status)}</td>
+      <td style="text-align:center;">${o.screenshot ? '<span style="color:#22c55e;font-size:0.8rem;font-weight:700;">✓ Yes</span>' : '<span style="color:#dc2626;font-size:0.8rem;font-weight:700;">✗ No</span>'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="ico-btn ico-view" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
+          ${o.status !== 'paid' && o.status !== 'cancelled' ? `<button class="ico-btn ico-pay" title="Mark Paid" onclick="markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i></button>` : ''}
+          <button class="ico-btn ico-del" title="Cancel" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="15"><div class="empty-state"><i class="ph-bold ph-receipt"></i><div>No orders found</div></div></td></tr>';
+}
+
+// ── RENDER REFUNDS ──
+function renderRefunds() {
+  const refunds = getRefunds();
+  const buyers = getBuyersFromStorage();
+  const el = document.getElementById('refunds-list');
+  if (!el) return;
+
+  el.innerHTML = refunds.map(r => {
+    const tl = getRefundTimeline(r);
+    const stages = ['submitted','under_review','processing','approval','resolved'];
+    const currentStageIdx = stages.indexOf(tl.stage);
+    const fillColor = r.status === 'resolved' ? '#22c55e' : tl.progress > 75 ? '#f59e0b' : '#6366f1';
+
+    return `<div class="refund-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;">
+        <div>
+          <div style="font-weight:700;color:#1e1b4b;margin-bottom:2px;">${r.id} — ${r.orderNo}</div>
+          <div style="font-size:0.8rem;color:#6b7280;font-weight:600;">${r.userName} · Reason: ${r.reason}</div>
+          <div style="font-size:0.78rem;color:#9ca3af;margin-top:3px;">Submitted: ${new Date(r.submittedAt).toLocaleString('en-IN')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:1.2rem;font-weight:700;color:#dc2626;">₹${r.amount.toFixed(2)}</div>
+          <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">UPI: ${r.upi}</div>
+          ${statusPill(r.status)}
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div style="font-size:0.75rem;font-weight:700;color:#6b7280;margin-bottom:8px;">
+        ⏱️ ${tl.hoursElapsed < 48 ? `${tl.hoursElapsed} hours elapsed ${tl.nextStageIn ? '· Next stage: ' + tl.nextStageIn : ''}` : 'Completed (>48 hours)'}
+      </div>
+      <div class="timeline-steps" style="margin-bottom:6px;">
+        ${['Submitted','Under Review','Processing','Approval','Resolved'].map((s,i) => `
+          <div class="tl-step ${i < currentStageIdx ? 'done' : i === currentStageIdx ? 'active' : ''}">
+            <div class="dot"></div><span>${s}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="timeline-track">
+        <div class="timeline-fill" style="width:${tl.progress}%;background:${fillColor};"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        ${r.status !== 'resolved' ? `
+          <button class="btn-sm btn-success" onclick="resolveRefund('${r.id}')"><i class="ph-bold ph-check-circle"></i> Mark Resolved</button>
+          <button class="btn-sm btn-primary" onclick="moveRefundStage('${r.id}')"><i class="ph-bold ph-arrow-right"></i> Advance Stage</button>
+        ` : '<span style="color:#22c55e;font-weight:700;font-size:0.82rem;">✓ Fully Resolved · ' + new Date(r.resolvedAt).toLocaleDateString() + '</span>'}
+        <button class="btn-sm btn-gray" onclick="viewRefundOrder('${r.orderId}')"><i class="ph-bold ph-eye"></i> View Order</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER PENDING ──
+function renderPending() {
+  const orders = getOrders().filter(o => o.status === 'order_filled' || o.status === 'under_review');
+  const buyers = getBuyersFromStorage();
+  const tbody = document.getElementById('pending-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = orders.map((o, i) => {
+    const user = buyers.find(b => b.id === o.userId);
+    return `<tr>
+      <td><input type="checkbox" class="pending-check" value="${o.id}" style="accent-color:#6366f1;"></td>
+      <td><div style="font-weight:700;color:#4f46e5;font-size:0.8rem;">${o.orderNo}</div></td>
+      <td><span style="font-size:0.71rem;background:#f3f4f6;padding:2px 7px;border-radius:5px;font-weight:700;">${o.productCode}</span></td>
+      <td><div style="font-weight:700;font-size:0.82rem;">${user?.name||o.userId}</div><div style="font-size:0.7rem;color:#9ca3af;">${user?.mobile||''}</div></td>
+      <td><span class="pill ${o.platform==='Amazon'?'p-pending':'p-filled'}">${o.platform}</span></td>
+      <td style="font-weight:700;">₹${o.amount.toFixed(2)}</td>
+      <td style="color:#dc2626;font-weight:700;">-₹${o.deduction.toFixed(2)}</td>
+      <td style="color:#16a34a;font-weight:700;">₹${o.finalPayout.toFixed(2)}</td>
+      <td style="font-size:0.78rem;color:#6b7280;">${o.submittedDate}</td>
+      <td style="text-align:center;">${o.screenshot ? '<span style="color:#22c55e;font-weight:700;">✓</span>' : '<span style="color:#dc2626;font-weight:700;">✗</span>'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="ico-btn ico-pay" title="Mark Paid" onclick="markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i></button>
+          <button class="ico-btn ico-view" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
+          <button class="ico-btn ico-del" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11"><div class="empty-state"><i class="ph-bold ph-check-circle"></i><div>No pending orders!</div></div></td></tr>';
+}
+
+// ── RENDER DEALS ──
+function renderDeals() {
+  const tbody = document.getElementById('deals-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = DEALS_DATA.map((d, i) => `<tr>
+    <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
+    <td style="font-weight:700;">${d.brand}</td>
+    <td><span style="font-size:0.72rem;background:#f3f4f6;padding:2px 8px;border-radius:5px;font-weight:700;">${d.code}</span></td>
+    <td><span class="pill ${d.platform==='Amazon'?'p-pending':d.platform==='Flipkart'?'p-filled':'p-review'}">${d.platform}</span></td>
+    <td style="font-size:0.82rem;font-weight:600;">${d.type}</td>
+    <td style="font-weight:700;">₹${d.price}</td>
+    <td style="font-weight:700;text-align:center;">${d.slots}</td>
+    <td><span class="pill ${d.active?'p-active':'p-cancelled'}">${d.active?'Active':'Inactive'}</span></td>
+    <td>
+      <div class="action-btns">
+        <button class="ico-btn ${d.active?'ico-del':'ico-pay'}" title="${d.active?'Deactivate':'Activate'}" onclick="toggleDeal('${d.id}')"><i class="ph-bold ${d.active?'ph-eye-slash':'ph-eye'}"></i></button>
+        <button class="ico-btn ico-del" title="Delete" onclick="deleteDeal('${d.id}')"><i class="ph-bold ph-trash"></i></button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+// ── ACTIONS ──
+function markPaid(orderId) {
+  if (!confirm('Mark this order as PAID?')) return;
+  updateOrderStatus(orderId, 'paid', { paidDate: new Date().toISOString().split('T')[0] });
+  renderOrders(); renderPending(); renderOverview();
+  alert('✅ Order marked as Paid!');
+}
+
+function cancelOrder(orderId) {
+  if (!confirm('Cancel this order?')) return;
+  updateOrderStatus(orderId, 'cancelled');
+  renderOrders(); renderPending(); renderOverview();
+}
+
+function toggleUserStatus(userId) {
+  const buyers = getBuyersFromStorage();
+  const idx = buyers.findIndex(b => b.id === userId);
+  if (idx === -1) return;
+  buyers[idx].status = buyers[idx].status === 'active' ? 'suspended' : 'active';
+  localStorage.setItem('jm_users', JSON.stringify(buyers));
+  renderUsers();
+}
+
+function resolveRefund(refundId) {
+  const refunds = getRefunds();
+  const idx = refunds.findIndex(r => r.id === refundId);
+  if (idx === -1) return;
+  refunds[idx].status = 'resolved';
+  refunds[idx].resolvedAt = new Date().toISOString();
+  saveRefunds(refunds);
+  renderRefunds();
+}
+
+function moveRefundStage(refundId) {
+  const refunds = getRefunds();
+  const idx = refunds.findIndex(r => r.id === refundId);
+  if (idx === -1) return;
+  const stages = ['pending','under_review','resolved'];
+  const cur = stages.indexOf(refunds[idx].status);
+  if (cur < stages.length - 1) {
+    refunds[idx].status = stages[cur + 1];
+    if (refunds[idx].status === 'under_review') refunds[idx].reviewedAt = new Date().toISOString();
+    if (refunds[idx].status === 'resolved') refunds[idx].resolvedAt = new Date().toISOString();
+    saveRefunds(refunds);
+    renderRefunds();
+  }
+}
+
+function markAllPaid() {
+  const checked = [...document.querySelectorAll('.pending-check:checked')].map(c => c.value);
+  if (!checked.length) { alert('Select at least one order.'); return; }
+  if (!confirm(`Mark ${checked.length} order(s) as paid?`)) return;
+  const today = new Date().toISOString().split('T')[0];
+  checked.forEach(id => updateOrderStatus(id, 'paid', { paidDate: today }));
+  renderOrders(); renderPending(); renderOverview();
+  alert(`✅ ${checked.length} orders marked as Paid!`);
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.pending-check').forEach(c => c.checked = cb.checked);
+}
+
+function addDeal() {
+  const brand = document.getElementById('deal-brand').value.trim();
+  const code  = document.getElementById('deal-code').value.trim();
+  const plat  = document.getElementById('deal-platform').value;
+  const price = parseFloat(document.getElementById('deal-price').value) || 0;
+  const slots = parseInt(document.getElementById('deal-slots').value) || 0;
+  const type  = document.getElementById('deal-type-new').value;
+  if (!brand || !code) { alert('Brand name and product code are required.'); return; }
+  DEALS_DATA.push({ id: 'DL' + Date.now(), brand, code, platform: plat, type, price, slots, active: true });
+  renderDeals();
+  ['deal-brand','deal-code','deal-price','deal-slots','deal-url'].forEach(id => document.getElementById(id).value = '');
+}
+
+function toggleDeal(id) {
+  const deal = DEALS_DATA.find(d => d.id === id);
+  if (deal) { deal.active = !deal.active; renderDeals(); }
+}
+
+function deleteDeal(id) {
+  if (!confirm('Delete this deal?')) return;
+  DEALS_DATA = DEALS_DATA.filter(d => d.id !== id);
+  renderDeals();
+}
+
+// ── MODALS ──
+function viewUserOrders(userId, name) {
+  const orders = getOrders().filter(o => o.userId === userId);
+  const totalPaid = orders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+  const pending = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+  document.getElementById('user-modal-title').textContent = name + ' — Order History';
+  document.getElementById('user-modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#15803d;">₹${totalPaid.toFixed(2)}</div><div style="font-size:0.72rem;color:#16a34a;font-weight:700;">Total Paid</div></div>
+      <div style="background:#fef9c3;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#92400e;">₹${pending.toFixed(2)}</div><div style="font-size:0.72rem;color:#92400e;font-weight:700;">Pending</div></div>
+      <div style="background:#ede9fe;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:1.3rem;font-weight:700;color:#7c3aed;">${orders.length}</div><div style="font-size:0.72rem;color:#7c3aed;font-weight:700;">Total Orders</div></div>
+    </div>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+      <thead><tr style="background:#fafafa;">${['Order No','Code','Platform','Amount','Deduction','Final','Status','Date'].map(h=>`<th style="padding:8px 10px;text-align:left;font-size:0.68rem;font-weight:700;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${orders.map(o => `<tr style="border-bottom:1px solid #f9fafb;">
+        <td style="padding:8px 10px;font-weight:700;color:#4f46e5;">${o.orderNo}</td>
+        <td style="padding:8px 10px;font-size:0.71rem;">${o.productCode}</td>
+        <td style="padding:8px 10px;">${o.platform}</td>
+        <td style="padding:8px 10px;font-weight:700;">₹${o.amount.toFixed(2)}</td>
+        <td style="padding:8px 10px;color:#dc2626;font-weight:700;">-₹${o.deduction.toFixed(2)}</td>
+        <td style="padding:8px 10px;color:#16a34a;font-weight:700;">₹${o.finalPayout.toFixed(2)}</td>
+        <td style="padding:8px 10px;">${statusPill(o.status)}</td>
+        <td style="padding:8px 10px;color:#9ca3af;">${o.submittedDate}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  `;
+  openModal('user-modal');
+}
+
+function viewOrder(orderId) {
+  const o = getOrders().find(o => o.id === orderId);
+  if (!o) return;
+  const buyers = getBuyersFromStorage();
+  const user = buyers.find(b => b.id === o.userId);
+  document.getElementById('order-modal-title').textContent = 'Order — ' + o.orderNo;
+  document.getElementById('order-modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Order No</div><div style="font-weight:700;color:#4f46e5;">${o.orderNo}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Product Code</div><div style="font-weight:700;">${o.productCode}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Platform</div><div>${o.platform}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Deal Type</div><div>${o.dealType}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Buyer</div><div style="font-weight:700;">${user?.name||o.userId}</div><div style="font-size:0.75rem;color:#9ca3af;">${user?.email||''} · ${user?.mobile||''}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Mediator</div><div style="font-weight:700;">${o.mediator}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Order Date</div><div>${o.orderDate}</div></div>
+      <div><div style="font-size:0.72rem;font-weight:700;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;">Submitted</div><div>${o.submittedDate}</div></div>
+    </div>
+    <div style="background:#f9fafb;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-weight:700;color:#374151;margin-bottom:12px;">💰 Payment Breakdown</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.85rem;"><span style="color:#6b7280;font-weight:600;">Original Amount</span><span style="font-weight:700;">₹${o.amount.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.85rem;"><span style="color:#6b7280;font-weight:600;">Deduction</span><span style="font-weight:700;color:#dc2626;">-₹${o.deduction.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.95rem;padding-top:10px;border-top:1px solid #e5e7eb;"><span style="font-weight:700;">Final Payout</span><span style="font-weight:700;color:#16a34a;font-size:1.1rem;">₹${o.finalPayout.toFixed(2)}</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>${statusPill(o.status)}</div>
+      <div style="display:flex;gap:8px;">
+        ${o.status !== 'paid' ? `<button class="btn-sm btn-success" onclick="markPaid('${o.id}');closeModal('order-modal')"><i class="ph-bold ph-check-circle"></i> Mark Paid</button>` : ''}
+        <button class="btn-sm btn-danger" onclick="cancelOrder('${o.id}');closeModal('order-modal')"><i class="ph-bold ph-x"></i> Cancel</button>
+      </div>
+    </div>
+  `;
+  openModal('order-modal');
+}
+
+function viewRefundOrder(orderId) { closeModal('refund-modal'); viewOrder(orderId); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── EXPORTS ──
+function exportAllOrders(statusFilter = null) {
+  let orders = getOrders();
+  if (statusFilter) orders = orders.filter(o => o.status === statusFilter);
+  const buyers = getBuyersFromStorage();
+  const data = orders.map(o => {
+    const u = buyers.find(b => b.id === o.userId);
+    return {
+      'Order ID': o.id, 'Order No': o.orderNo, 'Product Code': o.productCode,
+      'Platform': o.platform, 'Deal Type': o.dealType,
+      'User Name': u?.name||o.userId, 'User Email': u?.email||'', 'User Mobile': u?.mobile||'',
+      'Mediator': o.mediator, 'Order Date': o.orderDate, 'Submitted Date': o.submittedDate,
+      'Amount (₹)': o.amount, 'Deduction (₹)': o.deduction, 'Final Payout (₹)': o.finalPayout,
+      'Status': o.status, 'Paid Date': o.paidDate||'', 'Screenshot': o.screenshot?'Yes':'No'
+    };
+  });
+  exportToCSV(data, `JM_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+}
+
+function exportAllUsers() {
+  const buyers = getBuyersFromStorage();
+  const orders = getOrders();
+  const data = buyers.map(b => {
+    const userOrders = orders.filter(o => o.userId === b.id);
+    const paid = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+    const pending = userOrders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+    return {
+      'User ID': b.id, 'Name': b.name, 'Email': b.email, 'Mobile': b.mobile,
+      'Joined': b.joined, 'Status': b.status, 'Verified': b.verified?'Yes':'No',
+      'Total Orders': userOrders.length,
+      'Total Paid (₹)': paid.toFixed(2), 'Pending (₹)': pending.toFixed(2),
+      'Referral': b.referral||''
+    };
+  });
+  exportToCSV(data, `JM_Users_${new Date().toISOString().split('T')[0]}.csv`);
+}
+
+function exportRefunds() {
+  const refunds = getRefunds();
+  const data = refunds.map(r => ({
+    'Refund ID': r.id, 'Order No': r.orderNo, 'User': r.userName,
+    'Reason': r.reason, 'Amount (₹)': r.amount, 'UPI': r.upi,
+    'Status': r.status, 'Submitted': r.submittedAt,
+    'Reviewed': r.reviewedAt||'', 'Resolved': r.resolvedAt||''
+  }));
+  exportToCSV(data, `JM_Refunds_${new Date().toISOString().split('T')[0]}.csv`);
+}
+</script>
+</body>
+</html>

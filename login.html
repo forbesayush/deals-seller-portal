@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Login — deals.seller</title>
+  <meta name="description" content="Secure login portal for deals.seller. Admin and buyer access.">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Quicksand', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      overflow: hidden;
+    }
+
+    /* ── Background animation ── */
+    .bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: float-orb 10s ease-in-out infinite;
+    }
+    .orb-1 { width: 400px; height: 400px; background: #6366f1; top: -100px; left: -100px; }
+    .orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -50px; right: -50px; animation-delay: 3s; }
+    .orb-3 { width: 250px; height: 250px; background: #06b6d4; top: 40%; right: 20%; animation-delay: 6s; }
+    @keyframes float-orb { 0%,100% { transform: scale(1) translate(0,0); } 50% { transform: scale(1.08) translate(10px,-10px); } }
+
+    /* ── SPLIT LAYOUT ── */
+    .left-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+      z-index: 10;
+    }
+    .right-panel {
+      width: 480px;
+      background: rgba(255,255,255,0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 44px;
+      position: relative;
+      z-index: 10;
+      box-shadow: -20px 0 60px rgba(0,0,0,0.2);
+    }
+
+    /* ── Left branding ── */
+    .brand-logo {
+      width: 90px; height: 90px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem;
+      color: white;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 50px rgba(99,102,241,0.4);
+      animation: pulse-logo 3s ease-in-out infinite;
+    }
+    @keyframes pulse-logo { 0%,100% { box-shadow: 0 20px 50px rgba(99,102,241,0.4); } 50% { box-shadow: 0 25px 70px rgba(99,102,241,0.6); } }
+    .brand-name { color: white; font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .brand-tagline { color: rgba(255,255,255,0.6); font-size: 0.95rem; font-weight: 600; margin-bottom: 40px; text-align: center; }
+
+    .feature-list { list-style: none; }
+    .feature-list li {
+      display: flex; align-items: center; gap: 12px;
+      color: rgba(255,255,255,0.8); font-weight: 600; font-size: 0.9rem;
+      margin-bottom: 14px;
+    }
+    .feature-list li i {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #a5b4fc;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Role Switcher ── */
+    .role-switcher {
+      display: flex;
+      background: #f3f4f6;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 28px;
+      width: 100%;
+    }
+    .role-btn {
+      flex: 1; padding: 11px 0;
+      border: none; background: transparent;
+      border-radius: 10px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700; font-size: 0.88rem;
+      color: #6b7280; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.2s;
+    }
+    .role-btn.active { background: white; color: #4f46e5; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+    /* ── Login Form ── */
+    .login-title { font-size: 1.6rem; font-weight: 700; color: #1e1b4b; margin-bottom: 4px; }
+    .login-sub { font-size: 0.88rem; color: #6b7280; font-weight: 600; margin-bottom: 28px; }
+
+    .input-group { margin-bottom: 16px; position: relative; }
+    .input-label { display: block; font-size: 0.82rem; font-weight: 700; color: #374151; margin-bottom: 6px; }
+    .input-wrap { position: relative; }
+    .auth-input {
+      width: 100%; padding: 12px 14px 12px 42px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.92rem; color: #1f2937;
+      outline: none;
+      background: #fafafa;
+      transition: all 0.2s;
+    }
+    .auth-input:focus { border-color: #6366f1; background: white; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+    .input-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 1rem; }
+    .toggle-pw { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 1rem; cursor: pointer; border: none; background: none; }
+
+    .remember-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-size: 0.82rem; }
+    .remember-label { display: flex; align-items: center; gap: 7px; cursor: pointer; color: #4b5563; font-weight: 600; }
+    .remember-label input { accent-color: #6366f1; }
+    .forgot-link { color: #6366f1; font-weight: 700; text-decoration: none; }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .login-btn {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white; border: none;
+      border-radius: 12px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700; font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(79,70,229,0.35);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(79,70,229,0.45); }
+    .login-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+    .error-box {
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 10px; padding: 11px 14px;
+      font-size: 0.85rem; color: #dc2626; font-weight: 600;
+      margin-bottom: 16px; display: none;
+      align-items: center; gap: 8px;
+    }
+
+    .divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: #9ca3af; font-size: 0.8rem; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+
+    .register-link { text-align: center; font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-top: 20px; }
+    .register-link a { color: #6366f1; font-weight: 700; text-decoration: none; }
+
+    /* ── Security Badge ── */
+    .security-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 8px; padding: 8px 12px;
+      font-size: 0.78rem; font-weight: 700; color: #16a34a;
+      margin-bottom: 24px;
+    }
+
+    /* ── Admin hint box ── */
+    .demo-hint {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #4338ca;
+      font-weight: 600;
+      margin-top: 16px;
+      display: none;
+    }
+
+    /* ── Register form (hidden by default) ── */
+    #register-form { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .left-panel { display: none; }
+      .right-panel { width: 100%; padding: 36px 24px; }
+      body { background: white; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ── LEFT BRANDING PANEL ── -->
+  <div class="left-panel">
+    <div class="brand-logo"><i class="ph-fill ph-storefront"></i></div>
+    <div class="brand-name">deals.seller</div>
+    <div class="brand-tagline">Cashback Deal Management Portal</div>
+
+    <ul class="feature-list">
+      <li><i class="ph-bold ph-shield-check"></i> Secure encrypted login with SHA-256</li>
+      <li><i class="ph-bold ph-receipt"></i> Track all cashback orders in real-time</li>
+      <li><i class="ph-bold ph-coin"></i> Earn rewards on every deal</li>
+      <li><i class="ph-bold ph-chart-bar"></i> Owner dashboard with full analytics</li>
+      <li><i class="ph-bold ph-arrow-counter-clockwise"></i> Refund processing in 24–48 hours</li>
+      <li><i class="ph-bold ph-download-simple"></i> Export all order data to CSV</li>
+    </ul>
+  </div>
+
+  <!-- ── RIGHT LOGIN PANEL ── -->
+  <div class="right-panel" id="right-panel">
+
+    <!-- Logo for mobile -->
+    <div style="display:none;text-align:center;margin-bottom:24px;" id="mobile-logo">
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;"><i class="ph-fill ph-storefront" style="font-size:1.6rem;color:white;"></i></div>
+      <div style="font-weight:700;color:#1e1b4b;font-size:1.1rem;">deals.seller</div>
+    </div>
+
+    <!-- Security badge -->
+    <div class="security-badge" style="width:100%;">
+      <i class="ph-fill ph-lock-key"></i>
+      256-bit encrypted · Session protected
+    </div>
+
+    <!-- Role Switcher -->
+    <div class="role-switcher" id="role-switcher">
+      <button class="role-btn active" id="btn-buyer" onclick="switchRole('buyer')">
+        <i class="ph-bold ph-user"></i> Buyer Login
+      </button>
+      <button class="role-btn" id="btn-admin" onclick="switchRole('admin')">
+        <i class="ph-bold ph-crown-simple"></i> Owner / Admin
+      </button>
+    </div>
+
+    <!-- ── LOGIN FORM ── -->
+    <div id="login-form" style="width:100%;">
+      <div class="login-title" id="form-title">Welcome Back 👋</div>
+      <div class="login-sub" id="form-subtitle">Sign in to your buyer account</div>
+
+      <div class="error-box" id="error-box">
+        <i class="ph-bold ph-warning-circle"></i>
+        <span id="error-text"></span>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="identifier">Email / Mobile</label>
+        <div class="input-wrap">
+          <i class="ph-bold ph-envelope input-icon" id="id-icon"></i>
+          <input type="text" class="auth-input" id="identifier" placeholder="Email or mobile number" autocomplete="username">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="password">Password</label>
+        <div class="input-wrap">
+          <i class="ph-bold ph-lock input-icon"></i>
+          <input type="password" class="auth-input" id="password" placeholder="Enter your password" autocomplete="current-password">
+          <button class="toggle-pw" onclick="togglePassword()" type="button" id="pw-toggle"><i class="ph-bold ph-eye" id="pw-eye"></i></button>
+        </div>
+      </div>
+
+      <div class="remember-row">
+        <label class="remember-label">
+          <input type="checkbox" id="remember-me"> Remember me
+        </label>
+        <a href="#" class="forgot-link" id="forgot-link">Forgot password?</a>
+      </div>
+
+      <button class="login-btn" id="login-btn" onclick="handleLogin()">
+        <i class="ph-bold ph-sign-in"></i>
+        <span id="login-btn-text">Sign In</span>
+      </button>
+
+      <!-- Admin demo hint -->
+      <div class="demo-hint" id="admin-hint">
+        <strong>Demo Admin:</strong> admin / admin@123 &nbsp;|&nbsp; <strong>Demo Buyer:</strong> Email: alwaysayushsourav162@gmail.com / user@123
+      </div>
+    </div>
+
+    <!-- ── REGISTER FORM ── -->
+    <div id="register-form" style="width:100%;">
+      <div class="login-title">Create Account 🎉</div>
+      <div class="login-sub">Join and start earning cashback today</div>
+
+      <div class="error-box" id="reg-error-box">
+        <i class="ph-bold ph-warning-circle"></i>
+        <span id="reg-error-text"></span>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Full Name *</label>
+        <div class="input-wrap"><i class="ph-bold ph-user input-icon"></i><input type="text" class="auth-input" id="reg-name" placeholder="Your full name"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group">
+          <label class="input-label">Mobile *</label>
+          <div class="input-wrap"><i class="ph-bold ph-phone input-icon"></i><input type="tel" class="auth-input" id="reg-mobile" placeholder="10-digit number" maxlength="10"></div>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Referral Code</label>
+          <div class="input-wrap"><i class="ph-bold ph-ticket input-icon"></i><input type="text" class="auth-input" id="reg-referral" placeholder="Optional"></div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Email Address *</label>
+        <div class="input-wrap"><i class="ph-bold ph-envelope input-icon"></i><input type="email" class="auth-input" id="reg-email" placeholder="your@email.com"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group">
+          <label class="input-label">Password *</label>
+          <div class="input-wrap"><i class="ph-bold ph-lock input-icon"></i><input type="password" class="auth-input" id="reg-password" placeholder="Min 8 characters"></div>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Confirm Password *</label>
+          <div class="input-wrap"><i class="ph-bold ph-lock input-icon"></i><input type="password" class="auth-input" id="reg-confirm" placeholder="Re-enter password"></div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.82rem;color:#4b5563;font-weight:600;margin-bottom:16px;cursor:pointer;">
+        <input type="checkbox" id="terms-check" style="accent-color:#6366f1;margin-top:2px;">
+        I agree to the <a href="#" style="color:#6366f1;font-weight:700;">Terms & Conditions</a>
+      </label>
+      <button class="login-btn" onclick="handleRegister()">
+        <i class="ph-bold ph-user-plus"></i> Create Account
+      </button>
+      <div id="reg-success" style="display:none;margin-top:14px;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 14px;font-size:0.85rem;color:#15803d;font-weight:600;text-align:center;">
+        ✅ Account created! You can now <a href="#" onclick="showLoginForm()" style="color:#15803d;font-weight:700;">sign in here</a>.
+      </div>
+    </div>
+
+    <!-- Register link (buyer only) -->
+    <div class="register-link" id="register-toggle-link">
+      Don't have an account? <a href="#" onclick="showRegisterForm()">Register here</a>
+    </div>
+
+    <!-- Back to home -->
+    <div style="text-align:center;margin-top:16px;">
+      <a href="index.html" style="font-size:0.8rem;color:#9ca3af;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+        <i class="ph-bold ph-arrow-left"></i> Back to Home
+      </a>
+    </div>
+
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script>
+    let currentRole = 'buyer';
+
+    // Redirect if already logged in
+    window.addEventListener('load', () => {
+      const session = getSession();
+      if (session) {
+        if (session.role === 'admin') window.location.href = 'admin/panel.html';
+        else window.location.href = 'customer/dashboard.html';
+      }
+    });
+
+    function switchRole(role) {
+      currentRole = role;
+      document.getElementById('btn-buyer').classList.toggle('active', role === 'buyer');
+      document.getElementById('btn-admin').classList.toggle('active', role === 'admin');
+      showLoginForm();
+
+      if (role === 'admin') {
+        document.getElementById('form-title').textContent = 'Admin Login 🔐';
+        document.getElementById('form-subtitle').textContent = 'Sign in to the owner / admin panel';
+        document.getElementById('id-icon').className = 'ph-bold ph-crown-simple input-icon';
+        document.getElementById('identifier').placeholder = 'Admin username or email';
+        document.getElementById('forgot-link').style.display = 'none';
+        document.getElementById('register-toggle-link').style.display = 'none';
+        document.getElementById('admin-hint').style.display = 'block';
+      } else {
+        document.getElementById('form-title').textContent = 'Welcome Back 👋';
+        document.getElementById('form-subtitle').textContent = 'Sign in to your buyer account';
+        document.getElementById('id-icon').className = 'ph-bold ph-envelope input-icon';
+        document.getElementById('identifier').placeholder = 'Email or mobile number';
+        document.getElementById('forgot-link').style.display = 'block';
+        document.getElementById('register-toggle-link').style.display = 'block';
+        document.getElementById('admin-hint').style.display = 'none';
+      }
+    }
+
+    function showLoginForm() {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('register-toggle-link').style.display = currentRole === 'buyer' ? 'block' : 'none';
+    }
+
+    function showRegisterForm() {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'block';
+      document.getElementById('register-toggle-link').style.display = 'none';
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('password');
+      const eye = document.getElementById('pw-eye');
+      if (input.type === 'password') {
+        input.type = 'text';
+        eye.className = 'ph-bold ph-eye-slash';
+      } else {
+        input.type = 'password';
+        eye.className = 'ph-bold ph-eye';
+      }
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('error-box');
+      document.getElementById('error-text').textContent = msg;
+      box.style.display = 'flex';
+    }
+
+    function hideError() { document.getElementById('error-box').style.display = 'none'; }
+
+    async function handleLogin() {
+      const identifier = document.getElementById('identifier').value.trim();
+      const password = document.getElementById('password').value;
+      hideError();
+
+      if (!identifier || !password) { showError('Please fill in all fields.'); return; }
+
+      const btn = document.getElementById('login-btn');
+      const btnText = document.getElementById('login-btn-text');
+      btn.disabled = true;
+      btnText.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Verifying...';
+
+      const result = await loginUser(identifier, password);
+
+      btn.disabled = false;
+      btnText.innerHTML = 'Sign In';
+
+      if (result.success) {
+        btnText.innerHTML = '<i class="ph-bold ph-check-circle"></i> Authenticated!';
+        btn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+        setTimeout(() => {
+          if (result.role === 'admin') window.location.href = 'admin/panel.html';
+          else window.location.href = 'customer/dashboard.html';
+        }, 800);
+      } else {
+        showError(result.error);
+      }
+    }
+
+    async function handleRegister() {
+      const name = document.getElementById('reg-name').value.trim();
+      const mobile = document.getElementById('reg-mobile').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm = document.getElementById('reg-confirm').value;
+      const terms = document.getElementById('terms-check').checked;
+      const referral = document.getElementById('reg-referral').value.trim();
+      const errBox = document.getElementById('reg-error-box');
+      const errText = document.getElementById('reg-error-text');
+
+      errBox.style.display = 'none';
+      if (!name || !mobile || !email || !password) { errText.textContent = 'Please fill all required fields.'; errBox.style.display = 'flex'; return; }
+      if (mobile.length !== 10 || !/^\d+$/.test(mobile)) { errText.textContent = 'Enter a valid 10-digit mobile number.'; errBox.style.display = 'flex'; return; }
+      if (password.length < 8) { errText.textContent = 'Password must be at least 8 characters.'; errBox.style.display = 'flex'; return; }
+      if (password !== confirm) { errText.textContent = 'Passwords do not match.'; errBox.style.display = 'flex'; return; }
+      if (!terms) { errText.textContent = 'Please accept the Terms & Conditions.'; errBox.style.display = 'flex'; return; }
+
+      const result = await registerBuyer({ name, mobile, email, password, referral });
+      if (result.success) {
+        document.getElementById('reg-success').style.display = 'block';
+      } else {
+        errText.textContent = result.error;
+        errBox.style.display = 'flex';
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('register-form').style.display === 'block') handleRegister();
+        else handleLogin();
+      }
+    });
+  </script>
+</body>
+</html>
