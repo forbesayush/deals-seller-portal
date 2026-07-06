@@ -29,6 +29,14 @@ const ADMIN_CREDENTIALS = [
     passwordHash: '4c91e0e9e1c23ade81b6a30d9cc9ce3f1e2eaa08a1a4dd9c0e1c6ad65d61e4c9',
     role: 'admin',
     name: 'Owner — deals.seller'
+  },
+  {
+    username: 'ekta',
+    email: 'ekta@deals.seller.com',
+    // SHA-256 of "ayushu08"
+    passwordHash: 'da96ff4204b8f80e718e8a3461ae2a1279a063a08d5c3b6ab514c5acb2b77eb0',
+    role: 'admin',
+    name: 'Ekta — Admin'
   }
 ];
 
