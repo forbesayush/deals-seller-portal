@@ -52,7 +52,7 @@ function quickReply(text, actionType) {
     addBotMsg("Please enter your Order ID to track:");
   } else if (actionType === 'cancel_order') {
     chatState = 'greeting';
-    addBotMsg("Please <a href='portal.html' style='color:#ec4899;font-weight:bold;text-decoration:underline;'>login here</a> to your dashboard to cancel your order.");
+    addBotMsg("Please <a href='login.html' style='color:#ec4899;font-weight:bold;text-decoration:underline;'>login here</a> to your dashboard to cancel your order.");
   } else if (actionType === 'more_help') {
     chatState = 'more_help_opts';
     setTimeout(() => {
@@ -262,7 +262,7 @@ function startPasskeyLogin() {
   setTimeout(() => {
     if (statusEl) statusEl.classList.add('hidden');
     if (iconEl) iconEl.classList.remove('hidden');
-    window.location.href = 'portal.html';
+    window.location.href = 'login.html';
   }, 2000);
 }
 
