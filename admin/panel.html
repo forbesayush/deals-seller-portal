@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel — deals.seller</title>
+  <meta name="description" content="Admin control panel for deals.seller portal — manage orders, users, refunds and deals.">
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
@@ -87,9 +88,11 @@
     #content { padding: 24px 28px; flex: 1; }
     .page { display: none; }
     .page.active { display: block; }
-    .page-header { margin-bottom: 22px; }
+    .page-header { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .page-header-text {}
     .page-title { font-size: 1.5rem; font-weight: 700; color: #1e1b4b; }
     .page-sub { font-size: 0.88rem; color: #6b7280; font-weight: 600; margin-top: 4px; }
+    .page-header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
     /* ═══ STAT GRID ═══ */
     .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
@@ -133,10 +136,13 @@
     .btn-success { background: #dcfce7; color: #15803d; }
     .btn-success:hover { background: #bbf7d0; }
     .btn-danger  { background: #fef2f2; color: #dc2626; }
-    .btn-danger:hover { background: #fee2e2; }
+    .btn-danger:hover  { background: #fee2e2; }
     .btn-warning { background: #fef9c3; color: #92400e; }
+    .btn-warning:hover { background: #fef08a; }
     .btn-gray    { background: #f3f4f6; color: #6b7280; }
     .btn-gray:hover { background: #e5e7eb; }
+    .btn-orange  { background: #fff7ed; color: #c2410c; }
+    .btn-orange:hover { background: #fed7aa; }
 
     /* ═══ TABLE ═══ */
     .tbl-wrap { overflow-x: auto; }
@@ -171,11 +177,16 @@
       font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
     }
     .ico-view { background: #f3f4f6; color: #374151; }
+    .ico-view:hover { background: #e5e7eb; }
     .ico-edit { background: #dbeafe; color: #1d4ed8; }
     .ico-del  { background: #fef2f2; color: #dc2626; }
+    .ico-del:hover  { background: #fee2e2; }
     .ico-pay  { background: #dcfce7; color: #15803d; }
+    .ico-pay:hover  { background: #bbf7d0; }
+    .ico-trash { background: #fef2f2; color: #7f1d1d; }
+    .ico-trash:hover { background: #fecaca; }
 
-    /* ═══ USER DETAILS MODAL ═══ */
+    /* ═══ MODAL ═══ */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.5);
       z-index: 1000; display: none; align-items: center; justify-content: center;
@@ -193,6 +204,27 @@
     .modal-title { font-size: 1.05rem; font-weight: 700; color: #1e1b4b; }
     .modal-close { background: none; border: none; font-size: 1.2rem; color: #9ca3af; cursor: pointer; padding: 4px; }
     .modal-body { padding: 24px; }
+
+    /* ═══ CONFIRM MODAL ═══ */
+    #confirm-modal .modal { max-width: 420px; }
+    .confirm-icon { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 16px; }
+    .confirm-title { font-size: 1.1rem; font-weight: 700; color: #1f2937; text-align: center; margin-bottom: 8px; }
+    .confirm-msg { font-size: 0.88rem; color: #6b7280; font-weight: 600; text-align: center; margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+    /* ═══ TOAST ═══ */
+    #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      padding: 12px 18px; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.14); animation: toast-in 0.3s ease;
+      display: flex; align-items: center; gap: 8px; min-width: 240px;
+    }
+    .toast-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .toast-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .toast-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .toast-warning { background: #fefce8; color: #92400e; border: 1px solid #fef08a; }
+    @keyframes toast-in { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
 
     /* ═══ REFUND TIMELINE ═══ */
     .refund-card {
@@ -231,6 +263,14 @@
     .empty-state { text-align: center; padding: 48px 24px; color: #9ca3af; }
     .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 12px; }
 
+    /* ═══ DANGER ZONE BOX ═══ */
+    .danger-zone {
+      border: 1.5px dashed #fca5a5; border-radius: 10px;
+      padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: #fff5f5;
+    }
+    .danger-zone-label { font-size: 0.75rem; font-weight: 700; color: #dc2626; text-transform: uppercase; letter-spacing: 0.5px; flex: 1; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { animation: spin 1s linear infinite; }
 
@@ -248,25 +288,25 @@
   </div>
   <nav class="sb-nav">
     <div class="sb-section">Overview</div>
-    <a class="sb-item active" onclick="navigate('overview',this)"><i class="ph-fill ph-gauge"></i> Dashboard</a>
-    <a class="sb-item" onclick="navigate('users',this)"><i class="ph-bold ph-users"></i> Users <span class="sb-badge" id="sb-users-badge">4</span></a>
+    <a class="sb-item active" id="nav-overview" onclick="navigate('overview',this)"><i class="ph-fill ph-gauge"></i> Dashboard</a>
+    <a class="sb-item" id="nav-users" onclick="navigate('users',this)"><i class="ph-bold ph-users"></i> Users <span class="sb-badge" id="sb-users-badge">—</span></a>
 
     <div class="sb-section">Orders</div>
-    <a class="sb-item" onclick="navigate('orders',this)"><i class="ph-bold ph-receipt"></i> All Orders <span class="sb-badge" id="sb-orders-badge">8</span></a>
-    <a class="sb-item" onclick="navigate('refunds',this)"><i class="ph-bold ph-arrow-counter-clockwise"></i> Refunds <span class="sb-badge" id="sb-refund-badge" style="background:#ef4444;">3</span></a>
-    <a class="sb-item" onclick="navigate('pending',this)"><i class="ph-bold ph-clock"></i> Pending Review</a>
+    <a class="sb-item" id="nav-orders" onclick="navigate('orders',this)"><i class="ph-bold ph-receipt"></i> All Orders <span class="sb-badge" id="sb-orders-badge">—</span></a>
+    <a class="sb-item" id="nav-refunds" onclick="navigate('refunds',this)"><i class="ph-bold ph-arrow-counter-clockwise"></i> Refunds <span class="sb-badge" id="sb-refund-badge" style="background:#ef4444;">—</span></a>
+    <a class="sb-item" id="nav-pending" onclick="navigate('pending',this)"><i class="ph-bold ph-clock"></i> Pending Review</a>
 
     <div class="sb-section">Management</div>
-    <a class="sb-item" onclick="navigate('deals',this)"><i class="ph-bold ph-tag"></i> Deals</a>
-    <a class="sb-item" onclick="navigate('reports',this)"><i class="ph-bold ph-chart-bar"></i> Reports</a>
-    <a class="sb-item" onclick="navigate('settings',this)"><i class="ph-bold ph-gear"></i> Settings</a>
-    <a class="sb-item" style="color:#ef4444;margin-top:8px;" href="../login.html"><i class="ph-bold ph-sign-out"></i> Logout</a>
+    <a class="sb-item" id="nav-deals" onclick="navigate('deals',this)"><i class="ph-bold ph-tag"></i> Deals</a>
+    <a class="sb-item" id="nav-reports" onclick="navigate('reports',this)"><i class="ph-bold ph-chart-bar"></i> Reports</a>
+    <a class="sb-item" id="nav-settings" onclick="navigate('settings',this)"><i class="ph-bold ph-gear"></i> Settings</a>
+    <a class="sb-item" style="color:#ef4444;margin-top:8px;" href="#" onclick="doLogout(event)"><i class="ph-bold ph-sign-out"></i> Logout</a>
   </nav>
   <div class="sb-user">
-    <div class="sb-avatar">A</div>
+    <div class="sb-avatar" id="admin-avatar">A</div>
     <div>
       <div style="color:white;font-size:0.82rem;font-weight:700;" id="admin-name-sb">Admin</div>
-      <div style="color:rgba(255,255,255,0.4);font-size:0.68rem;font-weight:600;">Owner</div>
+      <div style="color:rgba(255,255,255,0.4);font-size:0.68rem;font-weight:600;">Administrator</div>
     </div>
   </div>
 </aside>
@@ -278,8 +318,8 @@
       <span id="topbar-title-text">Dashboard</span>
     </div>
     <div class="topbar-right">
-      <button class="tb-btn tb-green" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export Orders CSV</button>
-      <button class="tb-btn tb-green" onclick="exportAllUsers()"><i class="ph-bold ph-download-simple"></i> Export Users CSV</button>
+      <button class="tb-btn tb-green" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export Orders</button>
+      <button class="tb-btn tb-green" onclick="exportAllUsers()"><i class="ph-bold ph-download-simple"></i> Export Users</button>
       <button class="notif-btn" title="Notifications"><i class="ph-bold ph-bell"></i></button>
     </div>
   </header>
@@ -289,35 +329,37 @@
     <!-- ══════════ PAGE: OVERVIEW ══════════ -->
     <div class="page active" id="page-overview">
       <div class="page-header">
-        <div class="page-title">Welcome back, <span id="admin-name-header">Admin</span> 👋</div>
-        <div class="page-sub">Here's what's happening across your portal today.</div>
+        <div class="page-header-text">
+          <div class="page-title">Welcome back, <span id="admin-name-header">Admin</span> 👋</div>
+          <div class="page-sub">Here's what's happening across your portal today.</div>
+        </div>
       </div>
 
       <!-- Stat Cards -->
       <div class="stat-grid" id="overview-stats">
         <div class="stat-card">
           <div class="sc-icon" style="background:#ede9fe;color:#7c3aed;"><i class="ph-bold ph-users"></i></div>
-          <div class="sc-value" id="stat-total-users">4</div>
+          <div class="sc-value" id="stat-total-users">—</div>
           <div class="sc-label">Total Registered Users</div>
-          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> 2 this week</div>
+          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> <span id="stat-users-change">—</span></div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="ph-bold ph-receipt"></i></div>
-          <div class="sc-value" id="stat-total-orders">8</div>
+          <div class="sc-value" id="stat-total-orders">—</div>
           <div class="sc-label">Total Orders</div>
-          <div class="sc-change" style="color:#6366f1;"><i class="ph-bold ph-clock"></i> 3 pending review</div>
+          <div class="sc-change" style="color:#6366f1;"><i class="ph-bold ph-clock"></i> <span id="stat-pending-count">—</span> pending review</div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:#dcfce7;color:#16a34a;"><i class="ph-bold ph-wallet"></i></div>
-          <div class="sc-value" id="stat-paid-amt">₹670</div>
+          <div class="sc-value" id="stat-paid-amt">—</div>
           <div class="sc-label">Total Paid Out</div>
-          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> ₹473 this month</div>
+          <div class="sc-change" style="color:#22c55e;"><i class="ph-bold ph-trend-up"></i> from paid orders</div>
         </div>
         <div class="stat-card">
           <div class="sc-icon" style="background:#fef2f2;color:#dc2626;"><i class="ph-bold ph-warning"></i></div>
-          <div class="sc-value" id="stat-pending-amt">₹12,454</div>
+          <div class="sc-value" id="stat-pending-amt">—</div>
           <div class="sc-label">Pending Payouts</div>
-          <div class="sc-change" style="color:#f59e0b;"><i class="ph-bold ph-clock"></i> 5 orders waiting</div>
+          <div class="sc-change" style="color:#f59e0b;"><i class="ph-bold ph-clock"></i> awaiting payment</div>
         </div>
       </div>
 
@@ -327,8 +369,8 @@
           <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Revenue This Month</div>
           <div style="display:flex;align-items:flex-end;justify-content:space-between;">
             <div>
-              <div style="font-size:1.6rem;font-weight:700;color:#1f2937;">₹9,424</div>
-              <div style="font-size:0.78rem;color:#22c55e;font-weight:700;margin-top:4px;">↑ 18% vs last month</div>
+              <div style="font-size:1.6rem;font-weight:700;color:#1f2937;" id="stat-monthly-rev">—</div>
+              <div style="font-size:0.78rem;color:#22c55e;font-weight:700;margin-top:4px;">↑ from orders this month</div>
             </div>
             <div class="mini-bar">
               <div class="bar-col" style="height:30%"></div><div class="bar-col" style="height:55%"></div><div class="bar-col" style="height:40%"></div>
@@ -338,32 +380,11 @@
         </div>
         <div class="card" style="padding:18px;">
           <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Orders by Platform</div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
-              <span style="font-weight:700;width:60px;color:#c2410c;">Amazon</span>
-              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:75%;height:100%;background:#fb923c;border-radius:99px;"></div></div>
-              <span style="font-weight:700;color:#c2410c;">6</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
-              <span style="font-weight:700;width:60px;color:#1d4ed8;">Flipkart</span>
-              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:12%;height:100%;background:#60a5fa;border-radius:99px;"></div></div>
-              <span style="font-weight:700;color:#1d4ed8;">1</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
-              <span style="font-weight:700;width:60px;color:#a16207;">Blinkit</span>
-              <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:12%;height:100%;background:#fbbf24;border-radius:99px;"></div></div>
-              <span style="font-weight:700;color:#a16207;">1</span>
-            </div>
-          </div>
+          <div id="platform-breakdown" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
         <div class="card" style="padding:18px;">
           <div style="font-size:0.78rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Refund Requests</div>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Pending</span><span style="font-weight:700;color:#f59e0b;">1</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Under Review</span><span style="font-weight:700;color:#6366f1;">1</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Resolved</span><span style="font-weight:700;color:#22c55e;">1</span></div>
-            <div style="border-top:1px solid #f3f4f6;padding-top:6px;display:flex;justify-content:space-between;font-size:0.85rem;"><span style="font-weight:700;color:#1f2937;">Total Value</span><span style="font-weight:700;color:#dc2626;">₹9,490</span></div>
-          </div>
+          <div id="refund-summary" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
       </div>
 
@@ -371,7 +392,7 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title"><i class="ph-bold ph-receipt" style="color:var(--accent);"></i> Recent Orders</div>
-          <button class="btn-sm btn-gray" onclick="navigate('orders',document.querySelector('[data-p=orders]'))">View All →</button>
+          <button class="btn-sm btn-gray" onclick="navigate('orders', document.getElementById('nav-orders'))">View All →</button>
         </div>
         <div class="tbl-wrap">
           <table id="overview-orders-table">
@@ -385,8 +406,10 @@
     <!-- ══════════ PAGE: USERS ══════════ -->
     <div class="page" id="page-users">
       <div class="page-header">
-        <div class="page-title">Registered Users</div>
-        <div class="page-sub">Manage all buyer accounts — view orders, suspend or activate users.</div>
+        <div class="page-header-text">
+          <div class="page-title">Registered Users</div>
+          <div class="page-sub">Manage all buyer accounts — view orders, suspend or activate users.</div>
+        </div>
       </div>
       <div class="card">
         <div class="filter-row">
@@ -410,8 +433,15 @@
     <!-- ══════════ PAGE: ORDERS ══════════ -->
     <div class="page" id="page-orders">
       <div class="page-header">
-        <div class="page-title">All Orders</div>
-        <div class="page-sub">Track every order — amounts, deductions, status, and refund eligibility.</div>
+        <div class="page-header-text">
+          <div class="page-title">All Orders</div>
+          <div class="page-sub">Track every order — amounts, deductions, status, and refund eligibility.</div>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn-sm btn-success" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export CSV</button>
+          <button class="btn-sm btn-orange" onclick="confirmResetOrders()"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset All Orders</button>
+          <button class="btn-sm btn-danger" onclick="confirmDeleteAllOrders()"><i class="ph-bold ph-trash"></i> Delete All Orders</button>
+        </div>
       </div>
 
       <!-- Summary Totals -->
@@ -433,7 +463,6 @@
             <option value="pending_review">Pending Review</option>
           </select>
           <button class="btn-sm btn-primary" onclick="renderOrders()"><i class="ph-bold ph-funnel"></i> Filter</button>
-          <button class="btn-sm btn-success" onclick="exportAllOrders()"><i class="ph-bold ph-download-simple"></i> Export CSV</button>
         </div>
         <div class="tbl-wrap">
           <table>
@@ -454,8 +483,10 @@
     <!-- ══════════ PAGE: REFUNDS ══════════ -->
     <div class="page" id="page-refunds">
       <div class="page-header">
-        <div class="page-title">Refund Management</div>
-        <div class="page-sub">Track and process refund requests. Processing window: <strong>24–48 hours</strong> after review.</div>
+        <div class="page-header-text">
+          <div class="page-title">Refund Management</div>
+          <div class="page-sub">Track and process refund requests. Processing window: <strong>24–48 hours</strong> after review.</div>
+        </div>
       </div>
 
       <!-- Refund timeline legend -->
@@ -500,12 +531,14 @@
     <!-- ══════════ PAGE: PENDING ══════════ -->
     <div class="page" id="page-pending">
       <div class="page-header">
-        <div class="page-title">Pending Review</div>
-        <div class="page-sub">Orders waiting for admin review before marking as paid.</div>
+        <div class="page-header-text">
+          <div class="page-title">Pending Review</div>
+          <div class="page-sub">Orders waiting for admin review before marking as paid.</div>
+        </div>
       </div>
       <div class="card">
         <div class="filter-row">
-          <button class="btn-sm btn-success" onclick="markAllPaid()"><i class="ph-bold ph-check-circle"></i> Mark All as Paid</button>
+          <button class="btn-sm btn-success" onclick="markAllPaid()"><i class="ph-bold ph-check-circle"></i> Mark Selected as Paid</button>
           <button class="btn-sm btn-success" onclick="exportAllOrders('pending_review')"><i class="ph-bold ph-download-simple"></i> Export Pending</button>
         </div>
         <div class="tbl-wrap"><table>
@@ -518,8 +551,10 @@
     <!-- ══════════ PAGE: DEALS ══════════ -->
     <div class="page" id="page-deals">
       <div class="page-header">
-        <div class="page-title">Deal Management</div>
-        <div class="page-sub">Add, edit, and toggle active deals visible to buyers.</div>
+        <div class="page-header-text">
+          <div class="page-title">Deal Management</div>
+          <div class="page-sub">Add, edit, and toggle active deals visible to buyers.</div>
+        </div>
       </div>
       <div class="card" style="padding:20px;margin-bottom:16px;">
         <div style="font-weight:700;color:#1f2937;margin-bottom:14px;font-size:0.9rem;">+ Add New Deal</div>
@@ -548,8 +583,10 @@
     <!-- ══════════ PAGE: REPORTS ══════════ -->
     <div class="page" id="page-reports">
       <div class="page-header">
-        <div class="page-title">Reports & Export</div>
-        <div class="page-sub">Generate and download detailed reports for your records.</div>
+        <div class="page-header-text">
+          <div class="page-title">Reports &amp; Export</div>
+          <div class="page-sub">Generate and download detailed reports for your records.</div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
         <div class="card" style="padding:24px;text-align:center;">
@@ -575,7 +612,7 @@
 
     <!-- ══════════ PAGE: SETTINGS ══════════ -->
     <div class="page" id="page-settings">
-      <div class="page-header"><div class="page-title">Admin Settings</div></div>
+      <div class="page-header"><div class="page-header-text"><div class="page-title">Admin Settings</div></div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div class="card" style="padding:24px;">
           <div style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:0.95rem;">Change Admin Password</div>
@@ -601,10 +638,34 @@
           <button class="btn-sm btn-primary">Save Settings</button>
         </div>
       </div>
+
+      <!-- Danger Zone -->
+      <div class="card" style="padding:24px;margin-top:20px;border:1.5px solid #fca5a5;">
+        <div style="font-weight:700;color:#dc2626;margin-bottom:16px;font-size:0.95rem;display:flex;align-items:center;gap:8px;"><i class="ph-bold ph-warning"></i> Danger Zone</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="danger-zone">
+            <div>
+              <div class="danger-zone-label">Reset All Orders</div>
+              <div style="font-size:0.8rem;color:#6b7280;font-weight:600;margin-top:2px;">Restores all orders back to the default demo dataset</div>
+            </div>
+            <button class="btn-sm btn-orange" onclick="confirmResetOrders()"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset Orders</button>
+          </div>
+          <div class="danger-zone">
+            <div>
+              <div class="danger-zone-label">Delete All Orders</div>
+              <div style="font-size:0.8rem;color:#6b7280;font-weight:600;margin-top:2px;">Permanently removes all order records — cannot be undone</div>
+            </div>
+            <button class="btn-sm btn-danger" onclick="confirmDeleteAllOrders()"><i class="ph-bold ph-trash"></i> Delete All</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- ════════════ TOAST CONTAINER ════════════ -->
+<div id="toast-container"></div>
 
 <!-- ════════════ USER DETAIL MODAL ════════════ -->
 <div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeModal('user-modal')">
@@ -628,20 +689,47 @@
   </div>
 </div>
 
+<!-- ════════════ CONFIRM MODAL ════════════ -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-body" style="padding:32px 28px;">
+      <div class="confirm-icon" id="confirm-icon"></div>
+      <div class="confirm-title" id="confirm-title"></div>
+      <div class="confirm-msg" id="confirm-msg"></div>
+      <div class="confirm-actions">
+        <button class="btn-sm btn-gray" onclick="closeModal('confirm-modal')" id="confirm-cancel-btn">Cancel</button>
+        <button class="btn-sm btn-danger" id="confirm-ok-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="../js/auth.js"></script>
 <script>
-// ── AUTH GUARD ──
+// ══════════════════════════════════════════════
+//  AUTH GUARD
+// ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   const session = getSession();
   if (!session || session.role !== 'admin') {
     window.location.href = '../login.html';
     return;
   }
-  document.getElementById('admin-name-sb').textContent = session.name || 'Admin';
+  const nameInitial = (session.name || 'A')[0].toUpperCase();
+  document.getElementById('admin-name-sb').textContent    = session.name || 'Admin';
   document.getElementById('admin-name-header').textContent = session.name || 'Admin';
+  document.getElementById('admin-avatar').textContent     = nameInitial;
   initPanel();
 });
 
+function doLogout(e) {
+  e.preventDefault();
+  logoutUser();
+}
+
+// ══════════════════════════════════════════════
+//  DEALS DATA (in-memory, not saved to localStorage)
+// ══════════════════════════════════════════════
 let DEALS_DATA = [
   { id: 'DL001', brand: 'DZ', code: 'Blinkit_Floor_TabletStand_360°', platform: 'Blinkit', type: 'Review', price: 1299, slots: 4, active: true },
   { id: 'DL002', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Review', price: 450, slots: 4, active: true },
@@ -650,39 +738,145 @@ let DEALS_DATA = [
   { id: 'DL005', brand: 'Zaylore', code: 'ZY_Epsom_Salt_Az', platform: 'Amazon', type: 'Review', price: 399, slots: 6, active: false },
 ];
 
-function initPanel() {
-  renderOverview();
-  renderUsers();
-  renderOrders();
-  renderRefunds();
-  renderPending();
+// ══════════════════════════════════════════════
+//  INIT — all async-safe
+// ══════════════════════════════════════════════
+async function initPanel() {
+  await Promise.all([
+    renderOverview(),
+    renderUsers(),
+    renderOrders(),
+    renderRefunds(),
+    renderPending(),
+  ]);
   renderDeals();
+  updateBadges();
 }
 
-// ── NAVIGATION ──
-const pageTitles2 = { overview:'Dashboard', users:'Users', orders:'All Orders', refunds:'Refunds', pending:'Pending Review', deals:'Deals', reports:'Reports', settings:'Settings' };
+// ══════════════════════════════════════════════
+//  HELPER: get orders/refunds safely (sync or async)
+// ══════════════════════════════════════════════
+function getOrdersSync() {
+  const stored = localStorage.getItem(ORDERS_KEY);
+  return stored ? JSON.parse(stored) : MOCK_ORDERS;
+}
+function getRefundsSync() {
+  const stored = localStorage.getItem(REFUNDS_KEY);
+  return stored ? JSON.parse(stored) : MOCK_REFUNDS;
+}
+
+// ══════════════════════════════════════════════
+//  BADGES
+// ══════════════════════════════════════════════
+function updateBadges() {
+  const buyers = getBuyersFromStorage();
+  const orders = getOrdersSync();
+  const refunds = getRefundsSync();
+  document.getElementById('sb-users-badge').textContent  = buyers.length;
+  document.getElementById('sb-orders-badge').textContent = orders.length;
+  document.getElementById('sb-refund-badge').textContent = refunds.filter(r => r.status !== 'resolved').length;
+}
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+const pageTitles = {
+  overview: 'Dashboard', users: 'Users', orders: 'All Orders',
+  refunds: 'Refunds', pending: 'Pending Review',
+  deals: 'Deals', reports: 'Reports', settings: 'Settings'
+};
 
 function navigate(id, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
-  if(el) el.classList.add('active');
-  document.getElementById('topbar-title-text').textContent = pageTitles2[id] || id;
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title-text').textContent = pageTitles[id] || id;
 }
 
-// ── RENDER OVERVIEW ──
-function renderOverview() {
-  const orders = getOrders();
-  const users = getBuyersFromStorage();
-  const paid = orders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
-  const pending = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
-  document.getElementById('stat-total-users').textContent = users.length;
-  document.getElementById('stat-total-orders').textContent = orders.length;
-  document.getElementById('stat-paid-amt').textContent = '₹' + paid.toLocaleString('en-IN', {minimumFractionDigits:0});
-  document.getElementById('stat-pending-amt').textContent = '₹' + pending.toLocaleString('en-IN', {minimumFractionDigits:0});
+// ══════════════════════════════════════════════
+//  TOAST SYSTEM
+// ══════════════════════════════════════════════
+function showToast(msg, type = 'success') {
+  const icons = { success: 'ph-check-circle', error: 'ph-x-circle', info: 'ph-info', warning: 'ph-warning' };
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="ph-bold ${icons[type] || 'ph-info'}"></i> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'toast-out 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
-  const tbody = document.getElementById('overview-orders-body');
+// ══════════════════════════════════════════════
+//  CONFIRM MODAL
+// ══════════════════════════════════════════════
+function showConfirm({ title, msg, iconHtml, iconBg, btnText = 'Confirm', btnClass = 'btn-danger', onConfirm }) {
+  document.getElementById('confirm-icon').innerHTML = iconHtml;
+  document.getElementById('confirm-icon').style.background = iconBg;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.textContent = btnText;
+  btn.className = `btn-sm ${btnClass}`;
+  btn.onclick = () => { closeModal('confirm-modal'); onConfirm(); };
+  openModal('confirm-modal');
+}
+
+// ══════════════════════════════════════════════
+//  RENDER OVERVIEW
+// ══════════════════════════════════════════════
+async function renderOverview() {
+  const orders = getOrdersSync();
   const buyers = getBuyersFromStorage();
+  const refunds = getRefundsSync();
+
+  const paid    = orders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+  const pending = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+  const pendingReview = orders.filter(o => o.status === 'order_filled' || o.status === 'under_review' || o.status === 'pending_review').length;
+
+  document.getElementById('stat-total-users').textContent   = buyers.length;
+  document.getElementById('stat-total-orders').textContent  = orders.length;
+  document.getElementById('stat-paid-amt').textContent      = '₹' + paid.toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:0});
+  document.getElementById('stat-pending-amt').textContent   = '₹' + pending.toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:0});
+  document.getElementById('stat-users-change').textContent  = buyers.length + ' registered';
+  document.getElementById('stat-pending-count').textContent = pendingReview;
+
+  // Monthly revenue (current month)
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthlyRev = orders.filter(o => (o.orderDate||'').startsWith(thisMonth)).reduce((s,o) => s + o.finalPayout, 0);
+  document.getElementById('stat-monthly-rev').textContent = '₹' + monthlyRev.toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:0});
+
+  // Platform breakdown
+  const platforms = {};
+  orders.forEach(o => { platforms[o.platform] = (platforms[o.platform]||0) + 1; });
+  const platColors = { Amazon: ['#c2410c','#fb923c'], Flipkart: ['#1d4ed8','#60a5fa'], Blinkit: ['#a16207','#fbbf24'] };
+  const totalOrds = orders.length || 1;
+  document.getElementById('platform-breakdown').innerHTML = Object.entries(platforms).map(([p,c]) => {
+    const [tc, bc] = platColors[p] || ['#6b7280','#d1d5db'];
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">
+      <span style="font-weight:700;width:60px;color:${tc};">${p}</span>
+      <div style="flex:1;height:6px;background:#f3f4f6;border-radius:99px;overflow:hidden;"><div style="width:${Math.round(c/totalOrds*100)}%;height:100%;background:${bc};border-radius:99px;"></div></div>
+      <span style="font-weight:700;color:${tc};">${c}</span>
+    </div>`;
+  }).join('');
+
+  // Refund summary
+  const rPending  = refunds.filter(r => r.status === 'pending').length;
+  const rReview   = refunds.filter(r => r.status === 'under_review').length;
+  const rResolved = refunds.filter(r => r.status === 'resolved').length;
+  const rTotal    = refunds.reduce((s,r) => s + r.amount, 0);
+  document.getElementById('refund-summary').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Pending</span><span style="font-weight:700;color:#f59e0b;">${rPending}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Under Review</span><span style="font-weight:700;color:#6366f1;">${rReview}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:0.82rem;"><span style="color:#6b7280;font-weight:600;">Resolved</span><span style="font-weight:700;color:#22c55e;">${rResolved}</span></div>
+    <div style="border-top:1px solid #f3f4f6;padding-top:6px;display:flex;justify-content:space-between;font-size:0.85rem;"><span style="font-weight:700;color:#1f2937;">Total Value</span><span style="font-weight:700;color:#dc2626;">₹${rTotal.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:0})}</span></div>
+  `;
+
+  // Recent orders table
+  const tbody = document.getElementById('overview-orders-body');
   tbody.innerHTML = orders.slice(0,6).map((o,i) => {
     const user = buyers.find(b => b.id === o.userId);
     return `<tr>
@@ -697,18 +891,20 @@ function renderOverview() {
       <td>${statusPill(o.status)}</td>
       <td style="color:#9ca3af;font-size:0.78rem;">${o.submittedDate}</td>
     </tr>`;
-  }).join('');
+  }).join('') || '<tr><td colspan="10"><div class="empty-state"><i class="ph-bold ph-receipt"></i><div>No orders yet</div></div></td></tr>';
 }
 
-// ── RENDER USERS ──
+// ══════════════════════════════════════════════
+//  RENDER USERS
+// ══════════════════════════════════════════════
 function renderUsers() {
   const buyers = getBuyersFromStorage();
-  const orders = getOrders();
-  const search = document.getElementById('user-search')?.value?.toLowerCase() || '';
+  const orders = getOrdersSync();
+  const search  = document.getElementById('user-search')?.value?.toLowerCase() || '';
   const statusF = document.getElementById('user-status-filter')?.value || '';
 
   const filtered = buyers.filter(b => {
-    const matchS = !search || b.name.toLowerCase().includes(search) || b.email.includes(search) || b.mobile.includes(search);
+    const matchS  = !search || b.name.toLowerCase().includes(search) || b.email.includes(search) || b.mobile.includes(search);
     const matchSt = !statusF || b.status === statusF;
     return matchS && matchSt;
   });
@@ -717,7 +913,7 @@ function renderUsers() {
   if (!tbody) return;
   tbody.innerHTML = filtered.map((b, i) => {
     const userOrders = orders.filter(o => o.userId === b.id);
-    const totalPaid = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+    const totalPaid  = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
     const pendingAmt = userOrders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
     return `<tr>
       <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
@@ -734,7 +930,7 @@ function renderUsers() {
       <td><span class="pill ${b.status==='active'?'p-active':'p-suspended'}">${b.status}</span></td>
       <td>
         <div class="action-btns">
-          <button class="ico-btn ico-view" title="View Orders" onclick="viewUserOrders('${b.id}','${b.name}')"><i class="ph-bold ph-eye"></i></button>
+          <button class="ico-btn ico-view" title="View Orders" onclick="viewUserOrders('${b.id}','${b.name.replace(/'/g,"\\'")}')"><i class="ph-bold ph-eye"></i></button>
           <button class="ico-btn ${b.status==='active'?'ico-del':'ico-pay'}" title="${b.status==='active'?'Suspend':'Activate'}" onclick="toggleUserStatus('${b.id}')">
             <i class="ph-bold ${b.status==='active'?'ph-prohibit':'ph-check-circle'}"></i>
           </button>
@@ -744,18 +940,20 @@ function renderUsers() {
   }).join('') || '<tr><td colspan="10"><div class="empty-state"><i class="ph-bold ph-users"></i><div>No users found</div></div></td></tr>';
 }
 
-// ── RENDER ORDERS ──
+// ══════════════════════════════════════════════
+//  RENDER ORDERS
+// ══════════════════════════════════════════════
 function renderOrders() {
-  const orders = getOrders();
-  const buyers = getBuyersFromStorage();
-  const search = document.getElementById('order-search')?.value?.toLowerCase() || '';
+  const orders  = getOrdersSync();
+  const buyers  = getBuyersFromStorage();
+  const search   = document.getElementById('order-search')?.value?.toLowerCase() || '';
   const platformF = document.getElementById('order-platform-filter')?.value || '';
-  const statusF = document.getElementById('order-status-filter')?.value || '';
+  const statusF  = document.getElementById('order-status-filter')?.value || '';
 
   const filtered = orders.filter(o => {
-    const user = buyers.find(b => b.id === o.userId);
-    const matchS = !search || o.orderNo.toLowerCase().includes(search) || o.productCode.toLowerCase().includes(search) || (user?.name||'').toLowerCase().includes(search);
-    const matchP = !platformF || o.platform === platformF;
+    const user  = buyers.find(b => b.id === o.userId);
+    const matchS  = !search || o.orderNo.toLowerCase().includes(search) || o.productCode.toLowerCase().includes(search) || (user?.name||'').toLowerCase().includes(search);
+    const matchP  = !platformF || o.platform === platformF;
     const matchSt = !statusF || o.status === statusF;
     return matchS && matchP && matchSt;
   });
@@ -763,17 +961,16 @@ function renderOrders() {
   // Totals
   const totals = document.getElementById('orders-totals');
   if (totals) {
-    const totalAmt = filtered.reduce((s,o)=>s+o.amount,0);
-    const totalDed = filtered.reduce((s,o)=>s+o.deduction,0);
-    const totalPay = filtered.reduce((s,o)=>s+o.finalPayout,0);
+    const totalAmt  = filtered.reduce((s,o)=>s+o.amount,0);
+    const totalDed  = filtered.reduce((s,o)=>s+o.deduction,0);
+    const totalPay  = filtered.reduce((s,o)=>s+o.finalPayout,0);
     const totalPaid = filtered.filter(o=>o.status==='paid').reduce((s,o)=>s+o.finalPayout,0);
-    const totalPend = filtered.filter(o=>o.status!=='paid'&&o.status!=='cancelled').reduce((s,o)=>s+o.finalPayout,0);
     totals.innerHTML = [
-      ['Total Orders', filtered.length, '#6366f1','#ede9fe','ph-receipt'],
-      ['Total Amount', '₹'+totalAmt.toFixed(2), '#1d4ed8','#dbeafe','ph-currency-inr'],
-      ['Total Deduction', '-₹'+totalDed.toFixed(2), '#dc2626','#fef2f2','ph-minus-circle'],
-      ['Total Final', '₹'+totalPay.toFixed(2), '#92400e','#fef9c3','ph-wallet'],
-      ['Total Paid', '₹'+totalPaid.toFixed(2), '#15803d','#dcfce7','ph-check-circle'],
+      ['Total Orders',    filtered.length,             '#6366f1','#ede9fe','ph-receipt'],
+      ['Total Amount',    '₹'+totalAmt.toFixed(2),     '#1d4ed8','#dbeafe','ph-currency-inr'],
+      ['Total Deduction', '-₹'+totalDed.toFixed(2),    '#dc2626','#fef2f2','ph-minus-circle'],
+      ['Total Final',     '₹'+totalPay.toFixed(2),     '#92400e','#fef9c3','ph-wallet'],
+      ['Total Paid',      '₹'+totalPaid.toFixed(2),    '#15803d','#dcfce7','ph-check-circle'],
     ].map(([label,val,color,bg,icon]) => `
       <div style="background:white;border-radius:10px;padding:14px;border:1px solid #f1f5f9;box-shadow:var(--shadow);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -789,6 +986,7 @@ function renderOrders() {
   if (!tbody) return;
   tbody.innerHTML = filtered.map((o, i) => {
     const user = buyers.find(b => b.id === o.userId);
+    const canPay = o.status !== 'paid' && o.status !== 'cancelled';
     return `<tr>
       <td style="color:#9ca3af;font-weight:700;">${i+1}</td>
       <td><div style="font-weight:700;color:#4f46e5;font-size:0.78rem;">${o.orderNo}</div></td>
@@ -809,21 +1007,28 @@ function renderOrders() {
       <td style="text-align:center;">${o.screenshot ? '<span style="color:#22c55e;font-size:0.8rem;font-weight:700;">✓ Yes</span>' : '<span style="color:#dc2626;font-size:0.8rem;font-weight:700;">✗ No</span>'}</td>
       <td>
         <div class="action-btns">
-          <button class="ico-btn ico-view" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
-          ${o.status !== 'paid' && o.status !== 'cancelled' ? `<button class="ico-btn ico-pay" title="Mark Paid" onclick="markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i></button>` : ''}
-          <button class="ico-btn ico-del" title="Cancel" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+          <button class="ico-btn ico-view" title="View Details" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
+          ${canPay ? `<button class="ico-btn ico-pay" title="Mark Paid" onclick="markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i></button>` : ''}
+          <button class="ico-btn ico-del" title="Cancel Order" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+          <button class="ico-btn ico-trash" title="Delete Order" onclick="deleteOrder('${o.id}')"><i class="ph-bold ph-trash"></i></button>
         </div>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="15"><div class="empty-state"><i class="ph-bold ph-receipt"></i><div>No orders found</div></div></td></tr>';
 }
 
-// ── RENDER REFUNDS ──
+// ══════════════════════════════════════════════
+//  RENDER REFUNDS
+// ══════════════════════════════════════════════
 function renderRefunds() {
-  const refunds = getRefunds();
-  const buyers = getBuyersFromStorage();
+  const refunds = getRefundsSync();
   const el = document.getElementById('refunds-list');
   if (!el) return;
+
+  if (!refunds.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ph-bold ph-arrow-counter-clockwise"></i><div>No refund requests found</div></div>';
+    return;
+  }
 
   el.innerHTML = refunds.map(r => {
     const tl = getRefundTimeline(r);
@@ -864,18 +1069,20 @@ function renderRefunds() {
         ${r.status !== 'resolved' ? `
           <button class="btn-sm btn-success" onclick="resolveRefund('${r.id}')"><i class="ph-bold ph-check-circle"></i> Mark Resolved</button>
           <button class="btn-sm btn-primary" onclick="moveRefundStage('${r.id}')"><i class="ph-bold ph-arrow-right"></i> Advance Stage</button>
-        ` : '<span style="color:#22c55e;font-weight:700;font-size:0.82rem;">✓ Fully Resolved · ' + new Date(r.resolvedAt).toLocaleDateString() + '</span>'}
+        ` : `<span style="color:#22c55e;font-weight:700;font-size:0.82rem;">✓ Fully Resolved · ${new Date(r.resolvedAt).toLocaleDateString('en-IN')}</span>`}
         <button class="btn-sm btn-gray" onclick="viewRefundOrder('${r.orderId}')"><i class="ph-bold ph-eye"></i> View Order</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── RENDER PENDING ──
+// ══════════════════════════════════════════════
+//  RENDER PENDING
+// ══════════════════════════════════════════════
 function renderPending() {
-  const orders = getOrders().filter(o => o.status === 'order_filled' || o.status === 'under_review');
+  const orders = getOrdersSync().filter(o => o.status === 'order_filled' || o.status === 'under_review' || o.status === 'pending_review');
   const buyers = getBuyersFromStorage();
-  const tbody = document.getElementById('pending-table-body');
+  const tbody  = document.getElementById('pending-table-body');
   if (!tbody) return;
   tbody.innerHTML = orders.map((o, i) => {
     const user = buyers.find(b => b.id === o.userId);
@@ -893,15 +1100,18 @@ function renderPending() {
       <td>
         <div class="action-btns">
           <button class="ico-btn ico-pay" title="Mark Paid" onclick="markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i></button>
-          <button class="ico-btn ico-view" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
-          <button class="ico-btn ico-del" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+          <button class="ico-btn ico-view" title="View" onclick="viewOrder('${o.id}')"><i class="ph-bold ph-eye"></i></button>
+          <button class="ico-btn ico-del" title="Cancel" onclick="cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i></button>
+          <button class="ico-btn ico-trash" title="Delete" onclick="deleteOrder('${o.id}')"><i class="ph-bold ph-trash"></i></button>
         </div>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="11"><div class="empty-state"><i class="ph-bold ph-check-circle"></i><div>No pending orders!</div></div></td></tr>';
 }
 
-// ── RENDER DEALS ──
+// ══════════════════════════════════════════════
+//  RENDER DEALS
+// ══════════════════════════════════════════════
 function renderDeals() {
   const tbody = document.getElementById('deals-table-body');
   if (!tbody) return;
@@ -917,47 +1127,152 @@ function renderDeals() {
     <td>
       <div class="action-btns">
         <button class="ico-btn ${d.active?'ico-del':'ico-pay'}" title="${d.active?'Deactivate':'Activate'}" onclick="toggleDeal('${d.id}')"><i class="ph-bold ${d.active?'ph-eye-slash':'ph-eye'}"></i></button>
-        <button class="ico-btn ico-del" title="Delete" onclick="deleteDeal('${d.id}')"><i class="ph-bold ph-trash"></i></button>
+        <button class="ico-btn ico-trash" title="Delete" onclick="deleteDeal('${d.id}')"><i class="ph-bold ph-trash"></i></button>
       </div>
     </td>
-  </tr>`).join('');
+  </tr>`).join('') || '<tr><td colspan="9"><div class="empty-state"><i class="ph-bold ph-tag"></i><div>No deals</div></div></td></tr>';
 }
 
-// ── ACTIONS ──
+// ══════════════════════════════════════════════
+//  ORDER ACTIONS
+// ══════════════════════════════════════════════
 function markPaid(orderId) {
-  if (!confirm('Mark this order as PAID?')) return;
-  updateOrderStatus(orderId, 'paid', { paidDate: new Date().toISOString().split('T')[0] });
-  renderOrders(); renderPending(); renderOverview();
-  alert('✅ Order marked as Paid!');
+  showConfirm({
+    title: 'Mark as Paid?',
+    msg: 'This will update the order status to Paid and record today as the paid date.',
+    iconHtml: '<i class="ph-bold ph-check-circle" style="color:#15803d;font-size:1.6rem;"></i>',
+    iconBg: '#dcfce7',
+    btnText: 'Mark Paid',
+    btnClass: 'btn-success',
+    onConfirm: async () => {
+      await updateOrderStatus(orderId, 'paid', { paidDate: new Date().toISOString().split('T')[0] });
+      refreshAllViews();
+      showToast('✅ Order marked as Paid!', 'success');
+    }
+  });
 }
 
 function cancelOrder(orderId) {
-  if (!confirm('Cancel this order?')) return;
-  updateOrderStatus(orderId, 'cancelled');
-  renderOrders(); renderPending(); renderOverview();
+  showConfirm({
+    title: 'Cancel Order?',
+    msg: 'This will mark the order as Cancelled. The record will still exist.',
+    iconHtml: '<i class="ph-bold ph-x-circle" style="color:#dc2626;font-size:1.6rem;"></i>',
+    iconBg: '#fef2f2',
+    btnText: 'Cancel Order',
+    btnClass: 'btn-danger',
+    onConfirm: async () => {
+      await updateOrderStatus(orderId, 'cancelled');
+      refreshAllViews();
+      showToast('Order cancelled.', 'warning');
+    }
+  });
 }
 
+function deleteOrder(orderId) {
+  showConfirm({
+    title: 'Delete Order?',
+    msg: 'This will permanently remove the order record. This action cannot be undone.',
+    iconHtml: '<i class="ph-bold ph-trash" style="color:#7f1d1d;font-size:1.6rem;"></i>',
+    iconBg: '#fef2f2',
+    btnText: 'Delete Permanently',
+    btnClass: 'btn-danger',
+    onConfirm: () => {
+      const orders = getOrdersSync().filter(o => o.id !== orderId);
+      saveOrders(orders);
+      refreshAllViews();
+      showToast('Order deleted permanently.', 'error');
+    }
+  });
+}
+
+function confirmDeleteAllOrders() {
+  showConfirm({
+    title: 'Delete ALL Orders?',
+    msg: 'This will permanently remove every single order record. This cannot be undone!',
+    iconHtml: '<i class="ph-bold ph-trash" style="color:#7f1d1d;font-size:1.6rem;"></i>',
+    iconBg: '#fef2f2',
+    btnText: '🗑 Delete All Orders',
+    btnClass: 'btn-danger',
+    onConfirm: () => {
+      saveOrders([]);
+      refreshAllViews();
+      showToast('All orders deleted.', 'error');
+    }
+  });
+}
+
+function confirmResetOrders() {
+  showConfirm({
+    title: 'Reset All Orders?',
+    msg: 'This restores all orders back to the default demo dataset, overwriting any changes.',
+    iconHtml: '<i class="ph-bold ph-arrow-counter-clockwise" style="color:#c2410c;font-size:1.6rem;"></i>',
+    iconBg: '#fff7ed',
+    btnText: '↺ Reset to Default',
+    btnClass: 'btn-orange',
+    onConfirm: () => {
+      localStorage.removeItem(ORDERS_KEY);
+      refreshAllViews();
+      showToast('Orders reset to default dataset.', 'info');
+    }
+  });
+}
+
+function markAllPaid() {
+  const checked = [...document.querySelectorAll('.pending-check:checked')].map(c => c.value);
+  if (!checked.length) { showToast('Select at least one order.', 'warning'); return; }
+  showConfirm({
+    title: `Mark ${checked.length} Order(s) as Paid?`,
+    msg: `This will mark ${checked.length} selected order(s) as Paid with today's date.`,
+    iconHtml: '<i class="ph-bold ph-check-circle" style="color:#15803d;font-size:1.6rem;"></i>',
+    iconBg: '#dcfce7',
+    btnText: `Mark ${checked.length} as Paid`,
+    btnClass: 'btn-success',
+    onConfirm: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      for (const id of checked) {
+        await updateOrderStatus(id, 'paid', { paidDate: today });
+      }
+      refreshAllViews();
+      showToast(`✅ ${checked.length} orders marked as Paid!`, 'success');
+    }
+  });
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.pending-check').forEach(c => c.checked = cb.checked);
+}
+
+// ══════════════════════════════════════════════
+//  USER ACTIONS
+// ══════════════════════════════════════════════
 function toggleUserStatus(userId) {
   const buyers = getBuyersFromStorage();
   const idx = buyers.findIndex(b => b.id === userId);
   if (idx === -1) return;
-  buyers[idx].status = buyers[idx].status === 'active' ? 'suspended' : 'active';
+  const newStatus = buyers[idx].status === 'active' ? 'suspended' : 'active';
+  buyers[idx].status = newStatus;
   localStorage.setItem('jm_users', JSON.stringify(buyers));
   renderUsers();
+  showToast(`User ${newStatus === 'active' ? 'activated' : 'suspended'}.`, newStatus === 'active' ? 'success' : 'warning');
 }
 
+// ══════════════════════════════════════════════
+//  REFUND ACTIONS
+// ══════════════════════════════════════════════
 function resolveRefund(refundId) {
-  const refunds = getRefunds();
+  const refunds = getRefundsSync();
   const idx = refunds.findIndex(r => r.id === refundId);
   if (idx === -1) return;
   refunds[idx].status = 'resolved';
   refunds[idx].resolvedAt = new Date().toISOString();
   saveRefunds(refunds);
   renderRefunds();
+  updateBadges();
+  showToast('Refund marked as resolved.', 'success');
 }
 
 function moveRefundStage(refundId) {
-  const refunds = getRefunds();
+  const refunds = getRefundsSync();
   const idx = refunds.findIndex(r => r.id === refundId);
   if (idx === -1) return;
   const stages = ['pending','under_review','resolved'];
@@ -965,26 +1280,17 @@ function moveRefundStage(refundId) {
   if (cur < stages.length - 1) {
     refunds[idx].status = stages[cur + 1];
     if (refunds[idx].status === 'under_review') refunds[idx].reviewedAt = new Date().toISOString();
-    if (refunds[idx].status === 'resolved') refunds[idx].resolvedAt = new Date().toISOString();
+    if (refunds[idx].status === 'resolved')     refunds[idx].resolvedAt = new Date().toISOString();
     saveRefunds(refunds);
     renderRefunds();
+    updateBadges();
+    showToast('Refund stage advanced.', 'info');
   }
 }
 
-function markAllPaid() {
-  const checked = [...document.querySelectorAll('.pending-check:checked')].map(c => c.value);
-  if (!checked.length) { alert('Select at least one order.'); return; }
-  if (!confirm(`Mark ${checked.length} order(s) as paid?`)) return;
-  const today = new Date().toISOString().split('T')[0];
-  checked.forEach(id => updateOrderStatus(id, 'paid', { paidDate: today }));
-  renderOrders(); renderPending(); renderOverview();
-  alert(`✅ ${checked.length} orders marked as Paid!`);
-}
-
-function toggleSelectAll(cb) {
-  document.querySelectorAll('.pending-check').forEach(c => c.checked = cb.checked);
-}
-
+// ══════════════════════════════════════════════
+//  DEAL ACTIONS
+// ══════════════════════════════════════════════
 function addDeal() {
   const brand = document.getElementById('deal-brand').value.trim();
   const code  = document.getElementById('deal-code').value.trim();
@@ -992,10 +1298,11 @@ function addDeal() {
   const price = parseFloat(document.getElementById('deal-price').value) || 0;
   const slots = parseInt(document.getElementById('deal-slots').value) || 0;
   const type  = document.getElementById('deal-type-new').value;
-  if (!brand || !code) { alert('Brand name and product code are required.'); return; }
+  if (!brand || !code) { showToast('Brand name and product code are required.', 'error'); return; }
   DEALS_DATA.push({ id: 'DL' + Date.now(), brand, code, platform: plat, type, price, slots, active: true });
   renderDeals();
   ['deal-brand','deal-code','deal-price','deal-slots','deal-url'].forEach(id => document.getElementById(id).value = '');
+  showToast('Deal added successfully.', 'success');
 }
 
 function toggleDeal(id) {
@@ -1004,16 +1311,35 @@ function toggleDeal(id) {
 }
 
 function deleteDeal(id) {
-  if (!confirm('Delete this deal?')) return;
-  DEALS_DATA = DEALS_DATA.filter(d => d.id !== id);
-  renderDeals();
+  showConfirm({
+    title: 'Delete Deal?',
+    msg: 'This deal will be removed from the list.',
+    iconHtml: '<i class="ph-bold ph-trash" style="color:#dc2626;font-size:1.6rem;"></i>',
+    iconBg: '#fef2f2',
+    btnText: 'Delete',
+    btnClass: 'btn-danger',
+    onConfirm: () => { DEALS_DATA = DEALS_DATA.filter(d => d.id !== id); renderDeals(); showToast('Deal deleted.', 'info'); }
+  });
 }
 
-// ── MODALS ──
+// ══════════════════════════════════════════════
+//  HELPER: Refresh all panels
+// ══════════════════════════════════════════════
+function refreshAllViews() {
+  renderOverview();
+  renderOrders();
+  renderPending();
+  renderUsers();
+  updateBadges();
+}
+
+// ══════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════
 function viewUserOrders(userId, name) {
-  const orders = getOrders().filter(o => o.userId === userId);
+  const orders    = getOrdersSync().filter(o => o.userId === userId);
   const totalPaid = orders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
-  const pending = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+  const pending   = orders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
   document.getElementById('user-modal-title').textContent = name + ' — Order History';
   document.getElementById('user-modal-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
@@ -1023,7 +1349,7 @@ function viewUserOrders(userId, name) {
     </div>
     <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
       <thead><tr style="background:#fafafa;">${['Order No','Code','Platform','Amount','Deduction','Final','Status','Date'].map(h=>`<th style="padding:8px 10px;text-align:left;font-size:0.68rem;font-weight:700;color:#9ca3af;text-transform:uppercase;border-bottom:1px solid #f3f4f6;">${h}</th>`).join('')}</tr></thead>
-      <tbody>${orders.map(o => `<tr style="border-bottom:1px solid #f9fafb;">
+      <tbody>${orders.length ? orders.map(o => `<tr style="border-bottom:1px solid #f9fafb;">
         <td style="padding:8px 10px;font-weight:700;color:#4f46e5;">${o.orderNo}</td>
         <td style="padding:8px 10px;font-size:0.71rem;">${o.productCode}</td>
         <td style="padding:8px 10px;">${o.platform}</td>
@@ -1032,17 +1358,16 @@ function viewUserOrders(userId, name) {
         <td style="padding:8px 10px;color:#16a34a;font-weight:700;">₹${o.finalPayout.toFixed(2)}</td>
         <td style="padding:8px 10px;">${statusPill(o.status)}</td>
         <td style="padding:8px 10px;color:#9ca3af;">${o.submittedDate}</td>
-      </tr>`).join('')}</tbody>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:20px;color:#9ca3af;">No orders found</td></tr>'}</tbody>
     </table></div>
   `;
   openModal('user-modal');
 }
 
 function viewOrder(orderId) {
-  const o = getOrders().find(o => o.id === orderId);
+  const o = getOrdersSync().find(o => o.id === orderId);
   if (!o) return;
-  const buyers = getBuyersFromStorage();
-  const user = buyers.find(b => b.id === o.userId);
+  const user = getBuyersFromStorage().find(b => b.id === o.userId);
   document.getElementById('order-modal-title').textContent = 'Order — ' + o.orderNo;
   document.getElementById('order-modal-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
@@ -1064,8 +1389,9 @@ function viewOrder(orderId) {
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>${statusPill(o.status)}</div>
       <div style="display:flex;gap:8px;">
-        ${o.status !== 'paid' ? `<button class="btn-sm btn-success" onclick="markPaid('${o.id}');closeModal('order-modal')"><i class="ph-bold ph-check-circle"></i> Mark Paid</button>` : ''}
-        <button class="btn-sm btn-danger" onclick="cancelOrder('${o.id}');closeModal('order-modal')"><i class="ph-bold ph-x"></i> Cancel</button>
+        ${o.status !== 'paid' && o.status !== 'cancelled' ? `<button class="btn-sm btn-success" onclick="closeModal('order-modal');markPaid('${o.id}')"><i class="ph-bold ph-check-circle"></i> Mark Paid</button>` : ''}
+        <button class="btn-sm btn-danger" onclick="closeModal('order-modal');cancelOrder('${o.id}')"><i class="ph-bold ph-x"></i> Cancel</button>
+        <button class="btn-sm btn-danger" style="background:#fecaca;color:#7f1d1d;" onclick="closeModal('order-modal');deleteOrder('${o.id}')"><i class="ph-bold ph-trash"></i> Delete</button>
       </div>
     </div>
   `;
@@ -1073,12 +1399,14 @@ function viewOrder(orderId) {
 }
 
 function viewRefundOrder(orderId) { closeModal('refund-modal'); viewOrder(orderId); }
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// ── EXPORTS ──
+// ══════════════════════════════════════════════
+//  EXPORTS
+// ══════════════════════════════════════════════
 function exportAllOrders(statusFilter = null) {
-  let orders = getOrders();
+  let orders = getOrdersSync();
   if (statusFilter) orders = orders.filter(o => o.status === statusFilter);
   const buyers = getBuyersFromStorage();
   const data = orders.map(o => {
@@ -1092,15 +1420,17 @@ function exportAllOrders(statusFilter = null) {
       'Status': o.status, 'Paid Date': o.paidDate||'', 'Screenshot': o.screenshot?'Yes':'No'
     };
   });
-  exportToCSV(data, `JM_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+  if (!data.length) { showToast('No orders to export.', 'warning'); return; }
+  exportToCSV(data, `DS_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('Orders exported to CSV!', 'success');
 }
 
 function exportAllUsers() {
   const buyers = getBuyersFromStorage();
-  const orders = getOrders();
+  const orders = getOrdersSync();
   const data = buyers.map(b => {
     const userOrders = orders.filter(o => o.userId === b.id);
-    const paid = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+    const paid    = userOrders.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
     const pending = userOrders.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
     return {
       'User ID': b.id, 'Name': b.name, 'Email': b.email, 'Mobile': b.mobile,
@@ -1110,18 +1440,21 @@ function exportAllUsers() {
       'Referral': b.referral||''
     };
   });
-  exportToCSV(data, `JM_Users_${new Date().toISOString().split('T')[0]}.csv`);
+  exportToCSV(data, `DS_Users_${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('Users exported to CSV!', 'success');
 }
 
 function exportRefunds() {
-  const refunds = getRefunds();
+  const refunds = getRefundsSync();
+  if (!refunds.length) { showToast('No refunds to export.', 'warning'); return; }
   const data = refunds.map(r => ({
     'Refund ID': r.id, 'Order No': r.orderNo, 'User': r.userName,
     'Reason': r.reason, 'Amount (₹)': r.amount, 'UPI': r.upi,
     'Status': r.status, 'Submitted': r.submittedAt,
     'Reviewed': r.reviewedAt||'', 'Resolved': r.resolvedAt||''
   }));
-  exportToCSV(data, `JM_Refunds_${new Date().toISOString().split('T')[0]}.csv`);
+  exportToCSV(data, `DS_Refunds_${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('Refunds exported to CSV!', 'success');
 }
 </script>
 </body>
