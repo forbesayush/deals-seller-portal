@@ -99,10 +99,28 @@ async function loginUser(identifier, password) {
         body: JSON.stringify({ identifier, password })
       });
       const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error || 'Login failed.' };
-      const session = setSession(data.user);
-      return { success: true, role: data.user.role, session };
+
+      if (res.ok) {
+        // Flask accepted — normal path
+        const session = setSession(data.user);
+        return { success: true, role: data.user.role, session };
+      }
+
+      if (res.status === 401) {
+        // Flask rejected credentials — try client-side admin fallback
+        // (covers case where DB hasn't been seeded yet with the admin account)
+        const localResult = await loginUserLocal(identifier, password);
+        if (localResult.success) {
+          console.info('[auth] Flask 401 but client-side admin matched — using local session.');
+          return localResult;
+        }
+      }
+
+      // Neither Flask nor local matched
+      return { success: false, error: data.error || 'Login failed.' };
+
     } catch (err) {
+      // Network error — full local fallback
       console.warn('API unreachable, falling back to local auth:', err);
       return loginUserLocal(identifier, password);
     }

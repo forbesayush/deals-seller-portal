@@ -83,57 +83,69 @@ SEED_REFUNDS = [
 
 
 def seed_database():
-    """Populate the database with initial data if empty."""
-    if User.query.count() > 0:
-        return  # Already seeded
-
+    """Upsert seed data on every startup (idempotent)."""
     today = datetime.now().strftime('%Y-%m-%d')
 
-    # Seed admins
+    # ── Upsert admins ──
     for a in SEED_ADMINS:
-        user = User(
-            id=a['id'], name=a['name'], email=a['email'],
-            mobile=a.get('mobile'), password_hash=sha256(a['password']),
-            role=a['role'], status='active', joined=today, verified=True
-        )
-        db.session.add(user)
+        existing = User.query.get(a['id'])
+        if existing:
+            existing.password_hash = sha256(a['password'])
+            existing.name   = a['name']
+            existing.email  = a['email']
+            existing.status = 'active'
+        else:
+            db.session.add(User(
+                id=a['id'], name=a['name'], email=a['email'],
+                mobile=a.get('mobile'), password_hash=sha256(a['password']),
+                role=a['role'], status='active', joined=today, verified=True
+            ))
 
-    # Seed buyers
+    # ── Upsert buyers ──
     for b in SEED_BUYERS:
-        user = User(
-            id=b['id'], name=b['name'], email=b['email'],
-            mobile=b.get('mobile'), password_hash=sha256(b['password']),
-            role='buyer', status=b.get('status', 'active'),
-            joined=today, verified=b.get('verified', True)
-        )
-        db.session.add(user)
+        existing = User.query.get(b['id'])
+        if existing:
+            existing.name   = b['name']
+            existing.email  = b['email']
+            existing.mobile = b.get('mobile')
+            # Only reset password if it still matches the old default hash,
+            # so manually changed passwords are not overwritten.
+            if existing.password_hash == sha256('user@123'):
+                existing.password_hash = sha256(b['password'])
+        else:
+            db.session.add(User(
+                id=b['id'], name=b['name'], email=b['email'],
+                mobile=b.get('mobile'), password_hash=sha256(b['password']),
+                role='buyer', status=b.get('status', 'active'),
+                joined=today, verified=b.get('verified', True)
+            ))
 
-    # Seed orders
+    # ── Upsert orders (only insert if missing) ──
     for o in SEED_ORDERS:
-        order = Order(
-            id=o['id'], order_no=o['order_no'], product_code=o['product_code'],
-            platform=o['platform'], user_id=o['user_id'], mediator=o['mediator'],
-            deal_type=o['deal_type'], order_date=o['order_date'],
-            submitted_date=o.get('submitted_date'), amount=o['amount'],
-            deduction=o['deduction'], final_payout=o['final_payout'],
-            status=o['status'], refund_status=o.get('refund_status'),
-            paid_date=o.get('paid_date'), screenshot=o.get('screenshot', True)
-        )
-        db.session.add(order)
+        if not Order.query.get(o['id']):
+            db.session.add(Order(
+                id=o['id'], order_no=o['order_no'], product_code=o['product_code'],
+                platform=o['platform'], user_id=o['user_id'], mediator=o['mediator'],
+                deal_type=o['deal_type'], order_date=o['order_date'],
+                submitted_date=o.get('submitted_date'), amount=o['amount'],
+                deduction=o['deduction'], final_payout=o['final_payout'],
+                status=o['status'], refund_status=o.get('refund_status'),
+                paid_date=o.get('paid_date'), screenshot=o.get('screenshot', True)
+            ))
 
-    # Seed refunds
+    # ── Upsert refunds (only insert if missing) ──
     for r in SEED_REFUNDS:
-        refund = Refund(
-            id=r['id'], order_id=r.get('order_id'), order_no=r['order_no'],
-            user_id=r['user_id'], user_name=r['user_name'], reason=r['reason'],
-            amount=r['amount'], upi=r.get('upi'), status=r['status'],
-            submitted_at=r['submitted_at'],
-            reviewed_at=r.get('reviewed_at'), resolved_at=r.get('resolved_at')
-        )
-        db.session.add(refund)
+        if not Refund.query.get(r['id']):
+            db.session.add(Refund(
+                id=r['id'], order_id=r.get('order_id'), order_no=r['order_no'],
+                user_id=r['user_id'], user_name=r['user_name'], reason=r['reason'],
+                amount=r['amount'], upi=r.get('upi'), status=r['status'],
+                submitted_at=r['submitted_at'],
+                reviewed_at=r.get('reviewed_at'), resolved_at=r.get('resolved_at')
+            ))
 
     db.session.commit()
-    print('[OK] Database seeded successfully.')
+    print('[OK] Seed upsert complete.')
 
 
 # ─────────────────────────────────────────────
