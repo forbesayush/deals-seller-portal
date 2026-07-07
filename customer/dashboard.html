@@ -13,6 +13,7 @@
       }catch(e){window.location.replace('../login.html');}
     })();
   </script>
+  <script src="../js/auth.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — deals.seller</title>
@@ -626,7 +627,7 @@
     </nav>
 
     <div class="sidebar-user">
-      <div class="user-avatar">A</div>
+      <div class="user-avatar" id="dash-user-avatar">?</div>
       <div>
         <div class="user-name" id="dash-user-name">Loading...</div>
         <div class="user-badge">✓ Verified Member</div>
@@ -674,9 +675,9 @@
           </div>
           <div class="stat-card" onclick="navigate('history', document.querySelector('[data-page=history]'))">
             <div class="stat-icon" style="background:#dcfce7;color:#16a34a;"><i class="ph-bold ph-receipt"></i></div>
-            <div class="stat-value">5</div>
+            <div class="stat-value" id="dash-stat-orders">—</div>
             <div class="stat-label">Total Orders</div>
-            <div class="stat-sub" style="color:#16a34a;">₹473 Paid</div>
+            <div class="stat-sub" style="color:#16a34a;" id="dash-stat-paid-sub">—</div>
           </div>
           <div class="stat-card" onclick="navigate('rewards', document.querySelector('[data-page=rewards]'))">
             <div class="stat-icon" style="background:#fef9c3;color:#92400e;"><i class="ph-bold ph-coin"></i></div>
@@ -686,9 +687,9 @@
           </div>
           <div class="stat-card" onclick="navigate('history', document.querySelector('[data-page=history]'))">
             <div class="stat-icon" style="background:#fef2f2;color:#dc2626;"><i class="ph-bold ph-arrow-u-up-left"></i></div>
-            <div class="stat-value">0</div>
+            <div class="stat-value" id="dash-stat-refunds">—</div>
             <div class="stat-label">Pending Refunds</div>
-            <div class="stat-sub" style="color:#dc2626;">All Clear ✓</div>
+            <div class="stat-sub" style="color:#dc2626;" id="dash-stat-refunds-sub">—</div>
           </div>
         </div>
 
@@ -762,137 +763,28 @@
         </div>
         <div class="orders-table-wrap">
           <div class="table-controls">
-            <input type="text" class="table-search" placeholder="Order ID...">
-            <select class="table-select">
-              <option>All Statuses</option>
-              <option>Order Form Filled</option>
-              <option>Paid</option>
-              <option>Cancelled</option>
+            <input type="text" class="table-search" id="dash-order-search" placeholder="Order ID..." oninput="renderDashOrders()">
+            <select class="table-select" id="dash-order-status" onchange="renderDashOrders()">
+              <option value="">All Statuses</option>
+              <option value="order_filled">Order Form Filled</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="under_review">Under Review</option>
+              <option value="pending_review">Pending Review</option>
             </select>
           </div>
           <table>
             <thead>
               <tr>
                 <th>Order</th>
-                <th>Details</th>
+                <th>Mediator</th>
                 <th>Dates</th>
                 <th>Status</th>
                 <th>Payout</th>
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="order-id">402-0025862-2109921</div>
-                  <div class="order-product">ANT_COSMOS_3MODE_GAMING_CONTROLLER</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Shivam Raj</div>
-                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;font-weight:600;">Sub: 26 Jun</div>
-                  <span class="running-tag">9 Days Running</span>
-                </td>
-                <td><span class="status-pill status-filled">● Order Form Filled</span></td>
-                <td><span class="payout-amount">₹1,141.05</span></td>
-                <td>
-                  <div style="display:flex;gap:4px;">
-                    <button class="action-icon act-edit" title="Refund"><i class="ph-bold ph-note-pencil"></i></button>
-                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
-                    <button class="action-icon act-del" title="Cancel"><i class="ph-bold ph-x"></i></button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="order-id">406-1422779-1212359</div>
-                  <div class="order-product">PNC_GREYSHOEWASHINGBAG_AZ</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
-                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;font-weight:600;">Sub: 17 Jun</div>
-                  <span class="running-tag">19 Days Running</span>
-                </td>
-                <td><span class="status-pill status-filled">● Order Form Filled</span></td>
-                <td><span class="payout-amount">₹229.00</span></td>
-                <td>
-                  <div style="display:flex;gap:4px;">
-                    <button class="action-icon act-edit" title="Refund"><i class="ph-bold ph-note-pencil"></i></button>
-                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
-                    <button class="action-icon act-del" title="Cancel"><i class="ph-bold ph-x"></i></button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="order-id">402-0437892-3137934</div>
-                  <div class="order-product">PNC_BLACKHEADREMOVER_AZ</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush</div>
-                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;font-weight:600;">Sub: 18 May</div>
-                  <div style="font-size:0.75rem;color:#22c55e;font-weight:700;">Ref: 01 Jun</div>
-                </td>
-                <td><span class="status-pill status-paid">● Paid</span></td>
-                <td><span class="payout-amount">₹276.00</span></td>
-                <td>
-                  <div style="display:flex;gap:4px;">
-                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="order-id">402-5031051-7769965</div>
-                  <div class="order-product">PNC_BLACKHEADREMOVER_AZ</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
-                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;font-weight:600;">Sub: 18 May</div>
-                  <div style="font-size:0.75rem;color:#dc2626;font-weight:700;">Not Eligible (&gt;45 Days)</div>
-                </td>
-                <td><span class="status-pill status-cancelled">● Cancelled</span></td>
-                <td><span class="payout-amount">₹0.00</span></td>
-                <td>
-                  <div style="display:flex;gap:4px;">
-                    <button class="action-icon act-appeal" title="Appeal"><i class="ph-bold ph-lightning"></i></button>
-                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="order-id">403-1863178-4809140</div>
-                  <div class="order-product">PNC_KAPOOREXCH_AZ</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;"><i class="ph-bold ph-user" style="color:#9ca3af;"></i> Ayush Chatterjee</div>
-                  <div style="font-size:0.78rem;color:#9ca3af;">Aman Pandey</div>
-                </td>
-                <td>
-                  <div style="font-size:0.8rem;font-weight:600;">Sub: 07 May</div>
-                  <div style="font-size:0.75px;color:#22c55e;font-weight:700;">Ref: 23 May</div>
-                </td>
-                <td><span class="status-pill status-paid">● Paid</span></td>
-                <td><span class="payout-amount">₹197.00</span></td>
-                <td>
-                  <div style="display:flex;gap:4px;">
-                    <button class="action-icon act-view" title="View"><i class="ph-bold ph-eye"></i></button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
+            <tbody id="dash-orders-body"></tbody>
           </table>
         </div>
       </div>
@@ -1062,97 +954,34 @@
           <div class="history-stat-card">
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:40px;height:40px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#7c3aed;"><i class="ph-bold ph-receipt"></i></div>
-              <div><div style="font-size:0.72rem;color:#9ca3af;font-weight:700;text-transform:uppercase;">Total Orders</div><div style="font-size:1.5rem;font-weight:700;color:#1f2937;">5</div></div>
+              <div><div style="font-size:0.72rem;color:#9ca3af;font-weight:700;text-transform:uppercase;">Total Orders</div><div style="font-size:1.5rem;font-weight:700;color:#1f2937;" id="hist-total">—</div></div>
             </div>
           </div>
           <div class="history-stat-card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:40px;height:40px;background:#bbf7d0;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#16a34a;"><i class="ph-bold ph-wallet"></i></div>
-              <div><div style="font-size:0.72rem;color:#16a34a;font-weight:700;text-transform:uppercase;">Paid (Mediator)</div><div style="font-size:1.5rem;font-weight:700;color:#15803d;">₹473.00</div></div>
+              <div><div style="font-size:0.72rem;color:#16a34a;font-weight:700;text-transform:uppercase;">Paid (Mediator)</div><div style="font-size:1.5rem;font-weight:700;color:#15803d;" id="hist-paid">—</div></div>
             </div>
           </div>
           <div class="history-stat-card" style="background:linear-gradient(135deg,#fff7ed,#fed7aa);">
             <div style="display:flex;align-items:center;gap:10px;">
               <div style="width:40px;height:40px;background:#fdba74;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#c2410c;"><i class="ph-bold ph-clock"></i></div>
-              <div><div style="font-size:0.72rem;color:#c2410c;font-weight:700;text-transform:uppercase;">Pending</div><div style="font-size:1.5rem;font-weight:700;color:#c2410c;">₹0.00</div></div>
+              <div><div style="font-size:0.72rem;color:#c2410c;font-weight:700;text-transform:uppercase;">Pending</div><div style="font-size:1.5rem;font-weight:700;color:#c2410c;" id="hist-pending">—</div></div>
             </div>
           </div>
         </div>
 
         <!-- Filter Bar -->
         <div style="background:white;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid #f1f5f9;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
-          <input type="text" style="flex:1;padding:9px 14px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.85rem;outline:none;" placeholder="Order ID, Product, Brand...">
-          <select style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;"><option>All Platforms</option><option>Amazon</option><option>Flipkart</option><option>Blinkit</option></select>
-          <select style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;"><option>All Statuses</option><option>Order Form Filled</option><option>Paid</option><option>Cancelled</option></select>
-          <button style="padding:9px 18px;background:#6366f1;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;"><i class="ph-bold ph-funnel"></i> Filter</button>
-          <button style="padding:9px 16px;background:#22c55e;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
+          <input type="text" id="hist-search" style="flex:1;padding:9px 14px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.85rem;outline:none;" placeholder="Order ID, Product, Brand..." oninput="renderHistory()">
+          <select id="hist-platform" style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;" onchange="renderHistory()"><option value="">All Platforms</option><option>Amazon</option><option>Flipkart</option><option>Blinkit</option></select>
+          <select id="hist-status" style="padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-family:'Quicksand',sans-serif;font-size:0.83rem;outline:none;" onchange="renderHistory()"><option value="">All Statuses</option><option value="order_filled">Order Form Filled</option><option value="paid">Paid</option><option value="cancelled">Cancelled</option><option value="under_review">Under Review</option></select>
+          <button style="padding:9px 18px;background:#6366f1;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;" onclick="renderHistory()"><i class="ph-bold ph-funnel"></i> Filter</button>
+          <button style="padding:9px 16px;background:#22c55e;color:white;border:none;border-radius:9px;font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.83rem;cursor:pointer;display:flex;align-items:center;gap:5px;" onclick="exportMyOrders()"><i class="ph-bold ph-download-simple"></i> Download CSV</button>
         </div>
 
-        <!-- Order Rows -->
-        <div class="order-row">
-          <div class="order-row-header">
-            <div>
-              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">Ant | Amazon</div>
-              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Ant_Cosmos_3Mode_Gaming_Controller</div>
-              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">402-0025862-2109921</span></div>
-              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Image Review | Ordered: 26 Jun 2026 | Submitted: 26 Jun 2026, 06:03 PM</div>
-            </div>
-            <span class="status-pill status-filled" style="flex-shrink:0;">● ORDER FILLED</span>
-          </div>
-          <div class="order-row-meta">
-            <div><div class="meta-label">User & Mediator</div><div class="meta-value">Shivam Raj</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Mediator: Aman Pandey</div></div>
-            <div><div class="meta-label">Pricing</div><div class="meta-value">₹1,141.05 Final</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Total: ₹1,441.05 | Less: -₹300</div></div>
-            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#6366f1;margin-top:2px;">9 Days Running</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Refund form pending</div></div>
-          </div>
-          <div class="order-actions">
-            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
-            <button class="order-act-btn act-refund"><i class="ph-bold ph-note-pencil"></i> Refund</button>
-            <button class="order-act-btn act-cancel"><i class="ph-bold ph-x"></i> Cancel</button>
-          </div>
-        </div>
-
-        <div class="order-row">
-          <div class="order-row-header">
-            <div>
-              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">PNC/ADK | Amazon</div>
-              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">PNC_GreyShoewashingBag_Az</div>
-              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">406-1422779-1212359</span></div>
-              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Review | Ordered: 16 Jun 2026 | Submitted: 17 Jun 2026, 03:55 AM</div>
-            </div>
-            <span class="status-pill status-filled" style="flex-shrink:0;">● ORDER FILLED</span>
-          </div>
-          <div class="order-row-meta">
-            <div><div class="meta-label">User & Mediator</div><div class="meta-value">Ayush Chatterjee</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Mediator: Aman Pandey</div></div>
-            <div><div class="meta-label">Pricing</div><div class="meta-value">₹229.00 Final</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Total: ₹249 | Less: -₹20</div></div>
-            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#6366f1;margin-top:2px;">19 Days Running</div></div>
-          </div>
-          <div class="order-actions">
-            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
-            <button class="order-act-btn act-refund"><i class="ph-bold ph-note-pencil"></i> Refund</button>
-            <button class="order-act-btn act-cancel"><i class="ph-bold ph-x"></i> Cancel</button>
-          </div>
-        </div>
-
-        <div class="order-row">
-          <div class="order-row-header">
-            <div>
-              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">PNC | Amazon</div>
-              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">PNC_BlackheadRemover_Az</div>
-              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">402-5031051-7769965</span></div>
-              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: Review | Submitted: 18 May 2026</div>
-            </div>
-            <span class="status-pill status-cancelled" style="flex-shrink:0;">● Cancelled</span>
-          </div>
-          <div class="order-row-meta">
-            <div><div class="meta-label">Reason</div><div class="meta-value" style="color:#dc2626;">User Cancelled</div><div style="font-size:0.73rem;color:#9ca3af;">Cancelled by Amazon</div></div>
-            <div><div class="meta-label">Pricing</div><div class="meta-value">₹0.00 Final</div><div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Penalty: 100%</div></div>
-            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:#dc2626;margin-top:2px;">Not Eligible (&gt;45 Days)</div></div>
-          </div>
-          <div class="order-actions">
-            <button class="order-act-btn act-help"><i class="ph-bold ph-question"></i> Help</button>
-            <button class="order-act-btn act-appeal"><i class="ph-bold ph-lightning"></i> Appeal</button>
-          </div>
-        </div>
+        <!-- Dynamic Order Rows -->
+        <div id="history-rows"></div>
       </div>
 
       <!-- ── PAGE: WHATS NEW ── -->
@@ -1248,10 +1077,10 @@
             <div class="settings-pane" id="s-profile">
               <h3 style="font-weight:700;color:#1f2937;margin-bottom:16px;font-size:1rem;">Profile Information</h3>
               <div class="form-grid">
-                <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input2" value="Ayush Chatterjee"></div>
-                <div class="form-group"><label class="form-label">Mobile</label><input type="tel" class="form-input2" value="9123337436"></div>
-                <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input2" value="alwaysayushsourav162@gmail.com"></div>
-                <div class="form-group"><label class="form-label">Referral Code</label><input type="text" class="form-input2" value="" placeholder="No referral code"></div>
+                <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input2" id="prof-name" placeholder="Your name"></div>
+                <div class="form-group"><label class="form-label">Mobile</label><input type="tel" class="form-input2" id="prof-mobile" placeholder="Mobile number"></div>
+                <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input2" id="prof-email" placeholder="Email address"></div>
+                <div class="form-group"><label class="form-label">Referral Code</label><input type="text" class="form-input2" id="prof-referral" placeholder="No referral code"></div>
               </div>
               <button class="save-btn">Save Profile</button>
             </div>
@@ -1314,33 +1143,199 @@
       'profile': 'Settings'
     };
 
+    // ── SESSION ──
+    let SESSION = null;
+    let MY_ORDERS = [];
+
     function doLogout(){
-      sessionStorage.removeItem('jm_session');
+      clearSession();
       window.location.href='../login.html';
     }
 
+    // ── STATUS HELPERS ──
+    const STATUS_LABELS = {
+      order_filled: 'Order Form Filled', under_review: 'Under Review',
+      pending_review: 'Pending Review', paid: 'Paid ✓',
+      cancelled: 'Cancelled', contact_mediator: 'Contact Mediator', pending: 'Pending'
+    };
+    const STATUS_CLASS = {
+      order_filled: 'status-filled', under_review: 'status-pending',
+      pending_review: 'status-pending', paid: 'status-paid',
+      cancelled: 'status-cancelled', contact_mediator: 'status-pending', pending: 'status-pending'
+    };
+    function statusLabel(s) { return STATUS_LABELS[s] || s; }
+    function statusClass(s) { return STATUS_CLASS[s] || 'status-pending'; }
+
+    function daysRunning(dateStr) {
+      const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+      return diff > 0 ? diff + ' Days Running' : 'Today';
+    }
+
+    // ── INIT ──
     document.addEventListener('DOMContentLoaded', () => {
-      // Auth Guard
-      const s = sessionStorage.getItem('jm_session');
-      if (!s) { window.location.href = '../login.html'; return; }
-      
-      // Show logged-in user name
-      try {
-        const data = JSON.parse(s);
-        if (data && data.name) document.getElementById('dash-user-name').textContent = data.name;
-      } catch (e) {}
+      SESSION = getSession();
+      if (!SESSION || SESSION.role !== 'buyer') {
+        window.location.href = '../login.html';
+        return;
+      }
+
+      // Set user info
+      const initial = (SESSION.name || '?')[0].toUpperCase();
+      document.getElementById('dash-user-name').textContent   = SESSION.name || 'Buyer';
+      document.getElementById('dash-user-avatar').textContent = initial;
+
+      // Load this user's orders only
+      const stored = localStorage.getItem('jm_orders');
+      const allOrders = stored ? JSON.parse(stored) : MOCK_ORDERS;
+      MY_ORDERS = allOrders.filter(o => o.userId === SESSION.userId);
+
+      // Load profile info from buyers list
+      const buyers = getBuyersFromStorage();
+      const me = buyers.find(b => b.id === SESSION.userId);
+      if (me) {
+        const n = document.getElementById('prof-name');     if(n) n.value = me.name || '';
+        const m = document.getElementById('prof-mobile');   if(m) m.value = me.mobile || '';
+        const e = document.getElementById('prof-email');    if(e) e.value = me.email || '';
+        const r = document.getElementById('prof-referral'); if(r) r.value = me.referral || '';
+      }
+
+      // Render everything
+      renderDashStats();
+      renderDashOrders();
+      renderHistory();
     });
 
+    // ── STATS ──
+    function renderDashStats() {
+      const paid     = MY_ORDERS.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
+      const pending  = MY_ORDERS.filter(o => o.status !== 'paid' && o.status !== 'cancelled').length;
+      const refunds  = MY_ORDERS.filter(o => o.refundStatus === 'pending').length;
+
+      const elOrders = document.getElementById('dash-stat-orders');
+      const elSub    = document.getElementById('dash-stat-paid-sub');
+      const elRef    = document.getElementById('dash-stat-refunds');
+      const elRefSub = document.getElementById('dash-stat-refunds-sub');
+      if(elOrders) elOrders.textContent = MY_ORDERS.length;
+      if(elSub)    elSub.textContent    = '₹' + paid.toLocaleString('en-IN', {maximumFractionDigits:0}) + ' Paid';
+      if(elRef)    elRef.textContent    = refunds;
+      if(elRefSub) elRefSub.textContent = refunds === 0 ? 'All Clear ✓' : refunds + ' pending';
+
+      // History stats
+      const hTotal   = document.getElementById('hist-total');
+      const hPaid    = document.getElementById('hist-paid');
+      const hPending = document.getElementById('hist-pending');
+      const pendAmt  = MY_ORDERS.filter(o => o.status !== 'paid' && o.status !== 'cancelled').reduce((s,o) => s + o.finalPayout, 0);
+      if(hTotal)   hTotal.textContent   = MY_ORDERS.length;
+      if(hPaid)    hPaid.textContent    = '₹' + paid.toFixed(2);
+      if(hPending) hPending.textContent = '₹' + pendAmt.toFixed(2);
+    }
+
+    // ── DASHBOARD RECENT ORDERS ──
+    function renderDashOrders() {
+      const search  = (document.getElementById('dash-order-search')?.value || '').toLowerCase();
+      const statusF = document.getElementById('dash-order-status')?.value || '';
+      const tbody   = document.getElementById('dash-orders-body');
+      if (!tbody) return;
+
+      const filtered = MY_ORDERS.filter(o => {
+        const matchS  = !search || o.orderNo.toLowerCase().includes(search) || o.productCode.toLowerCase().includes(search);
+        const matchSt = !statusF || o.status === statusF;
+        return matchS && matchSt;
+      });
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#9ca3af;"><i class="ph-bold ph-receipt" style="font-size:2rem;display:block;margin-bottom:8px;"></i>No orders found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.slice(0,8).map(o => {
+        const canPay = o.status !== 'paid' && o.status !== 'cancelled';
+        return `<tr>
+          <td><div class="order-id">${o.orderNo}</div><div class="order-product">${o.productCode}</div></td>
+          <td><div style="font-size:0.8rem;font-weight:600;">${o.mediator}</div><div style="font-size:0.75rem;color:#9ca3af;">${o.dealType}</div></td>
+          <td><div style="font-size:0.8rem;font-weight:600;">Sub: ${o.submittedDate}</div>${canPay?'<span class="running-tag">'+daysRunning(o.orderDate)+'</span>':''}</td>
+          <td><span class="status-pill ${statusClass(o.status)}">● ${statusLabel(o.status)}</span></td>
+          <td><span class="payout-amount">₹${o.finalPayout.toFixed(2)}</span></td>
+          <td><div style="display:flex;gap:4px;">
+            ${canPay?'<a href="../refundform.html" class="action-icon act-edit" title="Refund"><i class="ph-bold ph-note-pencil"></i></a>':''}
+            <button class="action-icon act-view" title="View" onclick="viewOrderDetail('${o.id}')"><i class="ph-bold ph-eye"></i></button>
+          </div></td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── HISTORY FULL ──
+    function renderHistory() {
+      const search    = (document.getElementById('hist-search')?.value || '').toLowerCase();
+      const platformF = document.getElementById('hist-platform')?.value || '';
+      const statusF   = document.getElementById('hist-status')?.value || '';
+      const container = document.getElementById('history-rows');
+      if (!container) return;
+
+      const filtered = MY_ORDERS.filter(o => {
+        const matchS  = !search || o.orderNo.toLowerCase().includes(search) || o.productCode.toLowerCase().includes(search);
+        const matchP  = !platformF || o.platform === platformF;
+        const matchSt = !statusF || o.status === statusF;
+        return matchS && matchP && matchSt;
+      });
+
+      if (!filtered.length) {
+        container.innerHTML = '<div style="text-align:center;padding:48px;color:#9ca3af;"><i class="ph-bold ph-receipt" style="font-size:2.5rem;display:block;margin-bottom:12px;"></i>No orders found for your account.</div>';
+        return;
+      }
+
+      const isPending = s => s !== 'paid' && s !== 'cancelled';
+      container.innerHTML = filtered.map(o => {
+        const canCancel = isPending(o.status);
+        const canRefund = isPending(o.status);
+        return `<div class="order-row">
+          <div class="order-row-header">
+            <div>
+              <div style="font-weight:700;color:#4f46e5;font-size:0.95rem;">${o.productCode.split('_')[0]} | ${o.platform}</div>
+              <div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">${o.productCode}</div>
+              <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-top:4px;">Order ID: <span style="color:#4f46e5;">${o.orderNo}</span></div>
+              <div style="font-size:0.73rem;color:#9ca3af;font-weight:600;margin-top:2px;">Type: ${o.dealType} | Ordered: ${o.orderDate} | Submitted: ${o.submittedDate}</div>
+            </div>
+            <span class="status-pill ${statusClass(o.status)}" style="flex-shrink:0;">● ${statusLabel(o.status).toUpperCase()}</span>
+          </div>
+          <div class="order-row-meta">
+            <div><div class="meta-label">Mediator</div><div class="meta-value">${o.mediator}</div></div>
+            <div><div class="meta-label">Pricing</div><div class="meta-value">₹${o.finalPayout.toFixed(2)} Final</div><div style="font-size:0.75rem;color:#9ca3af;font-weight:600;">Total: ₹${o.amount.toFixed(2)} | Less: -₹${o.deduction.toFixed(2)}</div></div>
+            <div><div class="meta-label">Status</div><div style="font-size:0.82rem;font-weight:700;color:${canCancel?'#6366f1':'#16a34a'};margin-top:2px;">${canCancel ? daysRunning(o.orderDate) : (o.paidDate ? 'Paid on '+o.paidDate : statusLabel(o.status))}</div></div>
+          </div>
+          <div class="order-actions">
+            ${canRefund ? '<a href="../refundform.html" class="order-act-btn act-refund"><i class="ph-bold ph-note-pencil"></i> Refund</a>' : ''}
+            <button class="order-act-btn act-help" onclick="alert('Contact your mediator for help.')"><i class="ph-bold ph-question"></i> Help</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── VIEW ORDER DETAIL (simple alert) ──
+    function viewOrderDetail(orderId) {
+      const o = MY_ORDERS.find(x => x.id === orderId);
+      if (!o) return;
+      alert(`Order: ${o.orderNo}\nProduct: ${o.productCode}\nPlatform: ${o.platform}\nAmount: ₹${o.amount} | Deduction: -₹${o.deduction} | Final: ₹${o.finalPayout}\nStatus: ${statusLabel(o.status)}`);
+    }
+
+    // ── EXPORT MY ORDERS CSV ──
+    function exportMyOrders() {
+      if (!MY_ORDERS.length) { alert('No orders to export.'); return; }
+      exportToCSV(MY_ORDERS.map(o => ({
+        'Order ID': o.id, 'Order No': o.orderNo, 'Product': o.productCode,
+        'Platform': o.platform, 'Deal Type': o.dealType, 'Mediator': o.mediator,
+        'Order Date': o.orderDate, 'Submitted': o.submittedDate,
+        'Amount': o.amount, 'Deduction': o.deduction, 'Final Payout': o.finalPayout,
+        'Status': o.status, 'Paid Date': o.paidDate || ''
+      })), 'My_Orders_' + new Date().toISOString().split('T')[0] + '.csv');
+    }
+
     function navigate(pageId, el) {
-      // Hide all pages
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      // Show target
       const target = document.getElementById('page-' + pageId);
       if (target) target.classList.add('active');
-      // Update sidebar active
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       if (el) el.classList.add('active');
-      // Update page title
       document.getElementById('current-page-title').textContent = pageTitles[pageId] || pageId;
     }
 
