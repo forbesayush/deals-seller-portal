@@ -43,9 +43,13 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
 
 
+# FIXED: next_id uses max id to avoid duplicates after deletions
 def next_id(model, prefix: str) -> str:
-    count = db.session.query(model).count()
-    return f"{prefix}{str(count + 1).zfill(3)}"
+    max_id = db.session.query(db.func.max(model.id)).scalar()
+    if max_id is None:
+        return f"{prefix}001"
+    num = int(max_id[len(prefix):]) + 1
+    return f"{prefix}{str(num).zfill(3)}"
 
 
 # ─────────────────────────────────────────────
