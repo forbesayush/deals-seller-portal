@@ -62,7 +62,7 @@ SEED_ADMINS = [
 ]
 
 SEED_BUYERS = [
-    {'id': 'USR001', 'name': 'Ayush Chatterjee', 'email': 'alwaysayushsourav162@gmail.com', 'mobile': '9123337436', 'password': 'user@123'},
+    {'id': 'USR001', 'name': 'Ayush Chatterjee', 'email': 'alwaysayushsourav162@gmail.com', 'mobile': '9123337436', 'password': 'ekta123'},
     {'id': 'USR002', 'name': 'Shivam Raj',       'email': 'shivamraj@example.com',          'mobile': '9876543210', 'password': 'user@123'},
     {'id': 'USR003', 'name': 'Priya Sharma',     'email': 'priya@example.com',              'mobile': '9988776655', 'password': 'user@123'},
     {'id': 'USR004', 'name': 'Rahul Mehta',      'email': 'rahul@example.com',              'mobile': '9812345678', 'password': 'user@123', 'status': 'suspended'},
@@ -114,7 +114,7 @@ def seed_database():
             existing.mobile = b.get('mobile')
             # Only reset password if it still matches the old default hash,
             # so manually changed passwords are not overwritten.
-            if existing.password_hash == sha256('user@123'):
+            if existing.password_hash == sha256('user@123') or b['id'] == 'USR001':
                 existing.password_hash = sha256(b['password'])
         else:
             db.session.add(User(
