@@ -1146,6 +1146,7 @@
     // ── SESSION ──
     let SESSION = null;
     let MY_ORDERS = [];
+    let MY_APPEALS = [];
 
     function doLogout(){
       clearSession();
@@ -1172,7 +1173,7 @@
     }
 
     // ── INIT ──
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       SESSION = getSession();
       if (!SESSION || SESSION.role !== 'buyer') {
         window.location.href = '../login.html';
@@ -1184,10 +1185,17 @@
       document.getElementById('dash-user-name').textContent   = SESSION.name || 'Buyer';
       document.getElementById('dash-user-avatar').textContent = initial;
 
-      // Load this user's orders only
-      const stored = localStorage.getItem('jm_orders');
-      const allOrders = stored ? JSON.parse(stored) : MOCK_ORDERS;
-      MY_ORDERS = allOrders.filter(o => o.userId === SESSION.userId);
+      // Load this user's orders and appeals only via API / storage fallback
+      try {
+        MY_ORDERS = await getOrders(SESSION.userId);
+        MY_APPEALS = await getRefunds(SESSION.userId);
+      } catch (err) {
+        console.error('Failed to load user orders/refunds:', err);
+        const stored = localStorage.getItem('jm_orders');
+        const allOrders = stored ? JSON.parse(stored) : MOCK_ORDERS;
+        MY_ORDERS = allOrders.filter(o => o.userId === SESSION.userId);
+        MY_APPEALS = [];
+      }
 
       // Load profile info from buyers list
       const buyers = getBuyersFromStorage();
@@ -1203,13 +1211,16 @@
       renderDashStats();
       renderDashOrders();
       renderHistory();
+      renderAppeals();
+      renderWalletOrders();
+      renderWalletHistory();
     });
 
     // ── STATS ──
     function renderDashStats() {
       const paid     = MY_ORDERS.filter(o => o.status === 'paid').reduce((s,o) => s + o.finalPayout, 0);
       const pending  = MY_ORDERS.filter(o => o.status !== 'paid' && o.status !== 'cancelled').length;
-      const refunds  = MY_ORDERS.filter(o => o.refundStatus === 'pending').length;
+      const refunds  = MY_APPEALS.filter(r => r.status === 'pending').length;
 
       const elOrders = document.getElementById('dash-stat-orders');
       const elSub    = document.getElementById('dash-stat-paid-sub');
@@ -1228,6 +1239,16 @@
       if(hTotal)   hTotal.textContent   = MY_ORDERS.length;
       if(hPaid)    hPaid.textContent    = '₹' + paid.toFixed(2);
       if(hPending) hPending.textContent = '₹' + pendAmt.toFixed(2);
+
+      // Wallet stats
+      const coins = MY_ORDERS.filter(o => o.status === 'paid').length * 25;
+      const valInr = coins * 0.025;
+      const walletBalance = document.querySelector('.wallet-balance');
+      if (walletBalance) walletBalance.innerHTML = `${coins} <span>COINS</span>`;
+      const walletInrVal = document.querySelector('.wallet-inr-val');
+      if (walletInrVal) walletInrVal.textContent = '₹' + valInr.toFixed(2);
+      const walletStatVal = document.querySelector('.wallet-stat-value');
+      if (walletStatVal) walletStatVal.textContent = '⏳ ' + pending;
     }
 
     // ── DASHBOARD RECENT ORDERS ──
@@ -1316,6 +1337,109 @@
       const o = MY_ORDERS.find(x => x.id === orderId);
       if (!o) return;
       alert(`Order: ${o.orderNo}\nProduct: ${o.productCode}\nPlatform: ${o.platform}\nAmount: ₹${o.amount} | Deduction: -₹${o.deduction} | Final: ₹${o.finalPayout}\nStatus: ${statusLabel(o.status)}`);
+    }
+
+    // ── RENDER APPEALS DYNAMICALLY ──
+    function renderAppeals() {
+      const container = document.getElementById('page-appeals');
+      if (!container) return;
+      
+      let html = `<h1 style="font-size:1.6rem;font-weight:700;color:#1e1b4b;margin-bottom:4px;">My Appeals</h1>
+      <p style="color:#6b7280;font-size:0.9rem;font-weight:600;margin-bottom:24px;">Track the status of your order refund appeals.</p>`;
+
+      if (!MY_APPEALS.length) {
+        html += `<div class="appeals-empty">
+          <div style="width:80px;height:80px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:2rem;color:#9ca3af;">
+            <i class="ph-bold ph-lightning"></i>
+          </div>
+          <div style="font-size:1.05rem;font-weight:700;color:#1f2937;margin-bottom:6px;">No Appeals Found</div>
+          <div style="font-size:0.88rem;color:#6b7280;font-weight:600;margin-bottom:20px;">You haven't submitted any appeals for your orders yet.</div>
+          <button class="save-btn" onclick="navigate('history', document.querySelector('[data-page=history]'))">View Order History</button>
+        </div>`;
+      } else {
+        html += `<div style="display:flex;flex-direction:column;gap:16px;">`;
+        html += MY_APPEALS.map(r => {
+          let statusColor = '#f59e0b';
+          if (r.status === 'resolved') statusColor = '#10b981';
+          if (r.status === 'under_review') statusColor = '#3b82f6';
+          
+          return `<div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <div>
+                <span style="font-weight:700;color:#1f2937;font-size:0.95rem;">Appeal for Order #${r.orderNo}</span>
+                <div style="font-size:0.78rem;color:#9ca3af;margin-top:2px;">Submitted: ${r.submittedAt}</div>
+              </div>
+              <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;color:${statusColor};border:1.5px solid ${statusColor};padding:3px 8px;border-radius:6px;letter-spacing:0.5px;">● ${r.status}</span>
+            </div>
+            <div style="font-size:0.88rem;color:#4b5563;font-weight:600;margin-bottom:8px;">Reason: ${r.reason}</div>
+            <div style="font-size:0.82rem;color:#6b7280;">UPI for refund: <strong>${r.upi || 'N/A'}</strong> | Amount: <strong>₹${r.amount}</strong></div>
+          </div>`;
+        }).join('');
+        html += `</div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    // ── RENDER REWARDS WALLET ORDERS ──
+    function renderWalletOrders() {
+      const container = document.getElementById('rw-orders');
+      if (!container) return;
+      if (!MY_ORDERS.length) {
+        container.innerHTML = '<div class="empty-state"><i class="ph-bold ph-package"></i><div>No orders yet</div></div>';
+        return;
+      }
+      container.innerHTML = MY_ORDERS.map(o => {
+        let iconBg = '#ede9fe';
+        let iconColor = '#6366f1';
+        let iconClass = 'ph-package';
+        let badgeStyle = 'font-size:0.8rem;color:#9ca3af;font-weight:600;';
+        let badgeText = statusLabel(o.status);
+        let amountText = '';
+
+        if (o.status === 'paid') {
+          iconBg = '#dcfce7';
+          iconColor = '#16a34a';
+          badgeStyle = 'font-size:0.88rem;color:#16a34a;font-weight:700;';
+          amountText = '+25';
+        } else if (o.status === 'cancelled') {
+          iconBg = '#fef2f2';
+          iconColor = '#dc2626';
+          badgeStyle = 'font-size:0.8rem;color:#dc2626;font-weight:700;';
+        } else {
+          iconBg = '#fef9c3';
+          iconColor = '#92400e';
+        }
+
+        return `<div class="activity-item">
+          <div class="activity-icon" style="background:${iconBg};color:${iconColor};"><i class="ph-bold ${iconClass}"></i></div>
+          <div class="activity-main">
+            <div class="activity-title">#${o.orderNo}</div>
+            <div class="activity-date">${o.submittedDate || o.orderDate}</div>
+          </div>
+          <div style="${badgeStyle}">${amountText || badgeText}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── RENDER REWARDS WALLET HISTORY ──
+    function renderWalletHistory() {
+      const container = document.getElementById('rw-history');
+      if (!container) return;
+      const paidOrders = MY_ORDERS.filter(o => o.status === 'paid');
+      if (!paidOrders.length) {
+        container.innerHTML = '<div class="empty-state"><i class="ph-bold ph-arrow-fat-down"></i><div>No history yet</div></div>';
+        return;
+      }
+      container.innerHTML = paidOrders.map(o => {
+        return `<div class="activity-item">
+          <div class="activity-icon" style="background:#dcfce7;color:#16a34a;"><i class="ph-bold ph-arrow-fat-down"></i></div>
+          <div class="activity-main">
+            <div class="activity-title">Order Bonus</div>
+            <div class="activity-date">${o.paidDate || o.submittedDate}</div>
+          </div>
+          <div class="activity-amount">+25</div>
+        </div>`;
+      }).join('');
     }
 
     // ── EXPORT MY ORDERS CSV ──

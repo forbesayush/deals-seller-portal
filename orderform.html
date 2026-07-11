@@ -183,8 +183,25 @@
     </div>
   </main>
 
+  <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const session = getSession();
+      if (session && session.role === 'buyer') {
+        const nameInput = document.getElementById('reviewer-name');
+        const emailInput = document.getElementById('email');
+        const whatsappInput = document.getElementById('whatsapp');
+        if (nameInput) nameInput.value = session.name || '';
+        if (emailInput) emailInput.value = session.email || '';
+        const buyers = getBuyersFromStorage();
+        const me = buyers.find(b => b.id === session.userId);
+        if (me && me.mobile && whatsappInput) {
+          whatsappInput.value = me.mobile;
+        }
+      }
+    });
+
     function handleFileUpload(input) {
       const file = input.files[0];
       const placeholder = document.getElementById('upload-placeholder');
@@ -203,19 +220,60 @@
       }
     }
 
-    function submitOrder() {
+    async function submitOrder() {
       const confirm = document.getElementById('confirm-check');
       if (!confirm.checked) {
         alert('Please confirm the declaration before submitting.');
         return;
       }
+
+      const productCode = document.getElementById('product-code').value;
+      const orderNo = document.getElementById('order-id').value.trim();
+      const orderDate = document.getElementById('order-date').value;
+      const amount = parseFloat(document.getElementById('order-amount').value) || 0;
+      const isMediator = document.querySelector('input[name="deal-type"]:checked').value === 'Mediator';
+      const mediator = isMediator ? document.getElementById('mediator-name').value.trim() : 'Direct';
+
+      if (!productCode || !orderNo || !orderDate || amount <= 0) {
+        alert('Please fill in all required order details.');
+        return;
+      }
+
+      let platform = 'Amazon';
+      if (productCode.startsWith('AMZ') || productCode.startsWith('AMZ') || productCode.includes('boat') || productCode.includes('Noise') || productCode.includes('HP')) {
+        platform = 'Amazon';
+      } else if (productCode.startsWith('FLK') || productCode.includes('Redmi') || productCode.includes('Puma')) {
+        platform = 'Flipkart';
+      } else if (productCode.startsWith('BLK') || productCode.includes('Amul')) {
+        platform = 'Blinkit';
+      }
+
       const btn = document.getElementById('submit-order-btn');
       btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Submitting...';
       btn.disabled = true;
-      setTimeout(() => {
+
+      const orderData = {
+        orderNo: orderNo,
+        productCode: productCode,
+        platform: platform,
+        mediator: mediator || 'Direct',
+        dealType: isMediator ? 'Review' : 'Direct Deal',
+        orderDate: orderDate,
+        amount: amount,
+        deduction: 0.00,
+        finalPayout: amount,
+        screenshot: true
+      };
+
+      try {
+        await addOrder(orderData);
         btn.classList.add('hidden');
         document.getElementById('submit-success').classList.remove('hidden');
-      }, 1800);
+      } catch (err) {
+        alert('Failed to submit order: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Submit Order';
+      }
     }
   </script>
   <style>

@@ -741,7 +741,19 @@ let DEALS_DATA = [
 // ══════════════════════════════════════════════
 //  INIT — all async-safe
 // ══════════════════════════════════════════════
+let ALL_ORDERS = [];
+let ALL_REFUNDS = [];
+
 async function initPanel() {
+  try {
+    ALL_ORDERS = await getOrders();
+    ALL_REFUNDS = await getRefunds();
+  } catch (err) {
+    console.error('Failed to load orders/refunds from API:', err);
+    ALL_ORDERS = JSON.parse(localStorage.getItem(ORDERS_KEY)) || MOCK_ORDERS;
+    ALL_REFUNDS = JSON.parse(localStorage.getItem(REFUNDS_KEY)) || MOCK_REFUNDS;
+  }
+
   await Promise.all([
     renderOverview(),
     renderUsers(),
@@ -757,12 +769,10 @@ async function initPanel() {
 //  HELPER: get orders/refunds safely (sync or async)
 // ══════════════════════════════════════════════
 function getOrdersSync() {
-  const stored = localStorage.getItem(ORDERS_KEY);
-  return stored ? JSON.parse(stored) : MOCK_ORDERS;
+  return ALL_ORDERS;
 }
 function getRefundsSync() {
-  const stored = localStorage.getItem(REFUNDS_KEY);
-  return stored ? JSON.parse(stored) : MOCK_REFUNDS;
+  return ALL_REFUNDS;
 }
 
 // ══════════════════════════════════════════════
@@ -1325,7 +1335,13 @@ function deleteDeal(id) {
 // ══════════════════════════════════════════════
 //  HELPER: Refresh all panels
 // ══════════════════════════════════════════════
-function refreshAllViews() {
+async function refreshAllViews() {
+  try {
+    ALL_ORDERS = await getOrders();
+    ALL_REFUNDS = await getRefunds();
+  } catch (err) {
+    console.error('Failed to refresh data:', err);
+  }
   renderOverview();
   renderOrders();
   renderPending();

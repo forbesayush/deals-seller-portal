@@ -136,23 +136,42 @@
     </div>
   </main>
 
+  <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
   <script>
-    function findOrder() {
+    let FOUND_ORDER = null;
+
+    async function findOrder() {
       const orderIdInput = document.getElementById('refund-order-id');
-      const orderId = orderIdInput.value.trim();
-      if (!orderId) { alert('Please enter an Order ID.'); return; }
+      const orderNo = orderIdInput.value.trim();
+      if (!orderNo) { alert('Please enter an Order ID.'); return; }
+      
       const btn = document.getElementById('find-order-btn');
       btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i>';
       btn.disabled = true;
-      setTimeout(() => {
-        btn.innerHTML = '<i class="ph-bold ph-magnifying-glass"></i> Find';
-        btn.disabled = false;
+
+      const session = getSession();
+      const userId = session && session.role === 'buyer' ? session.userId : null;
+
+      try {
+        const orders = await getOrders(userId);
+        FOUND_ORDER = orders.find(o => o.orderNo === orderNo || o.id === orderNo);
+      } catch (err) {
+        console.error('Failed to lookup orders:', err);
+      }
+
+      btn.innerHTML = '<i class="ph-bold ph-magnifying-glass"></i> Find';
+      btn.disabled = false;
+
+      if (FOUND_ORDER) {
         document.getElementById('order-not-found').classList.add('hidden');
         document.getElementById('order-result').classList.remove('hidden');
-        document.getElementById('found-order-id').textContent = `Order #${orderId}`;
+        document.getElementById('found-order-id').textContent = `Order #${FOUND_ORDER.orderNo}`;
         document.getElementById('refund-info-box').classList.add('hidden');
-      }, 1500);
+      } else {
+        document.getElementById('order-result').classList.add('hidden');
+        document.getElementById('order-not-found').classList.remove('hidden');
+      }
     }
 
     function handleRefundUpload(input) {
@@ -168,18 +187,38 @@
       }
     }
 
-    function submitRefund() {
+    async function submitRefund() {
       const reason = document.getElementById('refund-reason').value;
       if (!reason) { alert('Please select a reason for refund.'); return; }
       const upi = document.getElementById('refund-upi').value.trim();
       if (!upi) { alert('Please enter your UPI ID.'); return; }
+
+      if (!FOUND_ORDER) {
+        alert('Please find your order first.');
+        return;
+      }
+
       const btn = document.getElementById('submit-refund-btn');
       btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Submitting...';
       btn.disabled = true;
-      setTimeout(() => {
+
+      const refundData = {
+        orderId: FOUND_ORDER.id,
+        orderNo: FOUND_ORDER.orderNo,
+        reason: reason,
+        upi: upi,
+        amount: FOUND_ORDER.finalPayout || FOUND_ORDER.amount
+      };
+
+      try {
+        await addRefund(refundData);
         btn.classList.add('hidden');
         document.getElementById('refund-success').classList.remove('hidden');
-      }, 1800);
+      } catch (err) {
+        alert('Failed to submit refund request: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Submit Refund';
+      }
     }
   </script>
   <style>
