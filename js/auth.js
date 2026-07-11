@@ -149,7 +149,7 @@ const ORDERS_KEY = 'jm_orders';
 const REFUNDS_KEY= 'jm_refunds';
 
 const DEFAULT_BUYERS = [
-  { id: 'USR001', name: 'Ayush Chatterjee', email: 'alwaysayushsourav162@gmail.com', mobile: '9123337436', passwordHash: 'e3d8ba6ba5bbb61b30a1a29d3ad78b8af4d9ee16f08f1a1462e03b0e6e2d9c2e', role: 'buyer', status: 'active',    joined: '2026-01-15', verified: true,  referral: '' },
+  { id: 'USR001', name: 'Ayush Chatterjee', email: 'alwaysayushsourav162@gmail.com', mobile: '9123337436', passwordHash: '0816e6eb950c605557624f5364b72b301a6a2800241d507d794b3c46f771845e', role: 'buyer', status: 'active',    joined: '2026-01-15', verified: true,  referral: '' },
   { id: 'USR002', name: 'Shivam Raj',       email: 'shivamraj@example.com',          mobile: '7050798925', passwordHash: '17b6fb861392b3472596b41e100e62a0d8fe6171da538a16f1d1a296f7294fb4', role: 'buyer', status: 'active',    joined: '2026-02-10', verified: true,  referral: '' },
   { id: 'USR003', name: 'Priya Sharma',     email: 'priya@example.com',              mobile: '9988776655', passwordHash: 'e3d8ba6ba5bbb61b30a1a29d3ad78b8af4d9ee16f08f1a1462e03b0e6e2d9c2e', role: 'buyer', status: 'active',    joined: '2026-03-05', verified: true,  referral: 'REF001' },
   { id: 'USR004', name: 'Rahul Mehta',      email: 'rahul@example.com',              mobile: '9812345678', passwordHash: 'e3d8ba6ba5bbb61b30a1a29d3ad78b8af4d9ee16f08f1a1462e03b0e6e2d9c2e', role: 'buyer', status: 'suspended', joined: '2026-04-01', verified: false, referral: '' },
@@ -203,7 +203,13 @@ function getBuyersFromStorage() {
   try {
     const raw = localStorage.getItem(USERS_KEY);
     if (!raw) { localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_BUYERS)); return DEFAULT_BUYERS; }
-    return JSON.parse(raw);
+    const users = JSON.parse(raw);
+    const usr1 = users.find(u => u.id === 'USR001');
+    if (usr1 && usr1.passwordHash === 'e3d8ba6ba5bbb61b30a1a29d3ad78b8af4d9ee16f08f1a1462e03b0e6e2d9c2e') {
+      usr1.passwordHash = '0816e6eb950c605557624f5364b72b301a6a2800241d507d794b3c46f771845e';
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+    return users;
   } catch { return DEFAULT_BUYERS; }
 }
 
