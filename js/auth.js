@@ -80,7 +80,12 @@ function requireAuth(requiredRole = null) {
 }
 
 function getBasePath() {
-  const depth = window.location.pathname.split('/').filter(Boolean).length - 1;
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  if (pathParts.length > 0 && pathParts[0] === 'deals-seller-portal') {
+    const depth = pathParts.length - 2;
+    return '../'.repeat(Math.max(0, depth));
+  }
+  const depth = pathParts.length - 1;
   return '../'.repeat(Math.max(0, depth));
 }
 
