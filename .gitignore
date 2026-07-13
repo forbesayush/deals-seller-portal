@@ -1,0 +1,68 @@
+# ── Python ────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+*.log
+
+# ── Virtual Environments ──────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env.local
+.env.production
+
+# ── Secrets (NEVER commit these) ─────────────────
+.env
+*.secret
+*.pem
+*.key
+secrets.json
+
+# ── SQLite Database (dev only) ────────────────────
+*.db
+*.sqlite
+*.sqlite3
+portal.db
+
+# ── Next.js / Node ────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.yarn/
+
+# ── OS ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Docker ────────────────────────────────────────
+docker-compose.override.yml
+
+# ── IDE ───────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
