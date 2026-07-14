@@ -1,401 +1,356 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  Search, ArrowLeft, RefreshCw, Sun, Moon, LogOut, Loader2,
-  UserCheck, UserX, Shield, ShieldAlert, Key, Download, Check, XCircle
+import { Sidebar } from '@/components/Sidebar';
+import { Header } from '@/components/Header';
+import {
+  Users, Search, RefreshCw, Plus, Edit3, Shield, UserX,
+  UserCheck, Eye, Key, ChevronRight, Loader2, X, Check,
+  AlertTriangle, Download, Filter
 } from 'lucide-react';
 
-interface Buyer {
-  id: string;
-  name: string;
-  email: string;
-  mobile: string | null;
-  role: string;
-  status: string; // active, suspended, deactivated
-  joined: string; // YYYY-MM-DD
-  verified: boolean;
-  referral: string;
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = { active: 'badge-emerald', suspended: 'badge-rose', pending: 'badge-amber' };
+  return <span className={`badge ${map[status] || 'badge-slate'} text-[10px] capitalize`}>{status}</span>;
 }
 
-export default function UserManager() {
-  const { user, logout } = useAuth();
-  const [buyers, setBuyers] = useState<Buyer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modals & Reset Form
-  const [editingPasswordUser, setEditingPasswordUser] = useState<Buyer | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+function RoleBadge({ role }: { role: string }) {
+  const map: Record<string, string> = {
+    super_admin: 'badge-violet', admin: 'badge-blue', manager: 'badge-amber',
+    auditor: 'badge-slate', buyer: 'badge-emerald',
+  };
+  return <span className={`badge ${map[role] || 'badge-slate'} text-[10px] capitalize`}>{role.replace('_', ' ')}</span>;
+}
 
-  const fetchUsers = async () => {
+const ROLES = ['All', 'super_admin', 'admin', 'manager', 'auditor', 'buyer'];
+const STATUSES = ['All', 'active', 'suspended', 'pending'];
+
+export default function AdminUsers() {
+  const { user } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const [editUser, setEditUser] = useState<any | null>(null);
+  const [editRole, setEditRole] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createMobile, setCreateMobile] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createRole, setCreateRole] = useState('buyer');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createMsg, setCreateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [impersonateLoading, setImpersonateLoading] = useState<string | null>(null);
+
+  const toggleDark = () => {
+    const isDark = !darkMode;
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  };
+
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
-      if (res.ok) {
-        setBuyers(data);
-      }
-    } catch (e) {
-      console.error("Error loading users", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      let url = `/api/users/all?`;
+      if (searchQuery) url += `q=${encodeURIComponent(searchQuery)}&`;
+      if (roleFilter !== 'All') url += `role=${encodeURIComponent(roleFilter)}&`;
+      if (statusFilter !== 'All') url += `status_filter=${encodeURIComponent(statusFilter)}&`;
+      const res = await fetch(url);
+      if (res.ok) setUsers(await res.json());
+    } catch { /* silent */ } finally { setLoading(false); }
+  }, [searchQuery, roleFilter, statusFilter]);
 
   useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     fetchUsers();
-    setDarkMode(document.documentElement.classList.contains('dark'));
-  }, []);
+  }, [fetchUsers]);
 
-  const toggleDarkMode = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setDarkMode(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setDarkMode(true);
-    }
-  };
-
-  const handleUpdateUser = async (userId: string, updates: Partial<Buyer> & { password?: string }) => {
-    setActionLoading(userId);
-    setAlertMsg(null);
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditLoading(true);
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await fetch(`/api/users/${editUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ role: editRole, status: editStatus }),
+      });
+      if (res.ok) { setEditUser(null); fetchUsers(); }
+    } catch { /* silent */ } finally { setEditLoading(false); }
+  };
+
+  const handleSuspend = async (u: any) => {
+    await fetch(`/api/users/${u.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: u.status === 'suspended' ? 'active' : 'suspended' }),
+    });
+    fetchUsers();
+  };
+
+  const handleImpersonate = async (u: any) => {
+    setImpersonateLoading(u.id);
+    try {
+      const res = await fetch(`/api/admin/impersonate/${u.id}`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.impersonationToken) {
+        // Store the token and redirect
+        document.cookie = `token=${data.impersonationToken}; path=/; samesite=lax`;
+        window.location.href = data.targetUser.role === 'buyer' ? '/buyer/dashboard' : '/admin/dashboard';
+      }
+    } catch { /* silent */ } finally { setImpersonateLoading(null); }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateMsg(null);
+    try {
+      const res = await fetch(`/api/users?role=${createRole}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: createName, email: createEmail, mobile: createMobile, password: createPassword, referral: '' }),
       });
       const data = await res.json();
       if (res.ok) {
-        setAlertMsg({ type: 'success', text: `User account updated successfully.` });
+        setCreateMsg({ type: 'success', text: `User "${createName}" created!` });
+        setCreateName(''); setCreateEmail(''); setCreateMobile(''); setCreatePassword('');
         fetchUsers();
       } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to update user account.' });
+        setCreateMsg({ type: 'error', text: data.detail || 'Failed' });
       }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error updating user.' });
-    } finally {
-      setActionLoading(null);
-    }
+    } catch { setCreateMsg({ type: 'error', text: 'Network error' }); }
+    finally { setCreateLoading(false); }
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPasswordUser || !newPassword) return;
-    setPwdLoading(true);
-    setAlertMsg(null);
-    
-    try {
-      const res = await fetch(`/api/users/${editingPasswordUser.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: `Password reset successfully for ${editingPasswordUser.name}.` });
-        setEditingPasswordUser(null);
-        setNewPassword('');
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to reset password.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error resetting password.' });
-    } finally {
-      setPwdLoading(false);
-    }
-  };
-
-  const handleExport = () => {
-    window.open('/api/reports/export?type=users&format=csv', '_blank');
-  };
-
-  const filteredBuyers = buyers.filter(b => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      b.name.toLowerCase().includes(query) ||
-      b.email.toLowerCase().includes(query) ||
-      b.id.toLowerCase().includes(query) ||
-      (b.mobile && b.mobile.toLowerCase().includes(query))
-    );
-  });
-
-  const activeCount = buyers.filter(b => b.status === 'active').length;
-  const suspendedCount = buyers.filter(b => b.status === 'suspended').length;
-  const verifiedCount = buyers.filter(b => b.verified).length;
+  const roleCounts = ROLES.slice(1).reduce((acc, r) => ({
+    ...acc, [r]: users.filter(u => u.role === r).length
+  }), {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans">
+    <>
       <Head>
-        <title>Buyer Accounts - deals.seller MIS</title>
+        <title>User Management — Admin Portal</title>
       </Head>
 
-      {/* Navigation Header */}
-      <header className="glass-panel sticky top-0 z-40 border-b border-slate-200/50 dark:border-slate-800/50 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <a href="/admin/dashboard" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </a>
-          <div>
-            <h1 className="font-extrabold text-lg tracking-tight">Buyer Accounts</h1>
-            <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase">Enterprise MIS</p>
-          </div>
-        </div>
+      <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} darkMode={darkMode} />
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleDarkMode}
-            className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-          >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-500" />}
-          </button>
+        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300"
+          style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}>
+          <Header title="Users" darkMode={darkMode} onToggleDark={toggleDark} sidebarCollapsed={sidebarCollapsed} />
 
-          <div className="flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{user?.name || 'Administrator'}</p>
-              <p className="text-xs text-slate-400 font-semibold uppercase">{user?.role || 'Admin'}</p>
-            </div>
-            <button
-              onClick={logout}
-              className="p-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        
-        {/* Simple Aggregate Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="glass-card rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between shadow-sm">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Buyers</p>
-              <p className="text-3xl font-black mt-1 text-slate-800 dark:text-slate-100">{loading ? '...' : activeCount}</p>
-            </div>
-            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 rounded-xl flex items-center justify-center text-lg font-bold">👥</div>
-          </div>
-
-          <div className="glass-card rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between shadow-sm">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Suspended Accounts</p>
-              <p className="text-3xl font-black mt-1 text-rose-500">{loading ? '...' : suspendedCount}</p>
-            </div>
-            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-950/30 text-rose-500 rounded-xl flex items-center justify-center text-lg font-bold">⚠️</div>
-          </div>
-
-          <div className="glass-card rounded-2xl p-5 border border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between shadow-sm">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Verified Buyers</p>
-              <p className="text-3xl font-black mt-1 text-indigo-500">{loading ? '...' : verifiedCount}</p>
-            </div>
-            <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-500 rounded-xl flex items-center justify-center text-lg font-bold">✓</div>
-          </div>
-        </div>
-
-        {/* Actions Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by name, email, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm px-9 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-sm shadow-sm transition-all"
-            >
-              <Download className="w-4 h-4 text-emerald-500" />
-              <span>Export Users CSV</span>
-            </button>
-            <button
-              onClick={fetchUsers}
-              className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Feedback Alert */}
-        {alertMsg && (
-          <div className={`p-4 rounded-xl text-sm border flex items-center justify-between ${
-            alertMsg.type === 'success' 
-              ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-950/50' 
-              : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-950/50'
-          }`}>
-            <span>{alertMsg.text}</span>
-            <button onClick={() => setAlertMsg(null)} className="text-xs font-bold uppercase tracking-wider opacity-70 hover:opacity-100">Dismiss</button>
-          </div>
-        )}
-
-        {/* Data Table */}
-        <div className="glass-panel rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-100/50 dark:bg-slate-900/30 text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-200/50 dark:border-slate-800/50">
-                  <th className="py-4 px-6">Buyer ID / Name</th>
-                  <th className="py-4 px-6">Email / Mobile</th>
-                  <th className="py-4 px-6">Joined Date</th>
-                  <th className="py-4 px-6">Referral</th>
-                  <th className="py-4 px-6">Verification</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6 text-center">Settings & Control</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/50 dark:divide-slate-800/50 text-sm font-medium">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-                        <span>Gathering buyer database records...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredBuyers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      No buyers found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredBuyers.map(buyer => (
-                    <tr key={buyer.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
-                      <td className="py-4 px-6">
-                        <p className="font-bold text-slate-800 dark:text-slate-100">{buyer.name}</p>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{buyer.id}</span>
-                      </td>
-                      <td className="py-4 px-6 text-slate-700 dark:text-slate-350">
-                        <p>{buyer.email}</p>
-                        <p className="text-xs text-slate-400 font-semibold">{buyer.mobile || 'No Phone Record'}</p>
-                      </td>
-                      <td className="py-4 px-6 text-slate-500">
-                        {buyer.joined}
-                      </td>
-                      <td className="py-4 px-6 text-slate-400 italic font-bold">
-                        {buyer.referral || 'Direct'}
-                      </td>
-                      <td className="py-4 px-6">
-                        <button
-                          onClick={() => handleUpdateUser(buyer.id, { verified: !buyer.verified })}
-                          disabled={actionLoading === buyer.id}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase border transition-all ${
-                            buyer.verified
-                              ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                              : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-400 hover:text-slate-600'
-                          }`}
-                        >
-                          {buyer.verified ? 'Verified' : 'Unverified'}
-                        </button>
-                      </td>
-                      <td className="py-4 px-6">
-                        {buyer.status === 'active' ? (
-                          <span className="px-2 py-0.5 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 rounded-md border border-emerald-100 dark:border-emerald-950/30 uppercase">Active</span>
-                        ) : (
-                          <span className="px-2 py-0.5 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400 rounded-md border border-rose-100 dark:border-rose-950/30 uppercase">Suspended</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center justify-center gap-3">
-                          {buyer.status === 'active' ? (
-                            <button
-                              onClick={() => handleUpdateUser(buyer.id, { status: 'suspended' })}
-                              disabled={actionLoading === buyer.id}
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-xl text-xs font-bold transition-colors"
-                              title="Suspend Profile"
-                            >
-                              <UserX className="w-3.5 h-3.5" />
-                              <span>Suspend</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleUpdateUser(buyer.id, { status: 'active' })}
-                              disabled={actionLoading === buyer.id}
-                              className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-xl text-xs font-bold transition-colors"
-                              title="Activate Profile"
-                            >
-                              <UserCheck className="w-3.5 h-3.5" />
-                              <span>Activate</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setEditingPasswordUser(buyer)}
-                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-brand-500 rounded-lg transition-colors"
-                            title="Reset Password"
-                          >
-                            <Key className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
-
-      {/* Password Reset Modal */}
-      {editingPasswordUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-glass border border-slate-200/50 dark:border-slate-800/50">
-            <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100 mb-2">Reset Account Password</h3>
-            <p className="text-xs text-slate-400 font-semibold mb-6">Resetting security credential keys for buyer: <strong>{editingPasswordUser.name}</strong> ({editingPasswordUser.email})</p>
-            
-            <form onSubmit={handlePasswordReset} className="space-y-4">
+          <main className="flex-1 p-6 pt-[88px]">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">New Password Key</label>
+                <h1 className="page-title">User Management</h1>
+                <p className="page-subtitle">{users.length} total users</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={fetchUsers} className="btn btn-ghost btn-sm"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={() => window.open('/api/reports/export?type=users&format=csv')} className="btn btn-ghost btn-sm">
+                  <Download className="w-4 h-4" />
+                </button>
+                <button onClick={() => setShowCreate(true)} className="btn btn-primary btn-sm">
+                  <Plus className="w-4 h-4" /> New User
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Strip */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+              {ROLES.slice(1).map(r => (
+                <div key={r} className="premium-card p-3 text-center cursor-pointer hover:ring-2 ring-brand-400 transition-all" onClick={() => setRoleFilter(r === roleFilter ? 'All' : r)}>
+                  <p className="text-xl font-extrabold">{roleCounts[r] || 0}</p>
+                  <p className="text-[10px] text-slate-400 capitalize mt-0.5">{r.replace('_', ' ')}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
-                  type="password"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter secure password (min 6 characters)"
-                  className="w-full px-4 py-3 bg-white/70 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+                  type="text" placeholder="Search by name, email, mobile, ID..."
+                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  className="input pl-9"
                 />
               </div>
+              <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="select text-sm w-auto">
+                {ROLES.map(r => <option key={r} value={r}>{r === 'All' ? 'All Roles' : r.replace('_', ' ')}</option>)}
+              </select>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="select text-sm w-auto">
+                {STATUSES.map(s => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
+              </select>
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setEditingPasswordUser(null); setNewPassword(''); }}
-                  className="px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={pwdLoading || newPassword.length < 6}
-                  className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-650 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-brand-100 dark:shadow-none flex items-center justify-center gap-2"
-                >
-                  {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Update Password</span>}
-                </button>
-              </div>
-            </form>
+            {/* Users Table */}
+            <div className="premium-card overflow-hidden">
+              {loading ? (
+                <div className="p-6 space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Contact</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.length === 0 ? (
+                        <tr><td colSpan={6} className="text-center py-10 text-slate-400">No users found</td></tr>
+                      ) : users.map(u => (
+                        <tr key={u.id}>
+                          <td>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                {u.name?.charAt(0)?.toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm">{u.name}</p>
+                                <p className="text-[10px] text-slate-400">{u.id}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p className="text-xs">{u.email}</p>
+                            <p className="text-[10px] text-slate-400">{u.mobile || 'No mobile'}</p>
+                          </td>
+                          <td><RoleBadge role={u.role} /></td>
+                          <td><StatusBadge status={u.status} /></td>
+                          <td className="text-xs text-slate-400">{u.joined}</td>
+                          <td>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setEditUser(u); setEditRole(u.role); setEditStatus(u.status); }}
+                                className="btn btn-ghost btn-sm px-2" title="Edit User"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleSuspend(u)}
+                                className={`btn btn-ghost btn-sm px-2 ${u.status === 'suspended' ? 'text-emerald-500' : 'text-rose-500'}`}
+                                title={u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                              >
+                                {u.status === 'suspended' ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                              </button>
+                              <button
+                                onClick={() => handleImpersonate(u)}
+                                disabled={impersonateLoading === u.id}
+                                className="btn btn-ghost btn-sm px-2 text-amber-500" title="Impersonate"
+                              >
+                                {impersonateLoading === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* Edit User Modal */}
+      {editUser && (
+        <div className="modal-backdrop" onClick={() => setEditUser(null)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="font-extrabold text-lg mb-1">Edit User</h3>
+              <p className="text-sm text-slate-400 mb-4">{editUser.name} · {editUser.email}</p>
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                <div>
+                  <label className="section-label">Role</label>
+                  <select value={editRole} onChange={e => setEditRole(e.target.value)} className="select">
+                    {ROLES.slice(1).map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="section-label">Status</label>
+                  <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="select">
+                    {STATUSES.slice(1).map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={editLoading} className="btn btn-primary flex-1">
+                    {editLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Check className="w-4 h-4" /> Save</>}
+                  </button>
+                  <button type="button" onClick={() => setEditUser(null)} className="btn btn-ghost">Cancel</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* Create User Modal */}
+      {showCreate && (
+        <div className="modal-backdrop" onClick={() => setShowCreate(false)}>
+          <div className="modal-content max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-extrabold text-xl">Create New User</h3>
+                <button onClick={() => setShowCreate(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              </div>
+              {createMsg && (
+                <div className={`p-3 rounded-xl text-sm mb-4 ${createMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600'}`}>
+                  {createMsg.text}
+                </div>
+              )}
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <label className="section-label">Full Name *</label>
+                  <input value={createName} onChange={e => setCreateName(e.target.value)} className="input" required placeholder="Full name" />
+                </div>
+                <div>
+                  <label className="section-label">Email *</label>
+                  <input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} className="input" required placeholder="email@example.com" />
+                </div>
+                <div>
+                  <label className="section-label">Mobile</label>
+                  <input value={createMobile} onChange={e => setCreateMobile(e.target.value)} className="input" placeholder="9876543210" />
+                </div>
+                <div>
+                  <label className="section-label">Password *</label>
+                  <input type="password" value={createPassword} onChange={e => setCreatePassword(e.target.value)} className="input" required placeholder="Min 8 chars" />
+                </div>
+                <div>
+                  <label className="section-label">Role</label>
+                  <select value={createRole} onChange={e => setCreateRole(e.target.value)} className="select">
+                    {ROLES.slice(1).map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={createLoading} className="btn btn-primary flex-1">
+                    {createLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : <><Plus className="w-4 h-4" /> Create User</>}
+                  </button>
+                  <button type="button" onClick={() => setShowCreate(false)} className="btn btn-ghost">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

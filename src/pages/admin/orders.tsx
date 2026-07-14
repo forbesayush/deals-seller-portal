@@ -1,772 +1,365 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  Search, ArrowLeft, Upload, Download, Trash2, CheckCircle, 
-  XCircle, Loader2, RefreshCw, Sun, Moon, LogOut, FileText, Check 
+import { Sidebar } from '@/components/Sidebar';
+import { Header } from '@/components/Header';
+import {
+  Search, RefreshCw, Download, CheckCircle2, XCircle, DollarSign,
+  AlertTriangle, Filter, Edit3, Eye, BarChart3, Loader2,
+  ChevronDown, Check, X, Clock, ShoppingBag, Plus, Send
 } from 'lucide-react';
 
-interface Order {
-  id: string;
-  orderNo: string;
-  orderCode: string;
-  trackingNumber: string | null;
-  productName: string;
-  productPrice: number;
-  quantity: number;
-  buyerId: string;
-  cashbackPct: number;
-  cashbackAmount: number;
-  processingFee: number;
-  deductionAmount: number;
-  netAmount: number;
-  refundStatus: string | null;
-  approvalStatus: string;
-  currentStatus: string;
-  orderDate: string;
-  submittedDate: string | null;
-  paidDate: string | null;
-  createdBy: string | null;
-  updatedBy: string | null;
-  screenshot: boolean;
+function formatINR(n: number) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 }
 
-export default function OrderManager() {
-  const { user, logout } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    paid: 'badge-emerald', order_filled: 'badge-blue', under_review: 'badge-amber',
+    pending_review: 'badge-slate', cancelled: 'badge-rose', approved: 'badge-emerald',
+    pending: 'badge-amber', rejected: 'badge-rose',
+  };
+  const labels: Record<string, string> = {
+    pending_review: 'Pending', order_filled: 'Filled', under_review: 'Reviewing',
+    paid: 'Paid', cancelled: 'Cancelled', approved: 'Approved', rejected: 'Rejected', pending: 'Pending',
+  };
+  return <span className={`badge ${map[status] || 'badge-slate'} text-[10px]`}>{labels[status] || status}</span>;
+}
+
+const STATUS_OPTIONS = [
+  { val: 'pending_review', label: 'Pending Review' },
+  { val: 'order_filled', label: 'Order Filled' },
+  { val: 'under_review', label: 'Under Review' },
+  { val: 'approved', label: 'Approved' },
+  { val: 'paid', label: 'Paid' },
+  { val: 'cancelled', label: 'Cancelled' },
+];
+
+export default function AdminOrders() {
+  const { user } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  
-  // Modals and Alerts
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadLoading, setUploadLoading] = useState(false);
-  const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  
-  // Deduction Override Form
-  const [editDeductionVal, setEditDeductionVal] = useState('');
-  const [updatingDeduction, setUpdatingDeduction] = useState(false);
-  // Bulk Selection States
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-  // Staff Notes
-  const [editNotesVal, setEditNotesVal] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
-  const fetchOrders = async () => {
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const [editOrder, setEditOrder] = useState<any | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
+  const [showFraud, setShowFraud] = useState(false);
+  const [fraudData, setFraudData] = useState<any | null>(null);
+  const [fraudLoading, setFraudLoading] = useState(false);
+
+  const [bulkAction, setBulkAction] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState('');
+
+  const toggleDark = () => {
+    const isDark = !darkMode;
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  };
+
+  const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      let url = '/api/orders';
-      if (searchQuery) {
-        url += `?q=${encodeURIComponent(searchQuery)}`;
-      }
-      const res = await fetch(url);
-      const data = await res.json();
+      const res = await fetch(`/api/orders?q=${encodeURIComponent(searchQuery)}`);
       if (res.ok) {
+        let data = await res.json();
+        if (statusFilter !== 'All') data = data.filter((o: any) => o.currentStatus === statusFilter);
         setOrders(data);
       }
-    } catch (e) {
-      console.error("Error loading orders", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    } catch { /* silent */ } finally { setLoading(false); }
+  }, [searchQuery, statusFilter]);
 
   useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     fetchOrders();
-    setDarkMode(document.documentElement.classList.contains('dark'));
-  }, [searchQuery]);
+  }, [fetchOrders]);
 
-  const toggleDarkMode = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setDarkMode(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setDarkMode(true);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedOrder) {
-      setEditDeductionVal(selectedOrder.deductionAmount.toString());
-      setEditNotesVal(selectedOrder.notes || '');
-    } else {
-      setEditDeductionVal('');
-      setEditNotesVal('');
-    }
-  }, [selectedOrder]);
-
-  const handleSaveNotes = async () => {
-    if (!selectedOrder) return;
-    setSavingNotes(true);
-    setAlertMsg(null);
-    try {
-      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: editNotesVal }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: 'Order internal notes updated.' });
-        setSelectedOrder(data);
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to update notes.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error updating notes.' });
-    } finally {
-      setSavingNotes(false);
-    }
-  };
-
-  const handleToggleSelectOrder = (orderId: string) => {
-    if (selectedOrderIds.includes(orderId)) {
-      setSelectedOrderIds(selectedOrderIds.filter(id => id !== orderId));
-    } else {
-      setSelectedOrderIds([...selectedOrderIds, orderId]);
-    }
-  };
-
-  const handleSelectAll = (filteredList: Order[]) => {
-    if (selectedOrderIds.length === filteredList.length) {
-      setSelectedOrderIds([]);
-    } else {
-      setSelectedOrderIds(filteredList.map(o => o.id));
-    }
-  };
-
-  const handleBulkStatusChange = async (newStatus: string) => {
-    if (selectedOrderIds.length === 0) return;
-    setLoading(true);
-    setAlertMsg(null);
-    try {
-      const res = await fetch('/api/orders/bulk-patch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIds: selectedOrderIds, status: newStatus }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: data.message || `Bulk updated ${selectedOrderIds.length} orders.` });
-        setSelectedOrderIds([]);
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed bulk status change.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error bulk updating.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateDeduction = async () => {
-    if (!selectedOrder) return;
-    setUpdatingDeduction(true);
-    setAlertMsg(null);
-    try {
-      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deduction: parseFloat(editDeductionVal) || 0.0 }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: 'Order deduction overridden successfully.' });
-        setSelectedOrder(data);
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to update deduction.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error updating deduction.' });
-    } finally {
-      setUpdatingDeduction(false);
-    }
-  };
-
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
-    setActionLoading(orderId);
-    setAlertMsg(null);
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentStatus: newStatus }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: `Order status updated to ${newStatus} successfully.` });
-        if (selectedOrder?.id === orderId) {
-          setSelectedOrder(data);
-        }
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to update order status.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error updating order status.' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!window.confirm('Are you sure you want to delete this order? This action is permanent.')) return;
-    setActionLoading(orderId);
-    setAlertMsg(null);
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: 'Order deleted successfully.' });
-        setSelectedOrder(null);
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to delete order.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error deleting order.' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleBulkUpload = async (e: React.FormEvent) => {
+  const handleUpdateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadFile) return;
-    setUploadLoading(true);
-    setAlertMsg(null);
-    
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-
+    if (!editOrder) return;
+    setEditLoading(true);
     try {
-      const res = await fetch('/api/orders/bulk-upload', {
+      const res = await fetch(`/api/orders/${editOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentStatus: editStatus, notes: editNote }),
+      });
+      if (res.ok) { setEditOrder(null); fetchOrders(); }
+    } catch { /* silent */ } finally { setEditLoading(false); }
+  };
+
+  const handleFraudCheck = async (order: any) => {
+    setFraudLoading(true);
+    setFraudData(null);
+    setShowFraud(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/fraud-check`);
+      if (res.ok) setFraudData(await res.json());
+    } catch { /* silent */ } finally { setFraudLoading(false); }
+  };
+
+  const handleBulkAction = async () => {
+    if (!selected.length || !bulkAction) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch('/api/orders/bulk-action', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: selected, action: bulkAction }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setAlertMsg({ type: 'success', text: data.message });
-        setIsUploadOpen(false);
-        setUploadFile(null);
-        fetchOrders();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || data.message || 'Bulk upload failed.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network error during CSV upload.' });
-    } finally {
-      setUploadLoading(false);
-    }
+      setBulkMsg(data.message || 'Done!');
+      setSelected([]);
+      fetchOrders();
+    } catch { setBulkMsg('Error'); } finally { setBulkLoading(false); }
   };
 
-  const handleExport = (format: 'csv' | 'excel') => {
-    window.open(`/api/reports/export?type=orders&format=${format}`, '_blank');
+  const toggleSelect = (id: string) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleSelectAll = () => {
+    setSelected(selected.length === orders.length ? [] : orders.map(o => o.id));
   };
 
-  const filteredOrders = orders.filter(o => {
-    if (statusFilter === 'all') return true;
-    return o.currentStatus === statusFilter;
-  });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <span className="px-2.5 py-1 text-xs font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200/50 dark:border-emerald-900/30 uppercase">Paid</span>;
-      case 'cancelled':
-        return <span className="px-2.5 py-1 text-xs font-bold bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 rounded-full border border-rose-200/50 dark:border-rose-900/30 uppercase">Cancelled</span>;
-      case 'under_review':
-        return <span className="px-2.5 py-1 text-xs font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 rounded-full border border-amber-200/50 dark:border-amber-900/30 uppercase">Under Review</span>;
-      case 'order_filled':
-        return <span className="px-2.5 py-1 text-xs font-bold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200/50 dark:border-blue-900/30 uppercase">Filled</span>;
-      default:
-        return <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full border border-slate-200/50 dark:border-slate-800/50 uppercase">Pending</span>;
-    }
-  };
+  const statusCounts = STATUS_OPTIONS.reduce((acc, s) => ({
+    ...acc,
+    [s.val]: orders.filter(o => o.currentStatus === s.val).length
+  }), {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <>
       <Head>
-        <title>Order Manager - deals.seller MIS</title>
+        <title>Orders Management — Admin Portal</title>
       </Head>
 
-      {/* Navigation Header */}
-      <header className="glass-panel sticky top-0 z-40 border-b border-slate-200/50 dark:border-slate-800/50 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <a href="/admin/dashboard" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </a>
-          <div>
-            <h1 className="font-extrabold text-lg tracking-tight">Order Manager</h1>
-            <p className="text-xs text-slate-400 font-semibold tracking-wider uppercase">Enterprise MIS</p>
-          </div>
-        </div>
+      <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} darkMode={darkMode} />
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleDarkMode}
-            className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-          >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-500" />}
-          </button>
+        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300"
+          style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}>
+          <Header title="Orders" darkMode={darkMode} onToggleDark={toggleDark} sidebarCollapsed={sidebarCollapsed} />
 
-          <div className="flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{user?.name || 'Administrator'}</p>
-              <p className="text-xs text-slate-400 font-semibold uppercase">{user?.role || 'Admin'}</p>
-            </div>
-            <button
-              onClick={logout}
-              className="p-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        
-        {/* Actions Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Left search */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search orders (No, name, code)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm px-9 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
-            />
-          </div>
-
-          {/* Right utility buttons */}
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsUploadOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-sm shadow-sm transition-all"
-            >
-              <Upload className="w-4 h-4 text-indigo-500" />
-              <span>Bulk Upload (CSV)</span>
-            </button>
-            <button
-              onClick={() => handleExport('csv')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-sm shadow-sm transition-all"
-            >
-              <Download className="w-4 h-4 text-emerald-500" />
-              <span>Export CSV</span>
-            </button>
-            <button
-              onClick={fetchOrders}
-              className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all shadow-sm"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Feedback Alert */}
-        {alertMsg && (
-          <div className={`p-4 rounded-xl text-sm border flex items-center justify-between ${
-            alertMsg.type === 'success' 
-              ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-950/50' 
-              : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-950/50'
-          }`}>
-            <span>{alertMsg.text}</span>
-            <button onClick={() => setAlertMsg(null)} className="text-xs font-bold uppercase tracking-wider opacity-70 hover:opacity-100">Dismiss</button>
-          </div>
-        )}
-
-        {/* Tab Filters */}
-        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none border-b border-slate-200 dark:border-slate-800">
-          {[
-            { id: 'all', label: 'All Orders' },
-            { id: 'pending_review', label: 'Pending Review' },
-            { id: 'order_filled', label: 'Order Filled' },
-            { id: 'under_review', label: 'Under Review' },
-            { id: 'paid', label: 'Paid' },
-            { id: 'cancelled', label: 'Cancelled' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-4 py-2 text-sm font-semibold rounded-lg whitespace-nowrap transition-all ${
-                statusFilter === tab.id 
-                  ? 'bg-brand-600 text-white shadow-sm' 
-                  : 'hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Bulk Actions Panel */}
-        {selectedOrderIds.length > 0 && (
-          <div className="bg-brand-50 dark:bg-brand-950/20 border border-brand-100 dark:border-brand-900/30 p-4 rounded-2xl flex items-center justify-between animate-fade-in">
-            <span className="text-xs font-bold text-brand-700 dark:text-brand-300">{selectedOrderIds.length} orders selected</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleBulkStatusChange('paid')}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-sm transition-colors"
-              >
-                Approve & Pay Selected
-              </button>
-              <button
-                onClick={() => handleBulkStatusChange('cancelled')}
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-sm transition-colors"
-              >
-                Cancel Selected
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Data Table */}
-        <div className="glass-panel rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-100/50 dark:bg-slate-900/30 text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-200/50 dark:border-slate-800/50">
-                  <th className="py-4 px-6 text-center w-12">
-                    <input
-                      type="checkbox"
-                      checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
-                      onChange={() => handleSelectAll(filteredOrders)}
-                      className="rounded border-slate-300 dark:border-slate-750 text-brand-650 focus:ring-brand-500"
-                    />
-                  </th>
-                  <th className="py-4 px-6">Order ID</th>
-                  <th className="py-4 px-6">Buyer ID / Product</th>
-                  <th className="py-4 px-6">Platform</th>
-                  <th className="py-4 px-6 text-right">Amount</th>
-                  <th className="py-4 px-6 text-right">Deduction</th>
-                  <th className="py-4 px-6 text-right">Net Payout</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/50 dark:divide-slate-800/50 text-sm font-medium">
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-                        <span>Loading order database...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      No orders found matching the filter criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map(order => (
-                    <tr key={order.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors ${selectedOrderIds.includes(order.id) ? 'bg-brand-50/30 dark:bg-brand-950/5' : ''}`}>
-                      <td className="py-4 px-6 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrderIds.includes(order.id)}
-                          onChange={() => handleToggleSelectOrder(order.id)}
-                          className="rounded border-slate-300 text-brand-650 focus:ring-brand-500"
-                        />
-                      </td>
-                      <td className="py-4 px-6">
-                        <button 
-                          onClick={() => setSelectedOrder(order)} 
-                          className="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline text-left block"
-                        >
-                          #{order.orderNo}
-                        </button>
-                        <span className="text-[10px] text-slate-400 font-semibold">{order.id} · {order.orderDate}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <p className="text-slate-800 dark:text-slate-200 font-bold">{order.buyerId}</p>
-                        <p className="text-xs text-slate-400 font-semibold truncate max-w-[180px]">{order.productName} ({order.productCode})</p>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="text-xs font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md">
-                          {order.platform}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-right font-extrabold text-slate-600 dark:text-slate-400">
-                        ₹{order.productPrice.toLocaleString()}
-                      </td>
-                      <td className="py-4 px-6 text-right font-extrabold text-rose-500">
-                        -₹{order.deductionAmount.toLocaleString()}
-                      </td>
-                      <td className="py-4 px-6 text-right font-black text-emerald-500">
-                        ₹{order.netAmount.toLocaleString()}
-                      </td>
-                      <td className="py-4 px-6">
-                        {getStatusBadge(order.currentStatus)}
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center justify-center gap-2">
-                          {order.currentStatus !== 'paid' && order.currentStatus !== 'cancelled' && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateStatus(order.id, 'paid')}
-                                disabled={actionLoading === order.id}
-                                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors"
-                                title="Mark Paid"
-                              >
-                                {actionLoading === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                              </button>
-                              <button
-                                onClick={() => handleUpdateStatus(order.id, 'cancelled')}
-                                disabled={actionLoading === order.id}
-                                className="p-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg transition-colors"
-                                title="Cancel Order"
-                              >
-                                {actionLoading === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => handleDeleteOrder(order.id)}
-                            disabled={actionLoading === order.id}
-                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-600 transition-colors rounded-lg"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
-
-      {/* Details Slide-Over / Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300">
-          <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 shadow-glass border-l border-slate-200/50 dark:border-slate-800/50 p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-300">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-                <div>
-                  <h3 className="font-extrabold text-lg text-slate-800 dark:text-slate-100">Order Claims Details</h3>
-                  <p className="text-xs text-slate-400 font-semibold uppercase">ID: {selectedOrder.id}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedOrder(null)}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <XCircle className="w-5 h-5 text-slate-400" />
+          <main className="flex-1 p-6 pt-[88px]">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h1 className="page-title">Order Management</h1>
+                <p className="page-subtitle">{orders.length} total orders</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={fetchOrders} className="btn btn-ghost btn-sm"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={() => window.open('/api/reports/export?type=orders&format=csv')} className="btn btn-ghost btn-sm">
+                  <Download className="w-4 h-4" /> Export
+                </button>
+                <button onClick={() => window.open('/api/reports/export?type=orders&format=excel')} className="btn btn-secondary btn-sm">
+                  <Download className="w-4 h-4" /> Excel
                 </button>
               </div>
+            </div>
 
-              {/* Status Badge */}
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl">
-                <span className="text-sm font-bold text-slate-500">Order Status</span>
-                {getStatusBadge(selectedOrder.currentStatus)}
+            {/* Status Filter Chips */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              {[{ val: 'All', label: `All (${orders.length})` }, ...STATUS_OPTIONS.map(s => ({ val: s.val, label: `${s.label} (${statusCounts[s.val] || 0})` }))].map(s => (
+                <button
+                  key={s.val}
+                  onClick={() => setStatusFilter(s.val)}
+                  className={`btn btn-sm rounded-full ${statusFilter === s.val ? 'bg-brand-600 text-white' : 'btn-ghost'}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Bulk Actions Bar */}
+            {selected.length > 0 && (
+              <div className="premium-card p-3 mb-4 flex items-center gap-3 animate-slide-in border-l-4 border-brand-500">
+                <span className="text-sm font-bold">{selected.length} selected</span>
+                <select
+                  value={bulkAction}
+                  onChange={e => setBulkAction(e.target.value)}
+                  className="select text-sm w-auto"
+                >
+                  <option value="">Choose action...</option>
+                  <option value="approve">Approve</option>
+                  <option value="mark_paid">Mark as Paid</option>
+                  <option value="reject">Reject</option>
+                  <option value="cancel">Cancel</option>
+                </select>
+                <button onClick={handleBulkAction} disabled={!bulkAction || bulkLoading} className="btn btn-primary btn-sm">
+                  {bulkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Apply
+                </button>
+                <button onClick={() => setSelected([])} className="btn btn-ghost btn-sm"><X className="w-4 h-4" /></button>
+                {bulkMsg && <span className="text-xs text-emerald-600 font-semibold">{bulkMsg}</span>}
               </div>
+            )}
 
-              {/* Grid Information */}
-              <div className="grid grid-cols-2 gap-6 text-sm font-medium">
+            {/* Search */}
+            <div className="relative mb-5">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text" placeholder="Search by order no, product, status, buyer ID..."
+                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                className="input pl-9"
+              />
+            </div>
+
+            {/* Orders Table */}
+            <div className="premium-card overflow-hidden">
+              {loading ? (
+                <div className="p-6 space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th className="w-10">
+                          <input type="checkbox" className="rounded accent-brand-600" checked={selected.length === orders.length && orders.length > 0} onChange={toggleSelectAll} />
+                        </th>
+                        <th>Order No</th>
+                        <th>Buyer</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Cashback</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.length === 0 ? (
+                        <tr><td colSpan={9} className="text-center py-10 text-slate-400">No orders found</td></tr>
+                      ) : orders.map(order => (
+                        <tr key={order.id}>
+                          <td>
+                            <input type="checkbox" className="rounded accent-brand-600" checked={selected.includes(order.id)} onChange={() => toggleSelect(order.id)} />
+                          </td>
+                          <td>
+                            <div>
+                              <p className="font-mono text-xs font-bold">{order.orderNo?.slice(0, 22)}</p>
+                              <p className="text-[10px] text-slate-400">{order.orderCode}</p>
+                            </div>
+                          </td>
+                          <td className="text-xs text-slate-500">{order.buyerId}</td>
+                          <td>
+                            <p className="text-sm font-semibold line-clamp-1">{order.productName}</p>
+                            <p className="text-xs text-slate-400">{order.platform}</p>
+                          </td>
+                          <td className="font-bold text-sm">{formatINR(order.productPrice)}</td>
+                          <td className="font-bold text-emerald-600 text-sm">{formatINR(order.cashbackAmount)}</td>
+                          <td><StatusBadge status={order.currentStatus} /></td>
+                          <td className="text-xs text-slate-400">{order.orderDate}</td>
+                          <td>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setEditOrder(order); setEditStatus(order.currentStatus); setEditNote(''); }}
+                                className="btn btn-ghost btn-sm px-2" title="Edit Status"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleFraudCheck(order)}
+                                className="btn btn-ghost btn-sm px-2 text-amber-500" title="Fraud Check"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={`/api/orders/${order.id}/timeline`}
+                                target="_blank"
+                                className="btn btn-ghost btn-sm px-2" title="View Timeline"
+                              >
+                                <Clock className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* Edit Order Status Modal */}
+      {editOrder && (
+        <div className="modal-backdrop" onClick={() => setEditOrder(null)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="font-extrabold text-lg mb-1">Update Order</h3>
+              <p className="text-sm text-slate-400 mb-4">Order: <code className="font-mono">{editOrder.orderNo}</code></p>
+              <form onSubmit={handleUpdateOrder} className="space-y-4">
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Order Number</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.orderNo}</p>
+                  <label className="section-label">New Status</label>
+                  <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="select">
+                    {STATUS_OPTIONS.map(s => <option key={s.val} value={s.val}>{s.label}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Unique Order Code</p>
-                  <p className="font-bold text-brand-600 dark:text-brand-400 mt-1">{selectedOrder.orderCode}</p>
+                  <label className="section-label">Admin Note</label>
+                  <textarea value={editNote} onChange={e => setEditNote(e.target.value)} rows={3} className="input resize-none" placeholder="Optional note for audit trail..." />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Product Name</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.productName}</p>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={editLoading} className="btn btn-primary flex-1">
+                    {editLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</> : <><Check className="w-4 h-4" /> Update</>}
+                  </button>
+                  <button type="button" onClick={() => setEditOrder(null)} className="btn btn-ghost">Cancel</button>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Catalog Code</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.productCode}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Buyer User ID</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.buyerId}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Tracking Number</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.trackingNumber || 'Not assigned'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Order Date</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.orderDate}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Paid Timestamp</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-100 mt-1">{selectedOrder.paidDate || 'Unpaid'}</p>
-                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fraud Check Modal */}
+      {showFraud && (
+        <div className="modal-backdrop" onClick={() => setShowFraud(false)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-extrabold text-lg">🔍 Fraud Check</h3>
+                <button onClick={() => setShowFraud(false)}><X className="w-4 h-4 text-slate-400" /></button>
               </div>
-
-              {/* Payment Summary */}
-              <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-5 space-y-3">
-                <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300">Financial Summary</h4>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Product Price</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{selectedOrder.productPrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Cashback Amount ({selectedOrder.cashbackPct}%)</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">₹{selectedOrder.cashbackAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Deduction Fee</span>
-                  <span className="font-bold text-rose-500">-₹{selectedOrder.deductionAmount.toFixed(2)}</span>
-                </div>
-
-                {selectedOrder.currentStatus !== 'paid' && selectedOrder.currentStatus !== 'cancelled' && (
-                  <div className="pt-2 border-t border-slate-150 dark:border-slate-800/80 space-y-2">
-                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Override Fee Cut (₹)</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={editDeductionVal}
-                        onChange={(e) => setEditDeductionVal(e.target.value)}
-                        placeholder="e.g. 50"
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
-                      />
-                      <button
-                        onClick={handleUpdateDeduction}
-                        disabled={updatingDeduction}
-                        className="px-3 py-1.5 bg-brand-650 hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl font-bold text-xs transition-colors flex items-center gap-1 shrink-0"
-                      >
-                        {updatingDeduction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
-                      </button>
+              {fraudLoading ? (
+                <div className="text-center py-6"><Loader2 className="w-8 h-8 animate-spin text-brand-600 mx-auto" /></div>
+              ) : fraudData ? (
+                <div>
+                  <div className={`p-4 rounded-xl mb-4 ${fraudData.isFlagged ? 'bg-rose-50 dark:bg-rose-950/30 border border-rose-200' : 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200'}`}>
+                    <div className="flex items-center gap-2">
+                      {fraudData.isFlagged ? <AlertTriangle className="w-5 h-5 text-rose-500" /> : <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                      <p className={`font-bold ${fraudData.isFlagged ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {fraudData.isFlagged ? 'Potential Fraud Detected' : 'Order Looks Clean'}
+                      </p>
                     </div>
                   </div>
-                )}
-
-                <div className="border-t border-slate-200 dark:border-slate-800 pt-3 flex justify-between text-sm font-extrabold">
-                  <span>Net Payout</span>
-                  <span className="text-emerald-500">₹{selectedOrder.netAmount.toFixed(2)}</span>
+                  {fraudData.fraudFlags?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="section-label">Fraud Flags</p>
+                      {fraudData.fraudFlags.map((flag: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-rose-600">
+                          <AlertTriangle className="w-3.5 h-3.5" /> {flag}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Staff Internal Notes */}
-              <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-5 space-y-3">
-                <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300">Internal Staff Remarks</h4>
-                <textarea
-                  value={editNotesVal}
-                  onChange={(e) => setEditNotesVal(e.target.value)}
-                  placeholder="Add internal remarks about screenshot verification, buyer history, payouts, etc..."
-                  rows={3}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleSaveNotes}
-                    disabled={savingNotes}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center gap-1"
-                  >
-                    {savingNotes ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save Notes'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions Footer */}
-            <div className="border-t border-slate-200 dark:border-slate-800 pt-6 flex items-center justify-between gap-3">
-              <button
-                onClick={() => handleDeleteOrder(selectedOrder.id)}
-                disabled={actionLoading === selectedOrder.id}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-rose-200 hover:bg-rose-50 dark:border-rose-900/30 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400 rounded-xl font-bold text-sm transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Delete</span>
-              </button>
-
-              <div className="flex gap-2">
-                {selectedOrder.currentStatus !== 'paid' && selectedOrder.currentStatus !== 'cancelled' && (
-                  <>
-                    <button
-                      onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')}
-                      disabled={actionLoading === selectedOrder.id}
-                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm transition-all"
-                    >
-                      Cancel Order
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(selectedOrder.id, 'paid')}
-                      disabled={actionLoading === selectedOrder.id}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-emerald-200 dark:shadow-none"
-                    >
-                      Approve & Pay
-                    </button>
-                  </>
-                )}
-              </div>
+              ) : null}
             </div>
           </div>
         </div>
       )}
-
-      {/* CSV Bulk Upload Modal */}
-      {isUploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-glass border border-slate-200/50 dark:border-slate-800/50 relative">
-            <h3 className="font-extrabold text-lg mb-4 text-slate-800 dark:text-slate-100">Bulk Import Order Claims</h3>
-            <p className="text-xs text-slate-400 font-semibold mb-6">Upload a CSV file containing: `orderNo`, `productCode`, `amount`, `buyerEmail`, and `orderDate` headers.</p>
-            
-            <form onSubmit={handleBulkUpload} className="space-y-4">
-              <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center hover:border-brand-500 dark:hover:border-brand-500/50 transition-colors">
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  className="hidden" 
-                  id="csv-file-input" 
-                />
-                <label htmlFor="csv-file-input" className="cursor-pointer block space-y-2">
-                  <div className="mx-auto w-10 h-10 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 rounded-xl flex items-center justify-center">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                    {uploadFile ? uploadFile.name : 'Select CSV file'}
-                  </div>
-                  <div className="text-xs text-slate-400 font-medium">CSV files only, up to 10MB</div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsUploadOpen(false); setUploadFile(null); }}
-                  className="px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!uploadFile || uploadLoading}
-                  className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-brand-100 dark:shadow-none flex items-center justify-center gap-2"
-                >
-                  {uploadLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Process Claims</span>}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
