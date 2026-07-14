@@ -58,7 +58,7 @@ app.add_middleware(
         "http://localhost:3000", "http://127.0.0.1:3000",
         "http://localhost:80", "http://localhost",
     ],
-    allow_origin_regex=r"https://.*\.github\.dev",  # GitHub Codespaces
+    allow_origin_regex=r"https://.*",  # Support Codespaces previews, Vercel deployments, etc.
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
