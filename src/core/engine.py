@@ -978,3 +978,41 @@ def generate_wallet_statement_csv(db: Session, user: User) -> str:
     writer.writerow(['Withdrawable', '', '', wallet.withdrawable_cashback, '', ''])
     return output.getvalue()
 
+
+# ─────────────────────────────────────────────
+#  REVENUE CHART ENGINE (Feature 26/38)
+# ─────────────────────────────────────────────
+def get_revenue_chart(db: Session, days: int = 30) -> dict:
+    """Return daily revenue, order count, and cashback data for the last N days."""
+    from datetime import datetime, timedelta
+    today = datetime.utcnow().date()
+    data = []
+    total_revenue = 0.0
+    total_cashback = 0.0
+
+    for i in range(days - 1, -1, -1):
+        date = today - timedelta(days=i)
+        date_str = date.strftime('%Y-%m-%d')
+        day_orders = db.query(Order).filter(Order.order_date == date_str).all()
+        day_revenue = sum(o.product_price for o in day_orders)
+        day_cashback = sum(o.cashback_amount for o in day_orders)
+        data.append({
+            'date': date_str,
+            'orders': len(day_orders),
+            'revenue': round(day_revenue, 2),
+            'cashback': round(day_cashback, 2),
+        })
+        total_revenue += day_revenue
+        total_cashback += day_cashback
+
+    # Calculate growth: compare last 7 days vs prior 7 days
+    last7 = sum(d['revenue'] for d in data[-7:])
+    prior7 = sum(d['revenue'] for d in data[-14:-7]) if len(data) >= 14 else last7
+    growth_pct = round(((last7 - prior7) / prior7 * 100) if prior7 > 0 else 0, 1)
+
+    return {
+        'data': data,
+        'totalRevenue': round(total_revenue, 2),
+        'totalCashback': round(total_cashback, 2),
+        'growthPct': growth_pct,
+    }

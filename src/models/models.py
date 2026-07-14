@@ -21,6 +21,12 @@ class User(Base):
     last_login     = Column(String(30), nullable=True)      # ISO timestamp
     login_count    = Column(Integer, default=0)
     two_fa_enabled = Column(Boolean, default=False)
+    avatar_color   = Column(String(20), nullable=True, default='violet')   # NEW: profile avatar accent
+    vip_tier       = Column(String(20), nullable=True, default='standard') # NEW: standard, silver, gold, platinum
+    bio            = Column(String(300), nullable=True)                    # NEW: user bio/about
+    kyc_status     = Column(String(20), nullable=True, default='pending')  # NEW: pending, verified, rejected
+    total_earnings = Column(Float, default=0.0)                            # NEW: cumulative cashback earned
+    suspended_reason = Column(String(200), nullable=True)                  # NEW: reason for suspension
 
     orders        = relationship('Order', back_populates='user', foreign_keys='Order.buyer_id')
     refunds       = relationship('Refund', back_populates='user')
@@ -40,6 +46,13 @@ class User(Base):
             'referral': self.referral,
             'upi':      self.upi,
             'referrerId': self.referrer_id,
+            'avatarColor': self.avatar_color,
+            'vipTier':  self.vip_tier,
+            'bio':      self.bio,
+            'kycStatus': self.kyc_status,
+            'totalEarnings': self.total_earnings,
+            'lastLogin': self.last_login,
+            'loginCount': self.login_count,
         }
         if not safe:
             d['passwordHash'] = self.password_hash
@@ -73,6 +86,9 @@ class Order(Base):
     screenshot      = Column(Boolean, default=False)
     screenshot_verified = Column(Boolean, default=False)
     notes           = Column(Text, nullable=True)
+    deal_id         = Column(String(16), ForeignKey('deals.id'), nullable=True) # NEW: linked deal
+    platform        = Column(String(60), nullable=True)                          # NEW: Amazon / Flipkart etc.
+    priority        = Column(String(20), nullable=True, default='normal')        # NEW: normal, high, urgent
 
     user = relationship('User', back_populates='orders', foreign_keys=[buyer_id])
     refunds = relationship('Refund', back_populates='order', cascade="all, delete-orphan")
@@ -102,7 +118,10 @@ class Order(Base):
             'updatedBy':     self.updated_by_id,
             'screenshot':    self.screenshot,
             'screenshotVerified': self.screenshot_verified,
-            'notes':         self.notes
+            'notes':         self.notes,
+            'dealId':        self.deal_id,
+            'platform':      self.platform,
+            'priority':      self.priority,
         }
 
 
@@ -122,6 +141,7 @@ class Refund(Base):
     submitted_at = Column(String(30), nullable=False) # ISO timestamp
     reviewed_at  = Column(String(30), nullable=True)
     resolved_at  = Column(String(30), nullable=True)
+    admin_note   = Column(String(300), nullable=True)  # NEW: admin note on refund decision
 
     user = relationship('User', back_populates='refunds')
     order = relationship('Order', back_populates='refunds')
@@ -140,7 +160,8 @@ class Refund(Base):
             'status':      self.status,
             'submittedAt': self.submitted_at,
             'reviewedAt':  self.reviewed_at,
-            'resolvedAt':  self.resolved_at
+            'resolvedAt':  self.resolved_at,
+            'adminNote':   self.admin_note,
         }
 
 
@@ -155,6 +176,8 @@ class Wallet(Base):
     withdrawable_cashback = Column(Float, default=0.0)
     refund_balance        = Column(Float, default=0.0)
     last_updated          = Column(String(30), nullable=False)
+    total_withdrawn       = Column(Float, default=0.0)   # NEW: cumulative withdrawal amount
+    lifetime_earned       = Column(Float, default=0.0)   # NEW: lifetime cashback earned
 
     user = relationship('User', back_populates='wallet')
     transactions = relationship('Transaction', back_populates='wallet', cascade="all, delete-orphan")
@@ -168,7 +191,9 @@ class Wallet(Base):
             'lockedCashback':       self.locked_cashback,
             'withdrawableCashback': self.withdrawable_cashback,
             'refundBalance':        self.refund_balance,
-            'lastUpdated':          self.last_updated
+            'lastUpdated':          self.last_updated,
+            'totalWithdrawn':       self.total_withdrawn,
+            'lifetimeEarned':       self.lifetime_earned,
         }
 
 
@@ -215,6 +240,7 @@ class AuditLog(Base):
     user_agent  = Column(String(255), nullable=True)
     old_data    = Column(Text, nullable=True) # JSON dump
     new_data    = Column(Text, nullable=True) # JSON dump
+    severity    = Column(String(20), nullable=True, default='info')  # NEW: info, warning, critical
 
     user = relationship('User', back_populates='audit_logs')
 
@@ -230,7 +256,8 @@ class AuditLog(Base):
             'ipAddress':  self.ip_address,
             'userAgent':  self.user_agent,
             'oldData':    json.loads(self.old_data) if self.old_data else None,
-            'newData':    json.loads(self.new_data) if self.new_data else None
+            'newData':    json.loads(self.new_data) if self.new_data else None,
+            'severity':   self.severity,
         }
 
 
@@ -247,6 +274,17 @@ class Deal(Base):
     active       = Column(Boolean, default=True)
     category     = Column(String(60), nullable=True, default='General')
     expires_at   = Column(String(20), nullable=True)
+    # NEW fields
+    description  = Column(Text, nullable=True)             # Deal description
+    image_url    = Column(String(500), nullable=True)      # Product image URL
+    rating       = Column(Float, default=4.0)              # Seller rating (1-5)
+    deal_type    = Column(String(30), nullable=True, default='cashback')  # cashback, discount, bonus
+    min_order_value = Column(Float, default=0.0)           # Minimum order value
+    max_per_user = Column(Integer, default=1)              # Max orders per user for this deal
+    claimed_count = Column(Integer, default=0)             # How many times claimed
+    featured     = Column(Boolean, default=False)          # Show in featured section
+    tags         = Column(String(300), nullable=True)      # Comma-separated tags
+    created_at   = Column(String(30), nullable=True)       # ISO timestamp
 
     def to_dict(self):
         return {
@@ -259,7 +297,17 @@ class Deal(Base):
             'slots':       self.slots,
             'active':      self.active,
             'category':    self.category,
-            'expiresAt':   self.expires_at
+            'expiresAt':   self.expires_at,
+            'description': self.description,
+            'imageUrl':    self.image_url,
+            'rating':      self.rating,
+            'dealType':    self.deal_type,
+            'minOrderValue': self.min_order_value,
+            'maxPerUser':  self.max_per_user,
+            'claimedCount': self.claimed_count,
+            'featured':    self.featured,
+            'tags':        self.tags.split(',') if self.tags else [],
+            'createdAt':   self.created_at,
         }
 
 
@@ -273,6 +321,8 @@ class Withdrawal(Base):
     status       = Column(String(30), default='pending')  # pending, approved, rejected
     created_at   = Column(String(30), nullable=False)     # ISO timestamp
     processed_at = Column(String(30), nullable=True)
+    admin_note   = Column(String(200), nullable=True)     # NEW: admin note
+    txn_ref      = Column(String(80), nullable=True)      # NEW: payment reference
 
     user = relationship('User', foreign_keys=[user_id])
 
@@ -284,7 +334,9 @@ class Withdrawal(Base):
             'amount':      self.amount,
             'status':      self.status,
             'createdAt':   self.created_at,
-            'processedAt': self.processed_at
+            'processedAt': self.processed_at,
+            'adminNote':   self.admin_note,
+            'txnRef':      self.txn_ref,
         }
 
 
@@ -296,9 +348,12 @@ class Ticket(Base):
     title       = Column(String(150), nullable=False)
     description = Column(Text, nullable=False)
     category    = Column(String(50), nullable=False)     # e.g., payout, cashback, general
-    status      = Column(String(30), default='open')     # open, resolved
+    status      = Column(String(30), default='open')     # open, in_progress, resolved, closed
+    priority    = Column(String(20), default='normal')   # NEW: low, normal, high, urgent
     reply       = Column(Text, nullable=True)
     created_at  = Column(String(30), nullable=False)     # ISO timestamp
+    updated_at  = Column(String(30), nullable=True)      # NEW: last update timestamp
+    resolved_at = Column(String(30), nullable=True)      # NEW: resolution timestamp
 
     user = relationship('User', foreign_keys=[user_id])
 
@@ -310,8 +365,11 @@ class Ticket(Base):
             'description': self.description,
             'category':    self.category,
             'status':      self.status,
+            'priority':    self.priority,
             'reply':       self.reply,
-            'createdAt':   self.created_at
+            'createdAt':   self.created_at,
+            'updatedAt':   self.updated_at,
+            'resolvedAt':  self.resolved_at,
         }
 
 
@@ -343,6 +401,8 @@ class Announcement(Base):
     priority   = Column(String(20), default='normal')   # normal, urgent, info
     active     = Column(Boolean, default=True)
     created_at = Column(String(30), nullable=False)
+    expires_at = Column(String(30), nullable=True)       # NEW: optional expiry
+    target_role = Column(String(20), nullable=True)      # NEW: target specific role or all
 
     author = relationship('User', foreign_keys=[author_id])
 
@@ -350,7 +410,8 @@ class Announcement(Base):
         return {
             'id': self.id, 'authorId': self.author_id, 'title': self.title,
             'body': self.body, 'priority': self.priority,
-            'active': self.active, 'createdAt': self.created_at
+            'active': self.active, 'createdAt': self.created_at,
+            'expiresAt': self.expires_at, 'targetRole': self.target_role,
         }
 
 
@@ -429,3 +490,69 @@ class DealSlotHistory(Base):
         }
 
 
+# ─────────────────────────────────────────────
+#  FEATURE FLAGS (NEW - Feature 39/40)
+# ─────────────────────────────────────────────
+class FeatureFlag(Base):
+    __tablename__ = 'feature_flags'
+
+    key         = Column(String(80), primary_key=True)   # e.g. enable_referral
+    enabled     = Column(Boolean, default=True)
+    description = Column(String(300), nullable=True)
+    updated_at  = Column(String(30), nullable=True)
+    updated_by  = Column(String(16), nullable=True)
+
+    def to_dict(self):
+        return {
+            'key': self.key, 'enabled': self.enabled,
+            'description': self.description, 'updatedAt': self.updated_at,
+            'updatedBy': self.updated_by
+        }
+
+
+# ─────────────────────────────────────────────
+#  REFERRAL EARNINGS (NEW - Feature 9)
+# ─────────────────────────────────────────────
+class ReferralEarning(Base):
+    __tablename__ = 'referral_earnings'
+
+    id            = Column(String(16), primary_key=True)   # REA001
+    referrer_id   = Column(String(16), ForeignKey('users.id'), nullable=False)
+    referred_id   = Column(String(16), ForeignKey('users.id'), nullable=False)
+    amount        = Column(Float, default=50.0)
+    status        = Column(String(20), default='credited')  # credited, pending
+    created_at    = Column(String(30), nullable=False)
+
+    referrer = relationship('User', foreign_keys=[referrer_id])
+    referred = relationship('User', foreign_keys=[referred_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'referrerId': self.referrer_id,
+            'referredId': self.referred_id, 'amount': self.amount,
+            'status': self.status, 'createdAt': self.created_at
+        }
+
+
+# ─────────────────────────────────────────────
+#  NOTIFICATION LOG (NEW - Feature 10/38)
+# ─────────────────────────────────────────────
+class NotificationLog(Base):
+    __tablename__ = 'notification_logs'
+
+    id         = Column(String(16), primary_key=True)   # NTF001
+    user_id    = Column(String(16), ForeignKey('users.id'), nullable=False)
+    title      = Column(String(200), nullable=False)
+    body       = Column(Text, nullable=True)
+    type       = Column(String(40), nullable=False)  # cashback, order, system, referral, announcement
+    read       = Column(Boolean, default=False)
+    created_at = Column(String(30), nullable=False)
+
+    user = relationship('User', foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id, 'userId': self.user_id, 'title': self.title,
+            'body': self.body, 'type': self.type, 'read': self.read,
+            'createdAt': self.created_at
+        }

@@ -12,26 +12,33 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from src.database.db import get_db, Base, engine
-from src.models.models import User, Order, Refund, Wallet, Transaction, AuditLog, Deal, Withdrawal, Ticket, SystemSetting, Announcement, LoginSession, OrderStatusLog, DealSlotHistory
+from src.models.models import (
+    User, Order, Refund, Wallet, Transaction, AuditLog, Deal, Withdrawal, Ticket,
+    SystemSetting, Announcement, LoginSession, OrderStatusLog, DealSlotHistory,
+    FeatureFlag, ReferralEarning, NotificationLog
+)
 from src.schemas.schemas import (
     UserLogin, UserRegister, UserResponse, UserUpdate,
-    OrderCreate, OrderUpdate, OrderResponse,
+    OrderCreate, OrderUpdate, OrderResponse, BulkOrderAction,
     RefundCreate, RefundUpdate, RefundResponse,
     WalletResponse, TransactionResponse, AuditLogResponse,
-    APIStatsResponse, MessageResponse, DealCreate, DealUpdate, DealResponse,
+    APIStatsResponse, MessageResponse, DealCreate, DealUpdate, DealResponse, DealCloneRequest,
     UserProfileUpdate, WithdrawalCreate, WithdrawalUpdate, WithdrawalResponse,
     TicketCreate, TicketUpdate, TicketResponse,
     AnnouncementCreate, AnnouncementUpdate, AnnouncementResponse,
     SystemSettingUpdate, SystemSettingResponse,
     LoginSessionResponse, OrderStatusLogResponse, DealSlotHistoryResponse,
-    AnalyticsSummaryResponse, VipTierResponse
+    AnalyticsSummaryResponse, VipTierResponse,
+    FeatureFlagUpdate, FeatureFlagResponse,
+    ReferralStatsResponse, NotificationResponse,
+    RevenueChartResponse, SystemHealthResponse
 )
 from src.middleware.auth import (
     get_current_user, create_access_token, verify_password, sha256,
     require_admin, require_staff, require_buyer
 )
 from src.core import engine as biz_logic
-from src.utils.helpers import today_date, generate_order_code, generate_tracking_number, now_iso, export_csv, export_excel
+from src.utils.helpers import today_date, generate_order_code, generate_tracking_number, now_iso, export_csv, export_excel, next_id
 
 # In-memory rate limiting dictionary (IP -> list of timestamps)
 LOGIN_RATE_LIMITS = defaultdict(list)
@@ -43,10 +50,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS setup
+# CORS setup — allow localhost + GitHub Codespaces + any HTTPS origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5000", "http://127.0.0.1:5000",
+        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:80", "http://localhost",
+    ],
+    allow_origin_regex=r"https://.*\.github\.dev",  # GitHub Codespaces
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -594,19 +606,55 @@ def get_audit_logs(
 
 
 # ─────────────────────────────────────────────
-#  DEALS APIS
+#  DEALS APIS — ALL LOGGED-IN USERS SEE ALL DEALS
 # ─────────────────────────────────────────────
-@app.get("/api/deals", response_model=List[DealResponse])
+@app.get("/api/deals", response_model=List[DealResponse], tags=["Deals"])
 def list_deals(
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    platform: Optional[str] = None,
+    featured: Optional[bool] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role == 'admin':
-        return biz_logic.get_all_deals(db)
+    """All logged-in users (any role) see ALL active deals. Admins also see inactive ones."""
+    if current_user.role in ('admin', 'super_admin', 'manager', 'auditor'):
+        query = db.query(Deal)
     else:
-        return biz_logic.get_active_deals(db)
+        # Buyers see all active deals — no restriction
+        query = db.query(Deal).filter(Deal.active == True)
 
-@app.post("/api/deals", response_model=DealResponse)
+    if q:
+        query = query.filter(
+            Deal.product_name.like(f"%{q}%") |
+            Deal.platform.like(f"%{q}%") |
+            Deal.product_code.like(f"%{q}%") |
+            Deal.category.like(f"%{q}%")
+        )
+    if category and category != 'All':
+        query = query.filter(Deal.category == category)
+    if platform and platform != 'All':
+        query = query.filter(Deal.platform == platform)
+    if featured is not None:
+        query = query.filter(Deal.featured == featured)
+
+    return query.order_by(Deal.featured.desc(), Deal.cashback.desc()).all()
+
+
+@app.get("/api/deals/{deal_id}", tags=["Deals"])
+def get_deal_detail(
+    deal_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Feature 2: Deal detail — visible to all logged-in users."""
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    return deal.to_dict()
+
+
+@app.post("/api/deals", response_model=DealResponse, tags=["Deals"])
 def create_deal(
     schema: DealCreate,
     request: Request,
@@ -617,7 +665,8 @@ def create_deal(
     ua = request.headers.get("user-agent", "unknown")
     return biz_logic.create_deal(db, schema, current_user, ip, ua)
 
-@app.patch("/api/deals/{deal_id}", response_model=DealResponse)
+
+@app.patch("/api/deals/{deal_id}", response_model=DealResponse, tags=["Deals"])
 def update_deal(
     deal_id: str,
     schema: DealUpdate,
@@ -629,7 +678,8 @@ def update_deal(
     ua = request.headers.get("user-agent", "unknown")
     return biz_logic.update_deal(db, deal_id, schema, current_user, ip, ua)
 
-@app.delete("/api/deals/{deal_id}")
+
+@app.delete("/api/deals/{deal_id}", tags=["Deals"])
 def delete_deal(
     deal_id: str,
     request: Request,
@@ -642,6 +692,77 @@ def delete_deal(
     return {"success": True, "message": "Deal permanently removed"}
 
 
+@app.post("/api/deals/{deal_id}/clone", tags=["Deals"])
+def clone_deal(
+    deal_id: str,
+    schema: DealCloneRequest,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 21: Clone an existing deal with a new product code."""
+    original = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    # Check code uniqueness
+    existing = db.query(Deal).filter(Deal.product_code == schema.new_product_code).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Product code already exists")
+
+    cloned = Deal(
+        id=next_id(db, Deal, 'DEA'),
+        product_code=schema.new_product_code,
+        product_name=f"{original.product_name} (Copy)",
+        platform=original.platform,
+        price=original.price,
+        cashback=original.cashback,
+        slots=schema.new_slots if schema.new_slots else original.slots,
+        active=False,  # cloned deals start inactive
+        category=original.category,
+        description=original.description,
+        image_url=original.image_url,
+        rating=original.rating,
+        deal_type=original.deal_type,
+        min_order_value=original.min_order_value,
+        max_per_user=original.max_per_user,
+        featured=False,
+        tags=original.tags,
+        created_at=now_iso()
+    )
+    db.add(cloned)
+    db.commit()
+    db.refresh(cloned)
+    return cloned.to_dict()
+
+
+@app.patch("/api/deals/{deal_id}/slots", tags=["Deals"])
+def adjust_deal_slots(
+    deal_id: str,
+    new_slots: int,
+    reason: Optional[str] = None,
+    request: Request = None,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 20: Manager can adjust slots without full deal edit."""
+    deal = db.query(Deal).filter(Deal.id == deal_id).first()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    old_slots = deal.slots
+    deal.slots = new_slots
+    history = DealSlotHistory(
+        id=next_id(db, DealSlotHistory, 'DSH'),
+        deal_id=deal_id, actor_id=current_user.id,
+        old_slots=old_slots, new_slots=new_slots,
+        reason=reason or "Manual adjustment",
+        timestamp=now_iso()
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(deal)
+    return deal.to_dict()
+
+
 from pydantic import BaseModel, Field
 
 class BulkOrderPatchSchema(BaseModel):
@@ -652,18 +773,19 @@ class BulkOrderPatchSchema(BaseModel):
         allow_population_by_field_name = True
         populate_by_name = True
 
-@app.patch("/api/users/profile", response_model=UserResponse)
+@app.patch("/api/users/profile", response_model=UserResponse, tags=["Users"])
 def update_profile(
     schema: UserProfileUpdate,
     request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Feature 8: Profile & KYC Center — update profile fields."""
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "unknown")
-    
+
     old_dict = current_user.to_dict()
-    
+
     if schema.name is not None:
         current_user.name = schema.name
     if schema.email is not None:
@@ -678,12 +800,59 @@ def update_profile(
         current_user.mobile = schema.mobile
     if schema.upi is not None:
         current_user.upi = schema.upi
-        
+    if schema.bio is not None:
+        current_user.bio = schema.bio
+    if schema.avatar_color is not None:
+        current_user.avatar_color = schema.avatar_color
+
     db.commit()
     db.refresh(current_user)
-    
+
     biz_logic.record_audit(db, current_user, "Update Profile", "users", current_user.id, ip, ua, old_dict, current_user.to_dict())
     return current_user
+
+
+@app.post("/api/users", response_model=UserResponse, tags=["Users"])
+def create_user_by_admin(
+    schema: UserRegister,
+    role: Optional[str] = "buyer",
+    request: Request = None,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 22 & 37: Admin creates any user (buyer, manager, auditor, admin)."""
+    ip = request.client.host if request.client else "unknown"
+    ua = request.headers.get("user-agent", "unknown")
+    user = biz_logic.register_user(db, schema, ip, ua)
+    if role and role != 'buyer':
+        user.role = role
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+@app.get("/api/users/all", response_model=List[UserResponse], tags=["Users"])
+def get_all_users(
+    q: Optional[str] = None,
+    role: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 22: Enhanced user management — search by role, status, name."""
+    query = db.query(User)
+    if q:
+        query = query.filter(
+            User.name.like(f"%{q}%") |
+            User.email.like(f"%{q}%") |
+            User.mobile.like(f"%{q}%") |
+            User.id.like(f"%{q}%")
+        )
+    if role:
+        query = query.filter(User.role == role)
+    if status_filter:
+        query = query.filter(User.status == status_filter)
+    return query.all()
 
 @app.get("/api/withdrawals", response_model=List[WithdrawalResponse])
 def list_withdrawals(
@@ -823,10 +992,41 @@ def update_announcement(
 # ─────────────────────────────────────────────
 @app.get("/api/analytics/summary", tags=["Analytics"])
 def get_analytics_summary(
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db)
 ):
+    """Feature 12/26: Analytics summary — admins + auditors."""
     return biz_logic.get_analytics_summary(db)
+
+
+@app.get("/api/analytics/revenue", tags=["Analytics"])
+def get_revenue_chart(
+    days: int = 30,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 26/38: Revenue chart data for the last N days."""
+    return biz_logic.get_revenue_chart(db, days)
+
+
+@app.get("/api/analytics/deals", tags=["Analytics"])
+def get_deal_analytics(
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 15: Deal performance analytics."""
+    deals = db.query(Deal).all()
+    result = []
+    for d in deals:
+        orders_for_deal = db.query(Order).filter(Order.deal_id == d.id).count()
+        paid_for_deal = db.query(Order).filter(Order.deal_id == d.id, Order.current_status == 'paid').count()
+        result.append({
+            'dealId': d.id, 'productName': d.product_name, 'platform': d.platform,
+            'totalOrders': orders_for_deal, 'paidOrders': paid_for_deal,
+            'slotsRemaining': d.slots, 'cashback': d.cashback, 'active': d.active,
+            'claimedCount': d.claimed_count,
+        })
+    return result
 
 
 # ─────────────────────────────────────────────
@@ -956,6 +1156,213 @@ def download_wallet_statement(
 
 
 # ─────────────────────────────────────────────
+#  FEATURE FLAGS API (Feature 39/40)
+# ─────────────────────────────────────────────
+@app.get("/api/feature-flags", tags=["Admin"])
+def list_feature_flags(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 39: Get all feature flags."""
+    flags = db.query(FeatureFlag).all()
+    return [f.to_dict() for f in flags]
+
+
+@app.put("/api/feature-flags/{key}", tags=["Admin"])
+def toggle_feature_flag(
+    key: str,
+    schema: FeatureFlagUpdate,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 40: Toggle a feature flag on/off."""
+    flag = db.query(FeatureFlag).filter(FeatureFlag.key == key).first()
+    if not flag:
+        flag = FeatureFlag(key=key, enabled=schema.enabled, description=schema.description, updated_at=now_iso(), updated_by=current_user.id)
+        db.add(flag)
+    else:
+        flag.enabled = schema.enabled
+        if schema.description:
+            flag.description = schema.description
+        flag.updated_at = now_iso()
+        flag.updated_by = current_user.id
+    db.commit()
+    db.refresh(flag)
+    return flag.to_dict()
+
+
+# ─────────────────────────────────────────────
+#  REFERRAL API (Feature 9)
+# ─────────────────────────────────────────────
+@app.get("/api/referrals/my", tags=["Referrals"])
+def get_my_referral_stats(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Feature 9: Referral dashboard stats."""
+    base_url = str(request.base_url).rstrip('/')
+    referred_users = db.query(User).filter(User.referrer_id == current_user.id).all()
+    earnings = db.query(ReferralEarning).filter(ReferralEarning.referrer_id == current_user.id).all()
+    total_earned = sum(e.amount for e in earnings)
+    pending_earned = sum(e.amount for e in earnings if e.status == 'pending')
+    return {
+        "referralCode": current_user.referral,
+        "referralLink": f"{base_url}/login?ref={current_user.referral}",
+        "totalReferrals": len(referred_users),
+        "totalEarned": total_earned,
+        "pendingEarned": pending_earned,
+        "referredUsers": [{"name": u.name, "joined": u.joined, "status": u.status} for u in referred_users]
+    }
+
+
+# ─────────────────────────────────────────────
+#  NOTIFICATIONS API (Feature 10/38)
+# ─────────────────────────────────────────────
+@app.get("/api/notifications", tags=["Notifications"])
+def get_my_notifications(
+    unread_only: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Feature 10: Get notifications for current user."""
+    query = db.query(NotificationLog).filter(NotificationLog.user_id == current_user.id)
+    if unread_only:
+        query = query.filter(NotificationLog.read == False)
+    return [n.to_dict() for n in query.order_by(NotificationLog.created_at.desc()).limit(50).all()]
+
+
+@app.patch("/api/notifications/{notif_id}/read", tags=["Notifications"])
+def mark_notification_read(
+    notif_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    notif = db.query(NotificationLog).filter(NotificationLog.id == notif_id, NotificationLog.user_id == current_user.id).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    notif.read = True
+    db.commit()
+    return {"success": True}
+
+
+@app.patch("/api/notifications/mark-all-read", tags=["Notifications"])
+def mark_all_notifications_read(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db.query(NotificationLog).filter(NotificationLog.user_id == current_user.id, NotificationLog.read == False).update({"read": True})
+    db.commit()
+    return {"success": True}
+
+
+# ─────────────────────────────────────────────
+#  SYSTEM HEALTH API (Feature 31/34)
+# ─────────────────────────────────────────────
+@app.get("/api/health/full", tags=["System"])
+def system_health_full(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 31/34: Full system health check — DB stats, counts, sessions."""
+    import os
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'portal.db')
+    db_size_kb = 0.0
+    if os.path.exists(db_path):
+        db_size_kb = round(os.path.getsize(db_path) / 1024, 2)
+
+    return {
+        "status": "healthy",
+        "dbSizeKb": db_size_kb,
+        "totalUsers": db.query(User).count(),
+        "totalOrders": db.query(Order).count(),
+        "totalDeals": db.query(Deal).count(),
+        "activeSessions": db.query(LoginSession).filter(LoginSession.active == True).count(),
+        "openTickets": db.query(Ticket).filter(Ticket.status == 'open').count(),
+        "pendingWithdrawals": db.query(Withdrawal).filter(Withdrawal.status == 'pending').count(),
+        "version": "3.0.0",
+        "timestamp": now_iso()
+    }
+
+
+# ─────────────────────────────────────────────
+#  GLOBAL SEARCH API (Feature 35)
+# ─────────────────────────────────────────────
+@app.get("/api/search", tags=["Admin"])
+def global_search(
+    q: str,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 35: Global search across orders, users, deals, tickets."""
+    if not q or len(q) < 2:
+        return {"users": [], "orders": [], "deals": [], "tickets": []}
+
+    wq = f"%{q}%"
+    users = db.query(User).filter(
+        User.name.like(wq) | User.email.like(wq) | User.mobile.like(wq) | User.id.like(wq)
+    ).limit(5).all()
+    orders = db.query(Order).filter(
+        Order.order_no.like(wq) | Order.order_code.like(wq) | Order.product_name.like(wq)
+    ).limit(5).all()
+    deals = db.query(Deal).filter(
+        Deal.product_name.like(wq) | Deal.product_code.like(wq) | Deal.platform.like(wq)
+    ).limit(5).all()
+    tickets = db.query(Ticket).filter(
+        Ticket.title.like(wq) | Ticket.description.like(wq)
+    ).limit(5).all()
+
+    return {
+        "users": [u.to_dict() for u in users],
+        "orders": [o.to_dict() for o in orders],
+        "deals": [d.to_dict() for d in deals],
+        "tickets": [t.to_dict() for t in tickets],
+    }
+
+
+# ─────────────────────────────────────────────
+#  ADMIN SESSIONS MANAGEMENT (Feature 29/32)
+# ─────────────────────────────────────────────
+@app.get("/api/admin/sessions", tags=["Admin"])
+def list_all_sessions(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 29: Admin sees all active sessions."""
+    sessions = db.query(LoginSession).filter(LoginSession.active == True).order_by(LoginSession.created_at.desc()).limit(100).all()
+    result = []
+    for s in sessions:
+        user = db.query(User).filter(User.id == s.user_id).first()
+        d = s.to_dict()
+        if user:
+            d['userName'] = user.name
+            d['userRole'] = user.role
+        result.append(d)
+    return result
+
+
+@app.delete("/api/admin/sessions/{session_id}", tags=["Admin"])
+def admin_terminate_session(
+    session_id: str,
+    request: Request,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Feature 29: Admin force-terminates a session."""
+    ip = request.client.host if request.client else "unknown"
+    ua = request.headers.get("user-agent", "unknown")
+    session = db.query(LoginSession).filter(LoginSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.active = False
+    session.ended_at = now_iso()
+    biz_logic.record_audit(db, current_user, "Terminate Session", "sessions", session_id, ip, ua)
+    db.commit()
+    return {"success": True, "message": f"Session {session_id} terminated"}
+
+
+# ─────────────────────────────────────────────
 #  ADMIN IMPERSONATION API (super_admin only)
 # ─────────────────────────────────────────────
 @app.post("/api/admin/impersonate/{user_id}", tags=["Admin"])
@@ -965,51 +1372,71 @@ def impersonate_user(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != 'super_admin':
-        raise HTTPException(status_code=403, detail="Only super_admin can impersonate users")
+    """Feature 32: Super admin impersonates any user for debugging."""
+    if current_user.role not in ('super_admin', 'admin'):
+        raise HTTPException(status_code=403, detail="Only admin/super_admin can impersonate users")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "unknown")
-    # Issue a scoped token for target with impersonation metadata
-    token_data = {"sub": target.email, "role": target.role, "impersonated_by": current_user.id}
+    token_data = {"sub": target.id, "role": target.role, "impersonated_by": current_user.id}
     token = create_access_token(token_data)
-    from src.middleware.auth import sha256
-    biz_logic.create_login_session(db, target, sha256(token), ip, f"IMPERSONATION by {current_user.id}")
-    from src.utils.helpers import now_iso
-    from src.models.models import AuditLog
-    record = AuditLog(
-        id=next_id(db, AuditLog, 'AUD'),
-        user_id=current_user.id, action="Impersonate User", resource="users",
-        resource_id=user_id, ip_address=ip, user_agent=ua,
-        timestamp=now_iso(), old_value=None, new_value=f"Issued impersonation token for {target.email}"
-    )
-    db.add(record)
-    db.commit()
+    biz_logic.record_audit(db, current_user, "Impersonate User", "users", user_id, ip, ua)
     return {"success": True, "impersonationToken": token, "targetUser": target.to_dict()}
 
 
 # ─────────────────────────────────────────────
-#  STATIC WEB SERVER HOSTING (FALLBACK SPA CLIENT)
+#  BULK ORDER ACTION (Feature 18)
 # ─────────────────────────────────────────────
-# Determine path where the fallback SPA page is located
+@app.post("/api/orders/bulk-action", tags=["Orders"])
+def bulk_order_action(
+    schema: BulkOrderAction,
+    request: Request,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    """Feature 18: Bulk approve/reject/mark-paid/cancel multiple orders at once."""
+    ip = request.client.host if request.client else "unknown"
+    ua = request.headers.get("user-agent", "unknown")
+
+    status_map = {
+        'approve': 'approved', 'reject': 'cancelled',
+        'mark_paid': 'paid', 'cancel': 'cancelled'
+    }
+    new_status = status_map.get(schema.action, schema.action)
+    success_count = 0
+
+    for oid in schema.order_ids:
+        try:
+            order_update = OrderUpdate(currentStatus=new_status, notes=schema.note)
+            biz_logic.update_order(db, oid, order_update, current_user, ip, ua)
+            success_count += 1
+        except Exception as e:
+            print(f"Bulk action error on {oid}: {e}")
+
+    return {"success": True, "message": f"{success_count}/{len(schema.order_ids)} orders updated to {new_status}"}
+
+
+# ─────────────────────────────────────────────
+#  STATIC WEB SERVER HOSTING (FALLBACK SPA)
+# ─────────────────────────────────────────────
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def serve_portal_spa():
     spa_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(spa_path):
         with open(spa_path, "r", encoding="utf-8") as f:
             return f.read()
-    return "<h3>Portal loading... Please wait, files are seeding.</h3>"
+    return "<h3>Portal API is running. Frontend is served by Next.js on port 3000 (or via nginx on port 80).</h3>"
 
-@app.get("/portal", response_class=HTMLResponse)
+@app.get("/portal", response_class=HTMLResponse, include_in_schema=False)
 def serve_portal_spa_alias():
     return serve_portal_spa()
 
-# Mount the static directory
+# Mount the static directory for assets
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 if __name__ == "__main__":
