@@ -1,21 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
-import { KeyRound, ShieldAlert, ArrowRight, Loader2, Key } from 'lucide-react';
+import {
+  KeyRound, ArrowRight, Loader2, Eye, EyeOff,
+  ShieldCheck, Sparkles, TrendingUp, Users, Tag
+} from 'lucide-react';
+
+const FEATURES = [
+  { icon: Tag, label: 'Live Deals Marketplace', desc: 'Browse 100s of cashback deals' },
+  { icon: TrendingUp, label: 'Smart Wallet', desc: 'Track & grow your cashback earnings' },
+  { icon: Users, label: 'Referral Rewards', desc: 'Earn ₹50 for every friend you invite' },
+  { icon: ShieldCheck, label: 'Secure & Verified', desc: 'Enterprise-grade security at every step' },
+];
 
 export default function Login() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const [activeFeature, setActiveFeature] = useState(0);
   const setUser = useAuth((state) => state.setUser);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveFeature(prev => (prev + 1) % FEATURES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier || !password) {
-      setError('Please fill in all credentials fields');
+      setError('Please enter your credentials');
       return;
     }
     setError('');
@@ -28,146 +45,258 @@ export default function Login() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        // Fetch current user details
         const meRes = await fetch('/api/auth/me');
         const meData = await meRes.json();
         if (meData.success) {
           setUser(meData.user);
-          // Redirect
-          if (meData.user.role === 'admin' || meData.user.role === 'manager' || meData.user.role === 'auditor') {
+          const role = meData.user.role;
+          if (['admin', 'super_admin', 'manager', 'auditor'].includes(role)) {
             window.location.href = '/admin/dashboard';
           } else {
             window.location.href = '/buyer/dashboard';
           }
         }
       } else {
-        setError(data.detail || 'Invalid username or password');
+        setError(data.detail || 'Invalid credentials. Please try again.');
       }
-    } catch (err) {
-      setError('Connection failed. Please check your backend service.');
+    } catch {
+      setError('Connection error. Please check if the server is running.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasskey = () => {
-    setPasskeyLoading(true);
-    setError('');
-    setTimeout(async () => {
-      setPasskeyLoading(false);
-      // Auto login as admin for demonstration purposes
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: 'admin', password: 'admin@123' }),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          const meRes = await fetch('/api/auth/me');
-          const meData = await meRes.json();
-          if (meData.success) {
-            setUser(meData.user);
-            window.location.href = '/admin/dashboard';
-          }
-        }
-      } catch (err) {
-        setError('Passkey login simulated bypass failed.');
-      }
-    }, 1500);
-  };
+  const feat = FEATURES[activeFeature];
+  const FeatIcon = feat.icon;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300 relative overflow-hidden">
+    <>
       <Head>
-        <title>Login - Enterprise Order Management</title>
+        <title>Sign In — Deals Seller Portal</title>
+        <meta name="description" content="Sign in to the Deals Seller Portal to browse cashback deals, manage orders, and track your earnings." />
       </Head>
-      
-      {/* Decorative Blur Spheres */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-indigo-200/40 dark:bg-indigo-950/20 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[35rem] h-[35rem] bg-violet-200/40 dark:bg-violet-950/20 rounded-full blur-[80px] pointer-events-none" />
 
-      <div className="w-full max-w-md z-10 animate-fade-in">
-        <div className="glass-panel rounded-3xl p-8 shadow-glass hover:shadow-2xl hover:border-brand-500/20 transition-all duration-500 border border-slate-200/50 dark:border-slate-850/50 relative before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-brand-500 before:to-indigo-500 before:rounded-t-3xl">
-          <div className="text-center mb-8">
-            <div className="mx-auto w-12 h-12 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-md shadow-brand-200/50 dark:shadow-none mb-4 animate-bounce-slow">
-              AG
-            </div>
-            <h2 className="text-2xl font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent tracking-tight">Welcome Back</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">Sign in to manage seller orders</p>
-          </div>
+      <div className="min-h-screen flex overflow-hidden" style={{ background: 'var(--color-bg)' }}>
+        {/* Left — Hero Panel (hidden on mobile) */}
+        <div className="hidden lg:flex flex-1 relative items-center justify-center overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #0f1629 0%, #1a1040 50%, #0f1629 100%)' }}
+        >
+          {/* Orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-20 animate-float"
+            style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full opacity-15 animate-float"
+            style={{ background: 'radial-gradient(circle, #4f46e5, transparent)', animationDelay: '2s' }} />
+          <div className="absolute top-1/2 right-1/3 w-48 h-48 rounded-full opacity-10 animate-float"
+            style={{ background: 'radial-gradient(circle, #10b981, transparent)', animationDelay: '4s' }} />
 
-          {error && (
-            <div className="mb-6 flex items-center gap-3 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-sm border border-rose-100 dark:border-rose-950/50">
-              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {/* Grid overlay */}
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
+              backgroundSize: '50px 50px'
+            }}
+          />
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Username or Email</label>
-              <input
-                type="text"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="admin, Ayush, email@example.com"
-                className="w-full px-4 py-3 bg-white/70 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-500/50 transition-all text-sm"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
-                <a href="#" className="text-xs font-bold text-brand-600 hover:text-brand-700 dark:text-brand-400">Forgot?</a>
+          <div className="relative z-10 text-white max-w-md px-12">
+            {/* Logo */}
+            <div className="flex items-center gap-3 mb-12">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-black text-lg shadow-glow-violet">
+                DS
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 bg-white/70 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-500/50 transition-all text-sm"
-              />
+              <div>
+                <p className="font-extrabold text-xl tracking-tight">deals.seller</p>
+                <p className="text-xs text-white/50 font-semibold uppercase tracking-widest">Enterprise Portal</p>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.01]"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+            <h1 className="text-4xl font-extrabold leading-tight mb-4">
+              Your all-in-one<br />
+              <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg, #a78bfa, #818cf8)' }}>
+                cashback platform
+              </span>
+            </h1>
+            <p className="text-white/60 text-base leading-relaxed mb-12">
+              Discover live deals, track orders, manage your wallet, and earn cashback — all in one beautifully designed portal.
+            </p>
 
-          <div className="relative my-6 text-center">
-            <span className="absolute inset-x-0 top-1/2 border-b border-slate-200 dark:border-slate-800 -z-10" />
-            <span className="bg-slate-50 dark:bg-slate-900 px-3 text-xs text-slate-400 font-medium">Or use secure key</span>
+            {/* Feature Carousel */}
+            <div className="relative h-24 overflow-hidden">
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <div
+                    key={i}
+                    className={`absolute inset-0 flex items-center gap-4 transition-all duration-700 ${i === activeFeature ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 backdrop-blur">
+                      <Icon className="w-6 h-6 text-violet-300" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-base">{f.label}</p>
+                      <p className="text-sm text-white/50">{f.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Feature Dots */}
+            <div className="flex gap-2 mt-6">
+              {FEATURES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveFeature(i)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${i === activeFeature ? 'w-8 bg-violet-400' : 'w-2 bg-white/20'}`}
+                />
+              ))}
+            </div>
+
+            {/* Stats */}
+            <div className="mt-12 grid grid-cols-3 gap-4">
+              {[
+                { val: '10K+', label: 'Active Users' },
+                { val: '500+', label: 'Live Deals' },
+                { val: '₹2Cr+', label: 'Cashback Paid' },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <p className="text-2xl font-extrabold text-white">{s.val}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
 
-          <button
-            type="button"
-            onClick={handlePasskey}
-            disabled={passkeyLoading}
-            className="w-full py-3 bg-white/80 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm shadow-sm transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            {passkeyLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
-            ) : (
-              <>
-                <Key className="w-4 h-4 text-brand-500" />
-                <span>Sign in with Passkey</span>
-              </>
+        {/* Right — Login Form */}
+        <div className="flex-1 lg:max-w-[480px] flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-sm animate-fade-up">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center gap-3 mb-10">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-black text-white shadow-md">
+                DS
+              </div>
+              <div>
+                <p className="font-extrabold tracking-tight">deals.seller</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest">Enterprise Portal</p>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h2 className="text-3xl font-extrabold tracking-tight">Welcome back</h2>
+              <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
+                Sign in to continue to your portal
+              </p>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2 animate-slide-in">
+                <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
             )}
-          </button>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Identifier */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--color-text-muted)' }}>
+                  Email / Mobile / Username
+                </label>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  placeholder="Enter email, mobile or username"
+                  className="input"
+                  autoFocus
+                  autoComplete="username"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+                    Password
+                  </label>
+                  <a href="#" className="text-xs font-bold text-brand-600 hover:text-brand-700 dark:text-violet-400">
+                    Forgot password?
+                  </a>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="input pr-10"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  >
+                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary btn-lg w-full mt-2"
+              >
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
+                ) : (
+                  <><span>Sign In</span><ArrowRight className="w-4 h-4" /></>
+                )}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-6 text-center">
+              <div className="absolute inset-x-0 top-1/2 border-t" style={{ borderColor: 'var(--color-border)' }} />
+              <span className="relative px-3 text-xs font-medium" style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
+                Quick access
+              </span>
+            </div>
+
+            {/* Quick Login Chips */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Admin Demo', id: 'admin', pwd: 'admin@123', icon: '🛡️' },
+                { label: 'Buyer Demo', id: 'alwaysayushsourav162@gmail.com', pwd: 'ekta123', icon: '🛍️' },
+              ].map(demo => (
+                <button
+                  key={demo.label}
+                  onClick={() => { setIdentifier(demo.id); setPassword(demo.pwd); }}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/20 transition-all duration-200"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
+                >
+                  <span>{demo.icon}</span>
+                  <span>{demo.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Register link */}
+            <p className="text-center text-xs mt-8" style={{ color: 'var(--color-text-muted)' }}>
+              New to deals.seller?{' '}
+              <a href="/login" className="font-bold text-brand-600 dark:text-violet-400 hover:underline">
+                Create an account →
+              </a>
+            </p>
+
+            {/* Footer */}
+            <p className="text-center text-[10px] mt-6" style={{ color: 'var(--color-text-muted)' }}>
+              Protected by enterprise-grade security. © 2026 deals.seller
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
