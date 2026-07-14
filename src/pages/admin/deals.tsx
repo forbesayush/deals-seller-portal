@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  Search, ArrowLeft, RefreshCw, Sun, Moon, LogOut, Loader2,
-  Plus, Trash2, Edit, Check, XCircle, Info, ExternalLink, ToggleLeft, ToggleRight
+import { Sidebar } from '@/components/Sidebar';
+import { Header } from '@/components/Header';
+import { DealCard } from '@/components/DealCard';
+import {
+  Plus, Search, Filter, RefreshCw, Tag, Edit3, Trash2, Copy,
+  ToggleLeft, ToggleRight, Star, ChevronRight, X, Loader2,
+  Grid3X3, List, AlertTriangle, Check, Sliders
 } from 'lucide-react';
 
 interface Deal {
@@ -15,657 +19,587 @@ interface Deal {
   cashback: number;
   slots: number;
   active: boolean;
+  category?: string;
+  expiresAt?: string;
+  description?: string;
+  imageUrl?: string;
+  rating?: number;
+  dealType?: string;
+  minOrderValue?: number;
+  maxPerUser?: number;
+  claimedCount?: number;
+  featured?: boolean;
+  tags?: string;
+  createdAt?: string;
 }
 
-export default function DealsManager() {
-  const { user, logout } = useAuth();
+function formatINR(n: number) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+}
+
+const PLATFORMS = ['Amazon', 'Flipkart', 'Blinkit', 'Myntra', 'Meesho', 'Other'];
+const CATEGORIES = ['General', 'Electronics', 'Fashion', 'Groceries', 'Home & Kitchen', 'Beauty', 'Sports', 'Books', 'Toys'];
+const DEAL_TYPES = ['cashback', 'review', 'rating', 'image_review', 'qa', 'video'];
+
+interface DealFormData {
+  productCode: string;
+  productName: string;
+  platform: string;
+  price: number | '';
+  cashback: number | '';
+  slots: number | '';
+  active: boolean;
+  category: string;
+  expiresAt: string;
+  description: string;
+  imageUrl: string;
+  rating: number | '';
+  dealType: string;
+  minOrderValue: number | '';
+  maxPerUser: number | '';
+  featured: boolean;
+  tags: string;
+}
+
+const DEFAULT_FORM: DealFormData = {
+  productCode: '', productName: '', platform: 'Amazon', price: '', cashback: '',
+  slots: 5, active: true, category: 'General', expiresAt: '', description: '',
+  imageUrl: '', rating: 4.5, dealType: 'cashback', minOrderValue: 0, maxPerUser: 1,
+  featured: false, tags: '',
+};
+
+export default function AdminDeals() {
+  const { user } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Modals state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
-  
-  // Form states
-  const [productCode, setProductCode] = useState('');
-  const [productName, setProductName] = useState('');
-  const [platform, setPlatform] = useState('Amazon');
-  const [price, setPrice] = useState('');
-  const [cashback, setCashback] = useState('');
-  const [slots, setSlots] = useState('5');
-  const [active, setActive] = useState(true);
+  const [platformFilter, setPlatformFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editDeal, setEditDeal] = useState<Deal | null>(null);
+  const [formData, setFormData] = useState<DealFormData>(DEFAULT_FORM);
   const [formLoading, setFormLoading] = useState(false);
+  const [formMsg, setFormMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [cloneDeal, setCloneDeal] = useState<Deal | null>(null);
+  const [cloneCode, setCloneCode] = useState('');
+  const [cloneSlots, setCloneSlots] = useState('');
+  const [cloneLoading, setCloneLoading] = useState(false);
 
-  const fetchDeals = async () => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteDeal, setDeleteDeal] = useState<Deal | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [showSlotModal, setShowSlotModal] = useState(false);
+  const [slotDeal, setSlotDeal] = useState<Deal | null>(null);
+  const [newSlots, setNewSlots] = useState('');
+  const [slotReason, setSlotReason] = useState('');
+
+  const toggleDark = () => {
+    const isDark = !darkMode;
+    setDarkMode(isDark);
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  };
+
+  const fetchDeals = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/deals');
-      const data = await res.json();
+      let url = '/api/deals?';
+      if (searchQuery) url += `q=${encodeURIComponent(searchQuery)}&`;
+      if (platformFilter !== 'All') url += `platform=${encodeURIComponent(platformFilter)}&`;
+      const res = await fetch(url);
       if (res.ok) {
+        let data = await res.json();
+        if (statusFilter === 'active') data = data.filter((d: Deal) => d.active);
+        if (statusFilter === 'inactive') data = data.filter((d: Deal) => !d.active);
+        if (statusFilter === 'featured') data = data.filter((d: Deal) => d.featured);
         setDeals(data);
       }
-    } catch (e) {
-      console.error("Error loading deals", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    } catch { /* silent */ } finally { setLoading(false); }
+  }, [searchQuery, platformFilter, statusFilter]);
 
   useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     fetchDeals();
-    setDarkMode(document.documentElement.classList.contains('dark'));
-  }, []);
+  }, [fetchDeals]);
 
-  const toggleDarkMode = () => {
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setDarkMode(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setDarkMode(true);
-    }
+  const openCreate = () => {
+    setEditDeal(null);
+    setFormData(DEFAULT_FORM);
+    setFormMsg(null);
+    setShowForm(true);
   };
 
-  const handleCreateDeal = async (e: React.FormEvent) => {
+  const openEdit = (deal: Deal) => {
+    setEditDeal(deal);
+    setFormData({
+      productCode: deal.productCode, productName: deal.productName,
+      platform: deal.platform, price: deal.price, cashback: deal.cashback,
+      slots: deal.slots, active: deal.active, category: deal.category || 'General',
+      expiresAt: deal.expiresAt || '', description: deal.description || '',
+      imageUrl: deal.imageUrl || '', rating: deal.rating || 4.5,
+      dealType: deal.dealType || 'cashback', minOrderValue: deal.minOrderValue || 0,
+      maxPerUser: deal.maxPerUser || 1, featured: deal.featured || false,
+      tags: Array.isArray(deal.tags) ? deal.tags.join(', ') : (deal.tags || ''),
+    });
+    setFormMsg(null);
+    setShowForm(true);
+  };
+
+  const handleSubmitDeal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productCode || !productName || !price || !cashback) {
-      setAlertMsg({ type: 'error', text: 'All fields are required' });
-      return;
-    }
     setFormLoading(true);
-    setAlertMsg(null);
+    setFormMsg(null);
     try {
-      const res = await fetch('/api/deals', {
-        method: 'POST',
+      const url = editDeal ? `/api/deals/${editDeal.id}` : '/api/deals';
+      const method = editDeal ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productCode,
-          productName,
-          platform,
-          price: parseFloat(price),
-          cashback: parseFloat(cashback),
-          slots: parseInt(slots),
-          active
-        }),
+        body: JSON.stringify(formData),
       });
       const data = await res.json();
       if (res.ok) {
-        setAlertMsg({ type: 'success', text: `Deal logged and live! ID: ${data.id}` });
-        setShowCreateModal(false);
-        resetForm();
+        setFormMsg({ type: 'success', text: editDeal ? 'Deal updated successfully!' : 'Deal created successfully!' });
         fetchDeals();
+        setTimeout(() => { setShowForm(false); setFormMsg(null); }, 1500);
       } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to register deal.' });
+        setFormMsg({ type: 'error', text: data.detail || 'Failed to save deal' });
       }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network connection failed.' });
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleUpdateDeal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDeal) return;
-    setFormLoading(true);
-    setAlertMsg(null);
-    try {
-      const res = await fetch(`/api/deals/${editingDeal.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName,
-          platform,
-          price: parseFloat(price),
-          cashback: parseFloat(cashback),
-          slots: parseInt(slots),
-          active
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: `Deal updated successfully.` });
-        setEditingDeal(null);
-        resetForm();
-        fetchDeals();
-      } else {
-        setAlertMsg({ type: 'error', text: data.detail || 'Failed to update deal.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network connection failed.' });
+    } catch {
+      setFormMsg({ type: 'error', text: 'Network error' });
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleToggleActive = async (deal: Deal) => {
-    setActionLoading(deal.id);
     try {
       const res = await fetch(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: !deal.active }),
       });
-      if (res.ok) {
-        fetchDeals();
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setActionLoading(null);
-    }
+      if (res.ok) fetchDeals();
+    } catch { /* silent */ }
   };
 
-  const handleDeleteDeal = async (dealId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this deal? This action is irreversible.")) return;
-    setActionLoading(dealId);
-    setAlertMsg(null);
+  const handleToggleFeatured = async (deal: Deal) => {
     try {
-      const res = await fetch(`/api/deals/${dealId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setAlertMsg({ type: 'success', text: 'Deal permanently deleted.' });
-        fetchDeals();
-      } else {
-        const err = await res.json();
-        setAlertMsg({ type: 'error', text: err.detail || 'Failed to delete deal.' });
-      }
-    } catch (e) {
-      setAlertMsg({ type: 'error', text: 'Network issue deleting deal.' });
-    } finally {
-      setActionLoading(null);
-    }
+      const res = await fetch(`/api/deals/${deal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: !deal.featured }),
+      });
+      if (res.ok) fetchDeals();
+    } catch { /* silent */ }
   };
 
-  const resetForm = () => {
-    setProductCode('');
-    setProductName('');
-    setPlatform('Amazon');
-    setPrice('');
-    setCashback('');
-    setSlots('5');
-    setActive(true);
+  const handleDelete = async () => {
+    if (!deleteDeal) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/deals/${deleteDeal.id}`, { method: 'DELETE' });
+      if (res.ok) { setShowDeleteConfirm(false); setDeleteDeal(null); fetchDeals(); }
+    } catch { /* silent */ } finally { setDeleteLoading(false); }
   };
 
-  const startEdit = (deal: Deal) => {
-    setEditingDeal(deal);
-    setProductCode(deal.productCode);
-    setProductName(deal.productName);
-    setPlatform(deal.platform);
-    setPrice(deal.price.toString());
-    setCashback(deal.cashback.toString());
-    setSlots(deal.slots.toString());
-    setActive(deal.active);
+  const handleClone = async () => {
+    if (!cloneDeal || !cloneCode) return;
+    setCloneLoading(true);
+    try {
+      const res = await fetch(`/api/deals/${cloneDeal.id}/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newProductCode: cloneCode, newSlots: cloneSlots ? parseInt(cloneSlots) : undefined }),
+      });
+      if (res.ok) { setShowCloneModal(false); setCloneDeal(null); setCloneCode(''); setCloneSlots(''); fetchDeals(); }
+    } catch { /* silent */ } finally { setCloneLoading(false); }
   };
 
-  const filteredDeals = deals.filter(d => 
-    d.productCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.platform.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleAdjustSlots = async () => {
+    if (!slotDeal || !newSlots) return;
+    try {
+      const res = await fetch(`/api/deals/${slotDeal.id}/slots?new_slots=${newSlots}&reason=${encodeURIComponent(slotReason || 'Manual')}`, {
+        method: 'PATCH',
+      });
+      if (res.ok) { setShowSlotModal(false); setSlotDeal(null); setNewSlots(''); setSlotReason(''); fetchDeals(); }
+    } catch { /* silent */ }
+  };
+
+  const filteredDeals = deals;
+  const activeCount = deals.filter(d => d.active).length;
+  const featuredCount = deals.filter(d => d.featured).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+    <>
       <Head>
-        <title>Live Deals Manager - deals.seller MIS</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Manage Deals — Admin Portal</title>
+        <meta name="description" content="Create, manage, and monitor all deals in the portal." />
       </Head>
 
-      {/* Header */}
-      <header className="glass-panel sticky top-0 z-40 border-b border-slate-200/50 dark:border-slate-800/40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-extrabold shadow-sm">
-            AG
-          </div>
-          <div>
-            <h1 className="font-extrabold text-lg tracking-tight">deals.seller</h1>
-            <p className="text-[10px] text-brand-600 dark:text-brand-400 font-bold uppercase tracking-wider">Live Deals Catalog</p>
-          </div>
-        </div>
+      <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} darkMode={darkMode} />
 
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={toggleDarkMode} 
-            className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-          >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-500" />}
-          </button>
+        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300"
+          style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}>
+          <Header title="Deals Manager" darkMode={darkMode} onToggleDark={toggleDark} sidebarCollapsed={sidebarCollapsed} />
 
-          <div className="flex items-center gap-3 border-l border-slate-200 dark:border-slate-800 pl-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{user?.name}</p>
-              <p className="text-[10px] text-brand-600 font-bold uppercase">{user?.role}</p>
+          <main className="flex-1 p-6 pt-[88px]">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h1 className="page-title">Deal Catalog</h1>
+                <p className="page-subtitle">
+                  {deals.length} deals total · {activeCount} active · {featuredCount} featured
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className="btn btn-ghost btn-sm">
+                  {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid3X3 className="w-4 h-4" />}
+                </button>
+                <button onClick={fetchDeals} className="btn btn-ghost btn-sm">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button onClick={openCreate} className="btn btn-primary btn-sm">
+                  <Plus className="w-4 h-4" /> New Deal
+                </button>
+              </div>
             </div>
-            <button 
-              onClick={() => logout()} 
-              className="p-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 border border-slate-200/50 dark:border-slate-800/50 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        
-        {/* Banner Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <a 
-              href="/admin/dashboard" 
-              className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 uppercase tracking-wider mb-2 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-            </a>
-            <h2 className="text-3xl font-extrabold tracking-tight">Deals & Offers Manager</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Manage dynamic seller inventory, rewards slots, and platform cashback multipliers.</p>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={fetchDeals}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-850 font-semibold text-sm shadow-sm transition-all"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Sync catalog</span>
-            </button>
-
-            <button
-              onClick={() => { resetForm(); setShowCreateModal(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white rounded-xl font-bold text-sm shadow-md transition-all hover:scale-[1.01]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create New Deal</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Toast Alerts */}
-        {alertMsg && (
-          <div className={`p-4 rounded-xl border flex items-center gap-3 animate-slideIn ${
-            alertMsg.type === 'success' 
-              ? 'bg-emerald-50 text-emerald-800 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-900/50'
-              : 'bg-rose-50 text-rose-800 border-rose-100 dark:bg-rose-950/20 dark:text-rose-300 dark:border-rose-900/50'
-          }`}>
-            <span>{alertMsg.type === 'success' ? <Check className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}</span>
-            <span className="text-sm font-bold">{alertMsg.text}</span>
-          </div>
-        )}
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Total Catalog Deals</p>
-            <h3 className="text-3xl font-extrabold mt-2">{loading ? '...' : deals.length}</h3>
-          </div>
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Active Deals</p>
-            <h3 className="text-3xl font-extrabold mt-2 text-emerald-500">{loading ? '...' : deals.filter(d => d.active).length}</h3>
-          </div>
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Inactive/Draft Deals</p>
-            <h3 className="text-3xl font-extrabold mt-2 text-rose-500">{loading ? '...' : deals.filter(d => !d.active).length}</h3>
-          </div>
-          <div className="glass-panel p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Total Slots Left</p>
-            <h3 className="text-3xl font-extrabold mt-2 text-brand-500">{loading ? '...' : deals.reduce((acc, d) => acc + d.slots, 0)}</h3>
-          </div>
-        </div>
-
-        {/* Search & Filter Toolbar */}
-        <div className="glass-panel rounded-3xl p-5 shadow-sm border border-slate-200/50 dark:border-slate-800/50 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search deals by platform, product code, name..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
-            />
-          </div>
-          <div className="text-xs text-slate-400 font-semibold">
-            Showing {filteredDeals.length} of {deals.length} deals in database
-          </div>
-        </div>
-
-        {/* Inventory list */}
-        <div className="glass-panel rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
-          {loading ? (
-            <div className="py-24 flex flex-col items-center justify-center">
-              <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
-              <p className="text-sm font-semibold text-slate-400 mt-4">Retrieving live deals catalog...</p>
+            {/* Stats Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {[
+                { label: 'Total Deals', value: deals.length, color: 'text-brand-600' },
+                { label: 'Active', value: activeCount, color: 'text-emerald-500' },
+                { label: 'Featured', value: featuredCount, color: 'text-amber-500' },
+                { label: 'Inactive', value: deals.length - activeCount, color: 'text-rose-500' },
+              ].map(s => (
+                <div key={s.label} className="premium-card p-3 text-center">
+                  <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </div>
-          ) : filteredDeals.length === 0 ? (
-            <div className="py-24 text-center">
-              <span className="text-4xl">🔥</span>
-              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-350 mt-4">No Deals Found</h3>
-              <p className="text-slate-400 text-sm mt-1">Try refining your search query or add a new deal.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50 dark:bg-slate-900/30">
-                    <th className="px-6 py-4">Product Details</th>
-                    <th className="px-6 py-4">Code</th>
-                    <th className="px-6 py-4">Platform</th>
-                    <th className="px-6 py-4">Original Price</th>
-                    <th className="px-6 py-4">Cashback Payout</th>
-                    <th className="px-6 py-4">Slots Left</th>
-                    <th className="px-6 py-4 text-center">Status</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/50">
-                  {filteredDeals.map(d => {
-                    const isAmazon = d.platform.toLowerCase() === 'amazon';
-                    const isFlipkart = d.platform.toLowerCase() === 'flipkart';
-                    const isBlinkit = d.platform.toLowerCase() === 'blinkit';
-                    let platformBadge = "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
-                    if (isAmazon) platformBadge = "bg-amber-50 text-amber-800 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-950";
-                    if (isFlipkart) platformBadge = "bg-blue-50 text-blue-800 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-950";
-                    if (isBlinkit) platformBadge = "bg-emerald-50 text-emerald-800 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-950";
 
-                    return (
-                      <tr key={d.id} className="hover:bg-slate-100/30 dark:hover:bg-slate-900/20 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="max-w-xs md:max-w-md">
-                            <p className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={d.productName}>{d.productName}</p>
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3 mb-5">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text" placeholder="Search by name, code, platform..."
+                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  className="input pl-9 text-sm"
+                />
+              </div>
+              <select value={platformFilter} onChange={e => setPlatformFilter(e.target.value)} className="select text-sm w-auto">
+                <option value="All">All Platforms</option>
+                {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="select text-sm w-auto">
+                <option value="All">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+                <option value="featured">Featured</option>
+              </select>
+            </div>
+
+            {/* Deals Grid / List */}
+            {loading ? (
+              <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+                {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton rounded-2xl h-64" />)}
+              </div>
+            ) : filteredDeals.length === 0 ? (
+              <div className="text-center py-20">
+                <Tag className="w-16 h-16 text-slate-200 dark:text-slate-700 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-slate-400">No deals found</h3>
+                <p className="text-slate-300 dark:text-slate-600 mt-2 mb-6">Start by creating your first deal</p>
+                <button onClick={openCreate} className="btn btn-primary">
+                  <Plus className="w-4 h-4" /> Create Deal
+                </button>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredDeals.map(deal => (
+                  <div key={deal.id} className="relative group">
+                    <DealCard deal={deal} onClaim={() => {}} />
+                    {/* Admin Action Overlay */}
+                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                      <button onClick={() => openEdit(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors" title="Edit">
+                        <Edit3 className="w-3.5 h-3.5 text-brand-600" />
+                      </button>
+                      <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Clone">
+                        <Copy className="w-3.5 h-3.5 text-amber-500" />
+                      </button>
+                      <button onClick={() => handleToggleFeatured(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 transition-colors" title="Toggle Featured">
+                        <Star className={`w-3.5 h-3.5 ${deal.featured ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
+                      </button>
+                      <button onClick={() => { setSlotDeal(deal); setNewSlots(String(deal.slots)); setShowSlotModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-blue-50 transition-colors" title="Adjust Slots">
+                        <Sliders className="w-3.5 h-3.5 text-blue-500" />
+                      </button>
+                      <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-rose-50 transition-colors" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      </button>
+                    </div>
+                    {/* Active Toggle */}
+                    <button
+                      onClick={() => handleToggleActive(deal)}
+                      className={`absolute bottom-16 right-3 badge text-[10px] ${deal.active ? 'badge-emerald' : 'badge-rose'}`}
+                    >
+                      {deal.active ? '● Live' : '○ Paused'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* List View */
+              <div className="premium-card overflow-hidden">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Platform</th>
+                      <th>Price</th>
+                      <th>Cashback</th>
+                      <th>Slots</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDeals.map(deal => (
+                      <tr key={deal.id}>
+                        <td>
+                          <div>
+                            <p className="font-semibold text-sm">{deal.productName}</p>
+                            <p className="text-xs text-slate-400">{deal.productCode}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-xs font-bold bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-md text-slate-600 dark:text-slate-300">
-                            {d.productCode}
+                        <td className="text-sm">{deal.platform}</td>
+                        <td className="font-bold text-sm">{formatINR(deal.price)}</td>
+                        <td className="font-bold text-emerald-600 text-sm">{formatINR(deal.cashback)}</td>
+                        <td>
+                          <span className={`font-bold text-sm ${deal.slots <= 2 ? 'text-rose-500' : deal.slots <= 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                            {deal.slots}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${platformBadge}`}>
-                            {d.platform}
-                          </span>
+                        <td>
+                          <div className="flex gap-1 items-center">
+                            <span className={`badge ${deal.active ? 'badge-emerald' : 'badge-rose'} text-[10px]`}>
+                              {deal.active ? 'Active' : 'Paused'}
+                            </span>
+                            {deal.featured && <span className="badge badge-amber text-[10px]">★ Featured</span>}
+                          </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-bold">₹{d.price.toLocaleString()}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-bold text-emerald-500">₹{d.cashback.toLocaleString()}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            ({Math.round((d.cashback / d.price) * 100)}% return)
-                          </p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full ${
-                            d.slots <= 2 ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-350'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${d.slots <= 2 ? 'bg-rose-500' : 'bg-slate-400'}`}></span>
-                            {d.slots} slots
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleToggleActive(d)}
-                            disabled={actionLoading === d.id}
-                            className="inline-block"
-                          >
-                            {actionLoading === d.id ? (
-                              <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
-                            ) : d.active ? (
-                              <ToggleRight className="w-8 h-8 text-emerald-500 hover:text-emerald-600 cursor-pointer" />
-                            ) : (
-                              <ToggleLeft className="w-8 h-8 text-slate-400 hover:text-slate-500 cursor-pointer" />
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => startEdit(d)}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-brand-500 transition-colors"
-                              title="Edit Deal"
-                            >
-                              <Edit className="w-4 h-4" />
+                        <td>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEdit(deal)} className="btn btn-ghost btn-sm px-2"><Edit3 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="btn btn-ghost btn-sm px-2"><Copy className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleToggleActive(deal)} className="btn btn-ghost btn-sm px-2">
+                              {deal.active ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4 text-slate-400" />}
                             </button>
-                            <button
-                              onClick={() => handleDeleteDeal(d.id)}
-                              disabled={actionLoading === d.id}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
-                              title="Delete Deal"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="btn btn-ghost btn-sm px-2 text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* ── Create/Edit Deal Modal ── */}
+      {showForm && (
+        <div className="modal-backdrop" onClick={() => setShowForm(false)}>
+          <div className="modal-content max-w-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-extrabold text-xl">{editDeal ? 'Edit Deal' : 'Create New Deal'}</h3>
+                <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-sm"><X className="w-4 h-4" /></button>
+              </div>
+
+              {formMsg && (
+                <div className={`p-3 rounded-xl text-sm mb-4 flex items-center gap-2 ${formMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600'}`}>
+                  {formMsg.type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                  {formMsg.text}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmitDeal} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="section-label">Product Code *</label>
+                  <input required value={formData.productCode} onChange={e => setFormData(p => ({ ...p, productCode: e.target.value }))} className="input" placeholder="AMZ001" />
+                </div>
+                <div>
+                  <label className="section-label">Platform *</label>
+                  <select required value={formData.platform} onChange={e => setFormData(p => ({ ...p, platform: e.target.value }))} className="select">
+                    {PLATFORMS.map(pl => <option key={pl} value={pl}>{pl}</option>)}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="section-label">Product Name *</label>
+                  <input required value={formData.productName} onChange={e => setFormData(p => ({ ...p, productName: e.target.value }))} className="input" placeholder="Full product name" />
+                </div>
+                <div>
+                  <label className="section-label">Price (₹) *</label>
+                  <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || '' }))} className="input" placeholder="1299" />
+                </div>
+                <div>
+                  <label className="section-label">Cashback (₹) *</label>
+                  <input type="number" required value={formData.cashback} onChange={e => setFormData(p => ({ ...p, cashback: parseFloat(e.target.value) || '' }))} className="input" placeholder="300" />
+                </div>
+                <div>
+                  <label className="section-label">Available Slots *</label>
+                  <input type="number" required min="0" value={formData.slots} onChange={e => setFormData(p => ({ ...p, slots: parseInt(e.target.value) || 0 }))} className="input" placeholder="5" />
+                </div>
+                <div>
+                  <label className="section-label">Category</label>
+                  <select value={formData.category} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))} className="select">
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="section-label">Deal Type</label>
+                  <select value={formData.dealType} onChange={e => setFormData(p => ({ ...p, dealType: e.target.value }))} className="select">
+                    {DEAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="section-label">Rating (0-5)</label>
+                  <input type="number" step="0.1" min="0" max="5" value={formData.rating} onChange={e => setFormData(p => ({ ...p, rating: parseFloat(e.target.value) || '' }))} className="input" placeholder="4.5" />
+                </div>
+                <div>
+                  <label className="section-label">Expires At</label>
+                  <input type="datetime-local" value={formData.expiresAt} onChange={e => setFormData(p => ({ ...p, expiresAt: e.target.value }))} className="input" />
+                </div>
+                <div>
+                  <label className="section-label">Max Per User</label>
+                  <input type="number" min="1" value={formData.maxPerUser} onChange={e => setFormData(p => ({ ...p, maxPerUser: parseInt(e.target.value) || 1 }))} className="input" placeholder="1" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="section-label">Description</label>
+                  <textarea rows={2} value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} className="input resize-none" placeholder="Describe the deal..." />
+                </div>
+                <div>
+                  <label className="section-label">Image URL</label>
+                  <input value={formData.imageUrl} onChange={e => setFormData(p => ({ ...p, imageUrl: e.target.value }))} className="input" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="section-label">Tags (comma-separated)</label>
+                  <input value={formData.tags} onChange={e => setFormData(p => ({ ...p, tags: e.target.value }))} className="input" placeholder="sale, new, trending" />
+                </div>
+                <div className="sm:col-span-2 flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.active} onChange={e => setFormData(p => ({ ...p, active: e.target.checked }))} className="w-4 h-4 rounded accent-brand-600" />
+                    <span className="text-sm font-semibold">Active (visible to users)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={formData.featured} onChange={e => setFormData(p => ({ ...p, featured: e.target.checked }))} className="w-4 h-4 rounded accent-amber-500" />
+                    <span className="text-sm font-semibold">Featured (highlighted)</span>
+                  </label>
+                </div>
+                <div className="sm:col-span-2 flex gap-3 pt-2">
+                  <button type="submit" disabled={formLoading} className="btn btn-primary flex-1">
+                    {formLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : editDeal ? 'Update Deal' : 'Create Deal'}
+                  </button>
+                  <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost">Cancel</button>
+                </div>
+              </form>
             </div>
-          )}
-        </div>
-      </main>
-
-      {/* CREATE DEAL MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-filter backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-3xl max-w-md w-full shadow-2xl p-6 relative overflow-hidden animate-slideUp">
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">Create Offer / Deal</h3>
-            <p className="text-xs text-slate-400 mb-6">Register a product package inside the live buyer-facing deals catalog.</p>
-
-            <form onSubmit={handleCreateDeal} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Code (Unique)</label>
-                <input
-                  type="text"
-                  value={productCode}
-                  onChange={(e) => setProductCode(e.target.value)}
-                  placeholder="AMZ004, BLK002"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name</label>
-                <input
-                  type="text"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="Apple Airpods Pro 2nd Gen"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Platform</label>
-                  <select
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  >
-                    <option value="Amazon">Amazon</option>
-                    <option value="Flipkart">Flipkart</option>
-                    <option value="Blinkit">Blinkit</option>
-                    <option value="Custom">Custom</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Slots available</label>
-                  <input
-                    type="number"
-                    value={slots}
-                    onChange={(e) => setSlots(e.target.value)}
-                    placeholder="5"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Original Price (₹)</label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="18999"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Cashback Amount (₹)</label>
-                  <input
-                    type="number"
-                    value={cashback}
-                    onChange={(e) => setCashback(e.target.value)}
-                    placeholder="2500"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
-                <span className="text-xs font-bold text-slate-500">Live Immediately</span>
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-brand-600 accent-brand-500"
-                />
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2"
-                >
-                  {formLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Deal
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
 
-      {/* EDIT DEAL MODAL */}
-      {editingDeal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-filter backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-3xl max-w-md w-full shadow-2xl p-6 relative overflow-hidden animate-slideUp">
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">Edit Live Deal</h3>
-            <p className="text-xs text-slate-400 mb-6">Modify active properties for deal code: <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editingDeal.productCode}</span></p>
-
-            <form onSubmit={handleUpdateDeal} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name</label>
-                <input
-                  type="text"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="Apple Airpods Pro 2nd Gen"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+      {/* ── Clone Modal ── */}
+      {showCloneModal && cloneDeal && (
+        <div className="modal-backdrop" onClick={() => setShowCloneModal(false)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="font-extrabold text-lg mb-1">Clone Deal</h3>
+              <p className="text-sm text-slate-400 mb-5">Creating a copy of: <strong>{cloneDeal.productName}</strong></p>
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Platform</label>
-                  <select
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  >
-                    <option value="Amazon">Amazon</option>
-                    <option value="Flipkart">Flipkart</option>
-                    <option value="Blinkit">Blinkit</option>
-                    <option value="Custom">Custom</option>
-                  </select>
+                  <label className="section-label">New Product Code *</label>
+                  <input value={cloneCode} onChange={e => setCloneCode(e.target.value)} className="input" placeholder="AMZ001-B" required />
                 </div>
-
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Slots available</label>
-                  <input
-                    type="number"
-                    value={slots}
-                    onChange={(e) => setSlots(e.target.value)}
-                    placeholder="5"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
+                  <label className="section-label">New Slot Count (optional)</label>
+                  <input type="number" value={cloneSlots} onChange={e => setCloneSlots(e.target.value)} className="input" placeholder={String(cloneDeal.slots)} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleClone} disabled={cloneLoading || !cloneCode} className="btn btn-primary flex-1">
+                    {cloneLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Cloning...</> : <><Copy className="w-4 h-4" /> Clone Deal</>}
+                  </button>
+                  <button onClick={() => setShowCloneModal(false)} className="btn btn-ghost">Cancel</button>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Original Price (₹)</label>
-                  <input
-                    type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="18999"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Cashback Amount (₹)</label>
-                  <input
-                    type="number"
-                    value={cashback}
-                    onChange={(e) => setCashback(e.target.value)}
-                    placeholder="2500"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl">
-                <span className="text-xs font-bold text-slate-500">Live & Active</span>
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-brand-600 accent-brand-500"
-                />
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setEditingDeal(null)}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="flex-1 py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2"
-                >
-                  {formLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Changes
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* ── Adjust Slots Modal ── */}
+      {showSlotModal && slotDeal && (
+        <div className="modal-backdrop" onClick={() => setShowSlotModal(false)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="font-extrabold text-lg mb-1">Adjust Slots</h3>
+              <p className="text-sm text-slate-400 mb-5">Current: <strong>{slotDeal.slots}</strong> slots for {slotDeal.productName}</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="section-label">New Slot Count *</label>
+                  <input type="number" min="0" value={newSlots} onChange={e => setNewSlots(e.target.value)} className="input" required />
+                </div>
+                <div>
+                  <label className="section-label">Reason</label>
+                  <input value={slotReason} onChange={e => setSlotReason(e.target.value)} className="input" placeholder="Manual adjustment, new batch, etc." />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleAdjustSlots} disabled={!newSlots} className="btn btn-primary flex-1">
+                    <Sliders className="w-4 h-4" /> Update Slots
+                  </button>
+                  <button onClick={() => setShowSlotModal(false)} className="btn btn-ghost">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirm ── */}
+      {showDeleteConfirm && deleteDeal && (
+        <div className="modal-backdrop" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal-content max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-6 h-6 text-rose-500" />
+              </div>
+              <h3 className="font-extrabold text-lg mb-2">Delete Deal?</h3>
+              <p className="text-sm text-slate-400 mb-6">
+                Are you sure you want to permanently delete <strong>{deleteDeal.productName}</strong>? This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={handleDelete} disabled={deleteLoading} className="btn btn-danger flex-1">
+                  {deleteLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</> : 'Yes, Delete'}
+                </button>
+                <button onClick={() => setShowDeleteConfirm(false)} className="btn btn-ghost flex-1">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
