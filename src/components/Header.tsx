@@ -51,13 +51,21 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed }: Head
 
   const sidebarWidth = sidebarCollapsed ? 72 : 260;
   const avatarColors: Record<string, string> = {
-    violet: 'from-violet-600 to-indigo-600',
+    violet:  'from-violet-600 to-indigo-600',
     emerald: 'from-emerald-500 to-teal-600',
-    amber: 'from-amber-500 to-orange-600',
-    rose: 'from-rose-500 to-pink-600',
-    blue: 'from-blue-500 to-cyan-600',
+    amber:   'from-amber-500 to-orange-600',
+    rose:    'from-rose-500 to-pink-600',
+    blue:    'from-blue-500 to-cyan-600',
   };
-  const avatarGradient = avatarColors[user?.avatarColor || 'violet'] || avatarColors.violet;
+  // Derive avatar colour from role — no extra field needed on UserState
+  const roleColorMap: Record<string, string> = {
+    super_admin: 'violet',
+    admin:       'violet',
+    manager:     'blue',
+    auditor:     'emerald',
+    buyer:       'amber',
+  };
+  const avatarGradient = avatarColors[roleColorMap[user?.role ?? ''] ?? 'rose'] ?? avatarColors.rose;
 
   return (
     <header
