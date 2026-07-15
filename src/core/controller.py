@@ -3,6 +3,11 @@ import csv
 import io
 import uvicorn
 import time
+from dotenv import load_dotenv  # noqa: F401
+
+# Load .env file for local development (no-op in production where vars are injected)
+load_dotenv()
+
 from collections import defaultdict
 from fastapi import FastAPI, Depends, HTTPException, status, Response, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,14 +55,19 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# CORS setup — allow localhost + GitHub Codespaces + any HTTPS origin
+# CORS setup — allow localhost + GitHub Codespaces + Vercel deployments + env-configured frontend
+_EXTRA_ORIGIN = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+_CORS_ORIGINS = [
+    "http://localhost:5000", "http://127.0.0.1:5000",
+    "http://localhost:3000", "http://127.0.0.1:3000",
+    "http://localhost:80", "http://localhost",
+]
+if _EXTRA_ORIGIN:
+    _CORS_ORIGINS.append(_EXTRA_ORIGIN)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5000", "http://127.0.0.1:5000",
-        "http://localhost:3000", "http://127.0.0.1:3000",
-        "http://localhost:80", "http://localhost",
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_origin_regex=r"https://.*",  # Support Codespaces previews, Vercel deployments, etc.
     allow_credentials=True,
     allow_methods=["*"],
@@ -74,11 +84,22 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    # Build connect-src to include backend URL for production environments
+    _backend_host = os.getenv("BACKEND_API_URL", "").strip().rstrip("/")
+    _frontend_host = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    _connect_src_parts = ["'self'", "localhost:*"]
+    if _backend_host:
+        _connect_src_parts.append(_backend_host)
+    if _frontend_host:
+        _connect_src_parts.append(_frontend_host)
+    # Always allow *.vercel.app and *.github.dev (Codespaces) as fallback
+    _connect_src_parts += ["https://*.vercel.app", "https://*.github.dev", "https://*.app.github.dev"]
+    _connect_src = " ".join(_connect_src_parts)
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-        "style-src 'self' 'unsafe-inline' fonts.googleapis.com; "
-        "font-src 'self' fonts.gstatic.com; img-src 'self' data: blob:; "
-        "connect-src 'self' localhost:*; frame-ancestors 'none'"
+        f"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        f"style-src 'self' 'unsafe-inline' fonts.googleapis.com; "
+        f"font-src 'self' fonts.gstatic.com; img-src 'self' data: blob:; "
+        f"connect-src {_connect_src}; frame-ancestors 'none'"
     )
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
