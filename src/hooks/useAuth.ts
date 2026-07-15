@@ -10,6 +10,11 @@ interface UserState {
   joined: string;
   verified: boolean;
   referral: string;
+  upi?: string | null;
+  bio?: string | null;
+  vipTier?: string | null;
+  kycStatus?: string | null;
+  [key: string]: any;
 }
 
 interface AuthStore {
