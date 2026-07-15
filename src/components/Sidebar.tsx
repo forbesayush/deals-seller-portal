@@ -110,13 +110,20 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
   const currentPath = router.pathname;
 
   const avatarColors: Record<string, string> = {
-    violet: 'from-violet-600 to-indigo-600',
+    violet:  'from-violet-600 to-indigo-600',
     emerald: 'from-emerald-500 to-teal-600',
-    amber: 'from-amber-500 to-orange-600',
-    rose: 'from-rose-500 to-pink-600',
-    blue: 'from-blue-500 to-cyan-600',
+    amber:   'from-amber-500 to-orange-600',
+    rose:    'from-rose-500 to-pink-600',
+    blue:    'from-blue-500 to-cyan-600',
   };
-  const avatarGradient = avatarColors[user?.avatarColor || 'violet'] || avatarColors.violet;
+  const roleColorMap: Record<string, string> = {
+    super_admin: 'violet',
+    admin:       'violet',
+    manager:     'blue',
+    auditor:     'emerald',
+    buyer:       'amber',
+  };
+  const avatarGradient = avatarColors[roleColorMap[user?.role ?? ''] ?? 'rose'] ?? avatarColors.rose;
 
   return (
     <aside
