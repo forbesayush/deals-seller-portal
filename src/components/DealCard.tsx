@@ -1,27 +1,6 @@
 import React, { useState } from 'react';
 import { Tag, Star, Clock, Zap, ChevronRight, Bookmark, Share2, TrendingUp } from 'lucide-react';
-
-interface Deal {
-  id: string;
-  productCode: string;
-  productName: string;
-  platform: string;
-  price: number;
-  cashback: number;
-  slots: number;
-  active: boolean;
-  category?: string;
-  expiresAt?: string;
-  description?: string;
-  imageUrl?: string;
-  rating?: number;
-  dealType?: string;
-  minOrderValue?: number;
-  maxPerUser?: number;
-  claimedCount?: number;
-  featured?: boolean;
-  tags?: string[];
-}
+import type { Deal } from '@/types';
 
 const PLATFORM_COLORS: Record<string, string> = {
   Amazon:   'bg-amber-100 text-amber-700',

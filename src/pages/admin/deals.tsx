@@ -4,34 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { DealCard } from '@/components/DealCard';
+import type { Deal } from '@/types';
 import {
   Plus, Search, Filter, RefreshCw, Tag, Edit3, Trash2, Copy,
   ToggleLeft, ToggleRight, Star, ChevronRight, X, Loader2,
   Grid3X3, List, AlertTriangle, Check, Sliders
 } from 'lucide-react';
-
-interface Deal {
-  id: string;
-  productCode: string;
-  productName: string;
-  platform: string;
-  price: number;
-  cashback: number;
-  slots: number;
-  active: boolean;
-  category?: string;
-  expiresAt?: string;
-  description?: string;
-  imageUrl?: string;
-  rating?: number;
-  dealType?: string;
-  minOrderValue?: number;
-  maxPerUser?: number;
-  claimedCount?: number;
-  featured?: boolean;
-  tags?: string;
-  createdAt?: string;
-}
 
 function formatINR(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
