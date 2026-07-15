@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
 
 jobs:
   # ─────────────────────────────────────────────
@@ -67,14 +68,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '24'
 
       - name: Install npm packages
-        run: npm ci || npm install
+        run: npm install
 
       - name: Run npm dependency audit
         run: npm audit --audit-level=high || true
@@ -82,7 +82,6 @@ jobs:
       - name: Build Next.js TypeScript bundle
         run: npm run build
         env:
-          # Point Next.js rewrites at the deployed backend during CI build check
           BACKEND_API_URL: ${{ secrets.BACKEND_API_URL || 'http://localhost:5000' }}
 
   # ─────────────────────────────────────────────
@@ -112,7 +111,7 @@ jobs:
   vercel-deploy:
     runs-on: ubuntu-latest
     needs: [frontend-build]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -120,11 +119,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '24'
 
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
