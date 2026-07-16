@@ -196,11 +196,7 @@ export default function AdminDashboard() {
             sidebarCollapsed={sidebarCollapsed}
           />
 
-          <main className="relative flex-1 p-6 pt-[88px] space-y-6 overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 -z-10">
-              <div className="absolute -top-16 -left-16 w-80 h-80 rounded-full bg-violet-400/25 blur-3xl dark:bg-violet-500/20" />
-              <div className="absolute top-24 right-[-90px] w-96 h-96 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/15" />
-            </div>
+          <main className="flex-1 p-6 pt-[88px] space-y-6">
             {/* Welcome + Quick Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
