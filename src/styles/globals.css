@@ -126,6 +126,20 @@ html.dark .premium-card:hover {
   box-shadow: 0 4px 24px rgba(0,0,0,.4);
 }
 
+.liquid-glass {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+html.dark .liquid-glass {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.62));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
 /* Colored top bar accent on cards */
 .card-accent-violet::before {
   content: '';
