@@ -347,7 +347,7 @@ export default function AdminDeals() {
                       <th>Product</th>
                       <th>Platform</th>
                       <th>Price</th>
-                      <th>Cashback</th>
+                      <th>Cut</th>
                       <th>Slots</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -435,8 +435,13 @@ export default function AdminDeals() {
                   <input type="number" required value={formData.price} onChange={e => setFormData(p => ({ ...p, price: parseFloat(e.target.value) || '' }))} className="input" placeholder="1299" />
                 </div>
                 <div>
-                  <label className="section-label">Cashback (₹) *</label>
-                  <input type="number" required value={formData.cashback} onChange={e => setFormData(p => ({ ...p, cashback: parseFloat(e.target.value) || '' }))} className="input" placeholder="300" />
+                  <label className="section-label">Cut (₹) *</label>
+                  <input type="number" required value={formData.cashback} onChange={e => setFormData(p => ({ ...p, cashback: parseFloat(e.target.value) || '' }))} className="input" placeholder="80" />
+                  {typeof formData.price === 'number' && typeof formData.cashback === 'number' && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Buyer pays {formatINR(Math.max(0, formData.price - formData.cashback))} ({formatINR(formData.price)} - {formatINR(formData.cashback)})
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="section-label">Available Slots *</label>

@@ -41,6 +41,7 @@ interface DealCardProps {
 export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
   const [saved, setSaved] = useState(false);
   const cashbackPct = deal.price > 0 ? Math.round((deal.cashback / deal.price) * 100) : 0;
+  const netPayable = Math.max(0, deal.price - deal.cashback);
   const expiry = getExpiryStatus(deal.expiresAt);
   const platformColor = PLATFORM_COLORS[deal.platform] || 'bg-slate-100 text-slate-600';
   const platformIcon = PLATFORM_ICONS[deal.platform] || '🛒';
@@ -103,9 +104,12 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
               <TrendingUp className="w-3 h-3 text-emerald-500" />
               <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatINR(deal.cashback)}</p>
             </div>
-            <p className="text-xs text-emerald-500 font-bold">{cashbackPct}% cashback</p>
+            <p className="text-xs text-emerald-500 font-bold">{cashbackPct}% cut</p>
           </div>
         </div>
+        <p className="text-xs text-slate-500 mb-3">
+          You pay {formatINR(netPayable)} ({formatINR(deal.price)} - {formatINR(deal.cashback)})
+        </p>
 
         {/* Slots & Category */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">

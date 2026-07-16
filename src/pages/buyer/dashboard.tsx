@@ -474,7 +474,9 @@ export default function BuyerDashboard() {
                         <Tag className="w-4 h-4 text-brand-600" />
                         <div>
                           <p className="text-sm font-bold">{selectedDeal.productName}</p>
-                          <p className="text-xs text-slate-400">{selectedDeal.platform} · Cashback: {formatINR(selectedDeal.cashback)}</p>
+                          <p className="text-xs text-slate-400">
+                            {selectedDeal.platform} · Cut: {formatINR(selectedDeal.cashback)} · You pay: {formatINR(Math.max(0, selectedDeal.price - selectedDeal.cashback))}
+                          </p>
                         </div>
                         <button onClick={() => setSelectedDeal(null)} className="ml-auto text-slate-400 hover:text-slate-600">
                           <X className="w-4 h-4" />
