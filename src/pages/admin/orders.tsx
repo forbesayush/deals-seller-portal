@@ -124,6 +124,26 @@ export default function AdminOrders() {
     } catch { setBulkMsg('Error'); } finally { setBulkLoading(false); }
   };
 
+  const handleDeleteAll = async () => {
+    if (!window.confirm('⚠️ WARNING: Are you absolutely sure you want to delete ALL orders and clear the transaction history? This cannot be undone.')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/orders', { method: 'DELETE' });
+      if (res.ok) {
+        alert('All orders and transaction history deleted successfully.');
+        fetchOrders();
+      } else {
+        alert('Failed to delete orders.');
+      }
+    } catch {
+      alert('Network error while deleting orders.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
@@ -157,7 +177,10 @@ export default function AdminOrders() {
                 <p className="page-subtitle">{orders.length} total orders</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={fetchOrders} className="btn btn-ghost btn-sm"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={fetchOrders} className="btn btn-ghost btn-sm" title="Refresh"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={handleDeleteAll} className="btn btn-rose btn-sm flex items-center gap-1.5" style={{ backgroundColor: '#f43f5e', color: '#fff' }} title="Delete All Orders">
+                  <XCircle className="w-4 h-4" /> Delete All
+                </button>
                 <button onClick={() => window.open('/api/reports/export?type=orders&format=csv')} className="btn btn-ghost btn-sm">
                   <Download className="w-4 h-4" /> Export
                 </button>

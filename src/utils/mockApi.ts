@@ -301,6 +301,27 @@ if (typeof window !== 'undefined') {
         return jsonResponse(filtered);
       }
 
+      if (method === 'DELETE') {
+        setStorage('ds_orders', []);
+        const wallets = getStorage('ds_wallets', []);
+        wallets.forEach((w: any) => {
+          w.pendingCashback = 0.0;
+          w.approvedCashback = 0.0;
+          w.lockedCashback = 0.0;
+          w.withdrawableCashback = 0.0;
+          w.refundBalance = 0.0;
+          w.totalWithdrawn = 0.0;
+          w.lifetimeEarned = 0.0;
+          w.lastUpdated = new Date().toISOString();
+        });
+        setStorage('ds_wallets', wallets);
+        setStorage('ds_transactions', []);
+        setStorage('ds_withdrawals', []);
+        setStorage('ds_refunds', []);
+        setStorage('ds_tickets', []);
+        return jsonResponse({ success: true, message: 'All orders and transaction histories cleared successfully.' });
+      }
+
       if (method === 'POST') {
         const { orderNo, productCode, platform, mediator, dealType, orderDate, amount, deduction } = body;
         
