@@ -918,17 +918,26 @@ if (typeof window !== 'undefined') {
     if (pathname === '/api/stats' && method === 'GET') {
       const orders = getStorage('ds_orders', []);
       const users = getStorage('ds_users', []);
-      const wallets = getStorage('ds_wallets', []);
+      const refunds = getStorage('ds_refunds', []);
+      const deals = getStorage('ds_deals', []);
+      const tickets = getStorage('ds_tickets', []);
+      const withdrawals = getStorage('ds_withdrawals', []);
 
       const totalUsers = users.filter((u: any) => u.role === 'buyer').length;
       const totalOrders = orders.length;
+      const totalRefunds = refunds.length;
+      const pendingRefunds = refunds.filter((r: any) => r.status === 'pending').length;
+      const paidOrders = orders.filter((o: any) => o.currentStatus === 'paid').length;
+      const activeDeals = deals.filter((d: any) => d.active).length;
+      const openTickets = tickets.filter((t: any) => t.status === 'open').length;
+      const pendingWithdrawals = withdrawals.filter((w: any) => w.status === 'pending').length;
 
       let totalRevenue = 0.0;
-      let pendingPayouts = 0.0;
+      let totalPayout = 0.0;
       orders.forEach((o: any) => {
         totalRevenue += o.productPrice;
-        if (o.currentStatus !== 'paid' && o.currentStatus !== 'cancelled') {
-          pendingPayouts += o.netAmount;
+        if (o.currentStatus === 'paid') {
+          totalPayout += o.netAmount;
         }
       });
 
@@ -938,57 +947,125 @@ if (typeof window !== 'undefined') {
       }, {});
 
       return jsonResponse({
-        totalUsers,
         totalOrders,
+        totalBuyers: totalUsers,
+        totalRefunds,
+        pendingRefunds,
+        paidOrders,
+        totalPayout: Math.round(totalPayout * 100) / 100,
+        activeDeals,
+        openTickets,
+        pendingWithdrawals,
         totalRevenue: Math.round(totalRevenue * 100) / 100,
-        pendingPayouts: Math.round(pendingPayouts * 100) / 100,
         platformBreakdown: platforms
       });
     }
 
     if (pathname === '/api/analytics/summary' && method === 'GET') {
       const orders = getStorage('ds_orders', []);
+      const users = getStorage('ds_users', []);
+      const refunds = getStorage('ds_refunds', []);
+      const deals = getStorage('ds_deals', []);
+      const tickets = getStorage('ds_tickets', []);
+      const withdrawals = getStorage('ds_withdrawals', []);
+
       const totalOrders = orders.length;
       const paidOrders = orders.filter((o: any) => o.currentStatus === 'paid').length;
+      const pendingOrders = orders.filter((o: any) => o.currentStatus === 'pending_review' || o.currentStatus === 'under_review').length;
 
-      const totalValue = orders.reduce((acc: number, curr: any) => acc + curr.productPrice, 0);
-      const avgValue = totalOrders > 0 ? totalValue / totalOrders : 0;
-
-      const tickets = getStorage('ds_tickets', []);
+      const activeBuyers = users.filter((u: any) => u.role === 'buyer' && u.status === 'active').length;
+      const activeDeals = deals.filter((d: any) => d.active).length;
       const openTickets = tickets.filter((t: any) => t.status === 'open').length;
 
+      let totalCashbackPaid = 0.0;
+      orders.forEach((o: any) => {
+        if (o.currentStatus === 'paid') {
+          totalCashbackPaid += o.netAmount;
+        }
+      });
+
+      let totalWithdrawals = 0.0;
+      withdrawals.forEach((w: any) => {
+        if (w.status === 'approved' || w.status === 'processed') {
+          totalWithdrawals += w.amount;
+        }
+      });
+
       return jsonResponse({
-        averageOrderValue: Math.round(avgValue * 100) / 100,
-        approvalRate: totalOrders > 0 ? Math.round((paidOrders / totalOrders) * 10000) / 100 : 100.0,
-        activeDealsCount: getStorage('ds_deals', []).filter((d: any) => d.active).length,
-        helpDeskOpenTickets: openTickets
+        totalOrders,
+        paidOrders,
+        pendingOrders,
+        totalCashbackPaid: Math.round(totalCashbackPaid * 100) / 100,
+        totalWithdrawals: Math.round(totalWithdrawals * 100) / 100,
+        activeBuyers,
+        activeDeals,
+        openTickets
       });
     }
 
     if (pathname === '/api/analytics/revenue' && method === 'GET') {
       const days = parseInt(searchParams.get('days') || '14');
-      const labels = [];
-      const values = [];
+      const orders = getStorage('ds_orders', []);
+      const data = [];
+      let totalRevenue = 0.0;
+      let totalCashback = 0.0;
 
+      const today = new Date();
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date();
-        d.setDate(d.getDate() - i);
-        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        labels.push(label);
-        values.push(Math.floor(Math.random() * 2000 + 500));
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+
+        const dayOrders = orders.filter((o: any) => o.orderDate === dateStr);
+        const dayRevenue = dayOrders.reduce((acc: number, curr: any) => acc + curr.productPrice, 0);
+        const dayCashback = dayOrders.reduce((acc: number, curr: any) => acc + curr.cashbackAmount, 0);
+
+        data.push({
+          date: dateStr,
+          orders: dayOrders.length,
+          revenue: Math.round(dayRevenue * 100) / 100,
+          cashback: Math.round(dayCashback * 100) / 100
+        });
+
+        totalRevenue += dayRevenue;
+        totalCashback += dayCashback;
       }
 
-      return jsonResponse({ labels, values });
+      // Calculate growth: compare last 7 days vs prior 7 days
+      const last7 = data.slice(-7).reduce((acc: number, curr: any) => acc + curr.revenue, 0);
+      const prior7 = data.length >= 14 
+        ? data.slice(-14, -7).reduce((acc: number, curr: any) => acc + curr.revenue, 0)
+        : last7;
+      const growthPct = prior7 > 0 ? Math.round(((last7 - prior7) / prior7) * 1000) / 10 : 0.0;
+
+      return jsonResponse({
+        data,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCashback: Math.round(totalCashback * 100) / 100,
+        growthPct
+      });
     }
 
     if (pathname === '/api/analytics/deals' && method === 'GET') {
       const deals = getStorage('ds_deals', []);
-      return jsonResponse(deals.map((d: any) => ({
-        dealId: d.id,
-        productName: d.productName,
-        slotsFilled: Math.floor(Math.random() * d.slots),
-        cashbackPaid: Math.floor(Math.random() * 1000 + 100)
-      })));
+      const orders = getStorage('ds_orders', []);
+      
+      const result = deals.map((d: any) => {
+        const ordersForDeal = orders.filter((o: any) => o.productCode === d.productCode);
+        const paidForDeal = ordersForDeal.filter((o: any) => o.currentStatus === 'paid');
+        
+        return {
+          dealId: d.id,
+          productName: d.productName,
+          platform: d.platform,
+          totalOrders: ordersForDeal.length,
+          paidOrders: paidForDeal.length,
+          slotsRemaining: d.slots,
+          cashback: d.cashback,
+          active: d.active
+        };
+      });
+      return jsonResponse(result);
     }
 
     // Default Fallback
