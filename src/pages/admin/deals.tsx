@@ -17,7 +17,7 @@ function formatINR(n: number) {
 
 const PLATFORMS = ['Amazon', 'Flipkart', 'Blinkit', 'Myntra', 'Meesho', 'Other'];
 const CATEGORIES = ['General', 'Electronics', 'Fashion', 'Groceries', 'Home & Kitchen', 'Beauty', 'Sports', 'Books', 'Toys'];
-const DEAL_TYPES = ['cashback', 'cut', 'review', 'rating', 'image_review', 'qa', 'video'];
+const DEAL_TYPES = ['cashback', 'review', 'rating', 'image_review', 'qa', 'video'];
 
 interface DealFormData {
   productCode: string;
