@@ -323,7 +323,7 @@ if (typeof window !== 'undefined') {
       }
 
       if (method === 'POST') {
-        const { orderNo, productCode, platform, mediator, dealType, orderDate, amount, deduction } = body;
+        const { orderNo, productCode, orderName, platform, mediator, dealType, orderDate, amount, deduction } = body;
         
         // Check duplicate
         if (orders.find((o: any) => o.orderNo === orderNo)) {
@@ -344,6 +344,9 @@ if (typeof window !== 'undefined') {
           plat = deal.platform;
           cashbackAmount = deal.cashback;
           cashbackPct = Math.round((cashbackAmount / amount) * 10000) / 100;
+        }
+        if (typeof orderName === 'string' && orderName.trim()) {
+          productName = orderName.trim();
         }
 
         const processingFee = Math.round(amount * 0.05 * 100) / 100;

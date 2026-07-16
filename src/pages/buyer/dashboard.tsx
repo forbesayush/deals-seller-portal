@@ -114,6 +114,7 @@ export default function BuyerDashboard() {
   // Order submission (Feature 3 - wizard)
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderNo, setOrderNo] = useState('');
+  const [orderName, setOrderName] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderMsg, setOrderMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -268,6 +269,7 @@ export default function BuyerDashboard() {
 
   const handleClaimDeal = (deal: any) => {
     setSelectedDeal(deal);
+    setOrderName(deal?.productName || '');
     setShowOrderForm(true);
     setActiveTab('orders');
   };
@@ -281,6 +283,7 @@ export default function BuyerDashboard() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderNo, productCode: selectedDeal.productCode,
+          orderName: orderName.trim() || selectedDeal.productName,
           platform: selectedDeal.platform, mediator: 'Self',
           dealType: selectedDeal.dealType || 'cashback',
           orderDate: new Date().toISOString().split('T')[0],
@@ -290,7 +293,7 @@ export default function BuyerDashboard() {
       const data = await res.json();
       if (res.ok) {
         setOrderMsg({ type: 'success', text: `Order submitted! Code: ${data.orderCode}` });
-        setOrderNo(''); setOrderAmount(''); setSelectedDeal(null); setShowOrderForm(false);
+        setOrderNo(''); setOrderName(''); setOrderAmount(''); setSelectedDeal(null); setShowOrderForm(false);
         fetchOrders(); fetchWallet();
       } else {
         setOrderMsg({ type: 'error', text: data.detail || 'Failed' });
@@ -489,6 +492,10 @@ export default function BuyerDashboard() {
                         <input value={orderNo} onChange={e => setOrderNo(e.target.value)} placeholder="e.g. 402-1234567-8901234" className="input" required />
                       </div>
                       <div>
+                        <label className="section-label">Order Name</label>
+                        <input value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Enter product/order name" className="input" />
+                      </div>
+                      <div>
                         <label className="section-label">Amount Paid (₹) *</label>
                         <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input" required />
                       </div>
@@ -498,6 +505,7 @@ export default function BuyerDashboard() {
                           <select className="select" onChange={e => {
                             const d = deals.find(d => d.id === e.target.value);
                             setSelectedDeal(d || null);
+                            setOrderName(d?.productName || '');
                           }}>
                             <option value="">-- Select a deal --</option>
                             {deals.map(d => <option key={d.id} value={d.id}>{d.productName} ({d.platform})</option>)}
@@ -514,7 +522,7 @@ export default function BuyerDashboard() {
                           <button type="submit" disabled={orderLoading} className="btn btn-primary flex-1">
                             {orderLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</> : <><Send className="w-4 h-4" /> Submit Order</>}
                           </button>
-                          <button type="button" onClick={() => { setShowOrderForm(false); setSelectedDeal(null); setOrderMsg(null); }} className="btn btn-ghost">Cancel</button>
+                          <button type="button" onClick={() => { setShowOrderForm(false); setSelectedDeal(null); setOrderName(''); setOrderMsg(null); }} className="btn btn-ghost">Cancel</button>
                         </div>
                       </div>
                     </form>

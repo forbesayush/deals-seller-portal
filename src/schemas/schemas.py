@@ -65,6 +65,7 @@ class UserUpdate(BaseModel):
 class OrderCreate(BaseModel):
     orderNo: str = Field(..., alias="orderNo")
     productCode: str = Field(..., alias="productCode")
+    orderName: Optional[str] = Field(None, alias="orderName")
     platform: str
     mediator: str
     dealType: str = Field(..., alias="dealType")
