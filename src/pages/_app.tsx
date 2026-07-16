@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import '@/styles/globals.css';
 
+// Import client-side API mock interceptor for zero-dependency Netlify deployment
+if (typeof window !== 'undefined') {
+  require('@/utils/mockApi');
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
