@@ -256,30 +256,7 @@ export default function Login() {
               </button>
             </form>
 
-            {/* Divider */}
-            <div className="relative my-6 text-center">
-              <div className="absolute inset-x-0 top-1/2 border-t" style={{ borderColor: 'var(--color-border)' }} />
-              <span className="relative px-3 text-xs font-medium" style={{ color: 'var(--color-text-muted)', background: 'var(--color-bg)' }}>
-                Quick access
-              </span>
-            </div>
 
-            {/* Quick Login Chips */}
-            <div className="grid grid-cols-1 gap-2">
-              {[
-                { label: 'Buyer', id: '9123337436', pwd: 'ekta@123', icon: '🛍️' },
-              ].map(demo => (
-                <button
-                  key={demo.label}
-                  onClick={() => { setIdentifier(demo.id); setPassword(demo.pwd); }}
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/20 transition-all duration-200"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
-                >
-                  <span>{demo.icon}</span>
-                  <span>{demo.label}</span>
-                </button>
-              ))}
-            </div>
 
             {/* Register link */}
             <p className="text-center text-xs mt-8" style={{ color: 'var(--color-text-muted)' }}>
