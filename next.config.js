@@ -13,6 +13,9 @@ if (!process.env.BACKEND_API_URL && process.env.NODE_ENV === 'production') {
 
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_BACKEND_API_URL: process.env.BACKEND_API_URL || '',
+  },
 
   async rewrites() {
     return [

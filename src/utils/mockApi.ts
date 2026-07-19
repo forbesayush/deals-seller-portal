@@ -25,7 +25,7 @@ if (typeof window !== 'undefined') {
       { id: 'ADM001', name: 'Admin — deals.seller', email: 'admin@deals.seller.com', mobile: null, password: 'admin@123', role: 'admin', status: 'active', joined: today, verified: true, referral: 'ADMIN1' },
       { id: 'ADM002', name: 'Owner — deals.seller', email: 'owner@deals.seller.com', mobile: null, password: 'owner@123', role: 'admin', status: 'active', joined: today, verified: true, referral: 'ADMIN2' },
       { id: 'ADM003', name: 'Ekta — Admin', email: 'ekta@deals.seller.com', mobile: null, password: 'ayushu08', role: 'admin', status: 'active', joined: today, verified: true, referral: 'EKTA08' },
-      { id: 'USR001', name: 'Ayush Chatterjee', email: 'alwaysayushsourav162@gmail.com', mobile: '9123337436', password: 'ekta123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'AYUSH123' },
+      { id: 'USR001', name: 'Ayush Chatterjee', email: 'alwaysayushsourav162@gmail.com', mobile: '9123337436', password: 'ekta@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'AYUSH123' },
       { id: 'USR002', name: 'Shivam Raj', email: 'shivamraj@example.com', mobile: '9876543210', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'SHIVAM2' },
       { id: 'USR003', name: 'Priya Sharma', email: 'priya@example.com', mobile: '9988776655', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'PRIYA3' },
       { id: 'USR004', name: 'Rahul Mehta', email: 'rahul@example.com', mobile: '9812345678', password: 'user@123', role: 'buyer', status: 'suspended', joined: today, verified: true, referral: 'RAHUL4' },
@@ -100,6 +100,8 @@ if (typeof window !== 'undefined') {
       registration_enabled: true,
       portal_active: true,
       auto_approve_orders: false,
+      ollama_url: 'http://localhost:11434',
+      ollama_model: 'deepseek-coder:6.7b',
     };
     setStorage('ds_settings', settings);
 
@@ -221,11 +223,123 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ success: true });
     }
 
+    // ── AI APIS (OLLAMA CONNECTION) ──
+    if (pathname === '/api/ai/suggest-reply' && method === 'POST') {
+      const settings = getStorage('ds_settings', {});
+      const ollamaUrl = (settings.ollama_url || 'http://localhost:11434').trim().replace(/\/$/, '');
+      const ollamaModel = (settings.ollama_model || 'deepseek-coder:6.7b').trim();
+
+      const { title, description } = body;
+      const prompt = `You are a helpful customer support agent for a cashback deal portal called 'deals.seller'.\n` +
+        `A buyer has submitted a support ticket:\n` +
+        `Subject: ${title}\n` +
+        `Body: ${description}\n\n` +
+        `Write a polite, professional, and helpful response to resolve their query. ` +
+        `Keep the response concise, clear, and direct. Do not add any greeting placeholders like '[My Name]' or '[Your Name]'; ` +
+        `simply sign off as 'Deals Seller Support Team'.`;
+
+      try {
+        const res = await originalFetch(`${ollamaUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            prompt: prompt,
+            stream: false
+          })
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          const suggestion = (resData.response || '').trim();
+          return jsonResponse({ success: true, suggestion });
+        } else {
+          const errText = await res.text();
+          return jsonResponse({ success: false, detail: `Ollama returned error: ${errText}` }, 500);
+        }
+      } catch (err: any) {
+        return jsonResponse({ success: false, detail: `Could not connect to local Ollama on ${ollamaUrl}. Error: ${err.message}` }, 500);
+      }
+    }
+
+    if (pathname === '/api/ai/chat' && method === 'POST') {
+      const settings = getStorage('ds_settings', {});
+      const ollamaUrl = (settings.ollama_url || 'http://localhost:11434').trim().replace(/\/$/, '');
+      const ollamaModel = (settings.ollama_model || 'deepseek-coder:6.7b').trim();
+
+      const { message, history } = body;
+      const currentUser = getCurrentUser();
+
+      if (!currentUser) {
+        return jsonResponse({ detail: 'Authentication required' }, 401);
+      }
+
+      const wallets = getStorage('ds_wallets', []);
+      const wallet = wallets.find((w: any) => w.userId === currentUser.id);
+
+      const orders = getStorage('ds_orders', []);
+      const userOrders = orders.filter((o: any) => o.buyerId === currentUser.id);
+
+      const walletInfo = wallet 
+        ? `Pending: ₹${wallet.pendingCashback}, Approved: ₹${wallet.approvedCashback}, Withdrawable: ₹${wallet.withdrawableCashback}, Refund Balance: ₹${wallet.refundBalance}`
+        : 'No wallet found';
+
+      const ordersInfo = userOrders.slice(0, 5).map((o: any) => 
+        `- Order ${o.orderNo} (${o.platform}): status '${o.currentStatus}', cashback ₹${o.netAmount}`
+      ).join('\n') || 'No orders placed yet.';
+
+      const systemPrompt = `You are the Deals Seller Portal virtual assistant. You help buyers with their cashback deals and orders.\n` +
+        `User Profile Info:\n` +
+        `- Name: ${currentUser.name}\n` +
+        `- Email: ${currentUser.email}\n` +
+        `- VIP Tier: ${currentUser.vipTier || 'Standard'}\n` +
+        `- Wallet Balance: ${walletInfo}\n` +
+        `- Recent Orders:\n${ordersInfo}\n\n` +
+        `Guidelines:\n` +
+        `- Answer client queries using the profile information. Be polite, precise, and professional.\n` +
+        `- If asked about withdrawal rules: Minimum withdrawal is ₹100.\n` +
+        `- If asked about fee: Platform fee is 5% deducted from cashback.\n` +
+        `- Keep responses direct and concise (under 3 sentences where possible). Avoid long-winded output.\n`;
+
+      let historyStr = '';
+      if (history) {
+        for (const msg of history.slice(-6)) {
+          historyStr += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+        }
+      }
+
+      const fullPrompt = `${systemPrompt}\nChat History:\n${historyStr}User: ${message}\nAssistant:`;
+
+      try {
+        const res = await originalFetch(`${ollamaUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: ollamaModel,
+            prompt: fullPrompt,
+            stream: false
+          })
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          const response = (resData.response || '').trim();
+          return jsonResponse({ success: true, response });
+        } else {
+          const errText = await res.text();
+          return jsonResponse({ success: false, detail: `Ollama returned error: ${errText}` }, 500);
+        }
+      } catch (err: any) {
+        return jsonResponse({ success: false, detail: `Could not connect to local Ollama on ${ollamaUrl}. Error: ${err.message}` }, 500);
+      }
+    }
+
     // ── DEALS APIS ──
     if (pathname === '/api/deals') {
       const deals = getStorage('ds_deals', []);
       if (method === 'GET') {
-        const activeOnly = searchParams.get('active_only') === 'true';
+        const currentUser = getCurrentUser();
+        const activeOnly = searchParams.get('active_only') === 'true' || (currentUser && currentUser.role === 'buyer');
         const filtered = activeOnly ? deals.filter((d: any) => d.active) : deals;
         return jsonResponse(filtered);
       }
@@ -239,11 +353,23 @@ if (typeof window !== 'undefined') {
     }
 
     if (pathname.startsWith('/api/deals/')) {
-      const dealId = pathname.replace('/api/deals/', '').split('/')[0];
+      const parts = pathname.replace('/api/deals/', '').split('/');
+      const dealId = parts[0];
+      const subRoute = parts[1]; // like 'clone', 'slots' etc.
+
       const deals = getStorage('ds_deals', []);
       const dealIdx = deals.findIndex((d: any) => d.id === dealId);
 
       if (dealIdx === -1) return jsonResponse({ detail: 'Deal not found' }, 404);
+      const deal = deals[dealIdx];
+
+      if (method === 'GET' && !subRoute) {
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.role === 'buyer' && !deal.active) {
+          return jsonResponse({ detail: 'Deal is paused or inactive' }, 403);
+        }
+        return jsonResponse(deal);
+      }
 
       if (method === 'DELETE') {
         deals.splice(dealIdx, 1);
@@ -332,19 +458,18 @@ if (typeof window !== 'undefined') {
 
         // Calculate Fees
         const deals = getStorage('ds_deals', []);
-        const deal = deals.find((d: any) => d.productCode === productCode && d.active);
-
-        let productName = `Custom Product (${productCode})`;
-        let plat = platform || 'Custom Platform';
-        let cashbackAmount = amount * 0.1;
-        let cashbackPct = 10.0;
-
-        if (deal) {
-          productName = deal.productName;
-          plat = deal.platform;
-          cashbackAmount = deal.cashback;
-          cashbackPct = Math.round((cashbackAmount / amount) * 10000) / 100;
+        const deal = deals.find((d: any) => d.productCode === productCode);
+        if (!deal) {
+          return jsonResponse({ detail: "Deal not found or has been deleted" }, 400);
         }
+        if (!deal.active) {
+          return jsonResponse({ detail: "This deal is currently paused and cannot accept submissions" }, 400);
+        }
+
+        let productName = deal.productName;
+        let plat = deal.platform;
+        let cashbackAmount = deal.cashback;
+        let cashbackPct = Math.round((cashbackAmount / amount) * 10000) / 100;
 
         const processingFee = Math.round(amount * 0.05 * 100) / 100;
         const finalDeduction = deduction > 0 ? deduction : processingFee;
@@ -471,8 +596,29 @@ if (typeof window !== 'undefined') {
       const orderIdx = orders.findIndex((o: any) => o.id === orderId);
 
       if (orderIdx === -1) return jsonResponse({ detail: 'Order not found' }, 404);
+      const o = orders[orderIdx];
 
-      if (method === 'GET' && pathname.endsWith('/fraud-check')) {
+      const user = getCurrentUser();
+      if (user && user.role === 'buyer' && o.buyerId !== user.id) {
+        return jsonResponse({ detail: 'Order not found' }, 404);
+      }
+
+      if (method === 'GET' && parts[1] === 'timeline') {
+        const logs = [
+          { id: 'OSL001', orderId: orderId, fromStatus: 'submitted', toStatus: 'pending_review', note: 'Order submitted by buyer', timestamp: o.submittedDate || o.orderDate }
+        ];
+        if (o.currentStatus === 'paid') {
+          logs.push({ id: 'OSL002', orderId: orderId, fromStatus: 'pending_review', toStatus: 'paid', note: 'Marked paid by admin', timestamp: o.paidDate || o.orderDate });
+        } else if (o.currentStatus === 'cancelled') {
+          logs.push({ id: 'OSL002', orderId: orderId, fromStatus: 'pending_review', toStatus: 'cancelled', note: 'Order cancelled', timestamp: o.orderDate });
+        }
+        return jsonResponse(logs);
+      }
+
+      if (method === 'GET' && parts[1] === 'fraud-check') {
+        if (user && user.role === 'buyer') {
+          return jsonResponse({ detail: 'Forbidden' }, 403);
+        }
         return jsonResponse({
           status: 'success',
           riskLevel: 'low',
@@ -480,8 +626,11 @@ if (typeof window !== 'undefined') {
         });
       }
 
+      if (method === 'GET' && !parts[1]) {
+        return jsonResponse(o);
+      }
+
       if (method === 'PUT' || method === 'PATCH') {
-        const o = orders[orderIdx];
         const oldStatus = o.currentStatus;
         const newStatus = body.currentStatus || body.status;
 

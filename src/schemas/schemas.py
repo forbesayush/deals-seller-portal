@@ -659,3 +659,29 @@ class SystemHealthResponse(BaseModel):
     class Config:
         allow_population_by_field_name = True
         populate_by_name = True
+
+
+# ─────────────────────────────────────────────
+#  AI SUGGEST REPLY & CHAT SCHEMAS (NEW)
+# ─────────────────────────────────────────────
+class AISuggestReplyRequest(BaseModel):
+    ticket_id: Optional[str] = Field(None, alias="ticketId")
+    title: str
+    description: str
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+
+class AIChatMessage(BaseModel):
+    role: str
+    content: str
+
+class AIChatRequest(BaseModel):
+    message: str
+    history: Optional[List[AIChatMessage]] = []
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-import { Ticket, CheckCircle2, Clock, MessageSquare, X, ChevronDown, ChevronUp, RefreshCw, Send, Loader2 } from 'lucide-react';
+import { Ticket, CheckCircle2, Clock, MessageSquare, X, ChevronDown, ChevronUp, RefreshCw, Send, Loader2, Sparkles } from 'lucide-react';
 
 interface TicketItem {
   id: string;
@@ -35,6 +35,39 @@ export default function AdminTickets() {
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAiSuggest = async (t: TicketItem) => {
+    setAiGenerating(true);
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai/suggest-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId: t.id,
+          title: t.title,
+          description: t.description,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.suggestion) {
+          setReplyText(data.suggestion);
+        } else {
+          setAiError(data.detail || 'Failed to generate suggestion.');
+        }
+      } else {
+        const err = await res.json();
+        setAiError(err.detail || 'Error communicating with AI.');
+      }
+    } catch (e: any) {
+      setAiError(e.message || 'Connection to Ollama failed.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const toggleDark = () => {
     const isDark = !darkMode;
@@ -170,6 +203,28 @@ export default function AdminTickets() {
 
                         {ticket.status === 'open' && (
                           <form onSubmit={(e) => { setSelected(ticket); handleReply(e); }} className="space-y-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-slate-400 uppercase">Write Staff Reply</span>
+                              <button
+                                type="button"
+                                onClick={() => handleAiSuggest(ticket)}
+                                disabled={aiGenerating}
+                                className="btn btn-ghost btn-xs text-brand-600 dark:text-violet-400 font-extrabold flex items-center gap-1 hover:bg-brand-50/50 dark:hover:bg-violet-950/20"
+                              >
+                                {aiGenerating ? (
+                                  <><Loader2 className="w-3 h-3 animate-spin text-brand-500" /> Generating...</>
+                                ) : (
+                                  <><Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> AI Suggest Reply</>
+                                )}
+                              </button>
+                            </div>
+                            
+                            {aiError && (
+                              <p className="text-xs font-semibold text-rose-500 bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 p-2.5 rounded-lg mb-2">
+                                {aiError}
+                              </p>
+                            )}
+
                             <textarea
                               value={replyText}
                               onChange={e => setReplyText(e.target.value)}
@@ -178,7 +233,7 @@ export default function AdminTickets() {
                               className="w-full input p-3 text-sm h-24 resize-none"
                             />
                             <div className="flex items-center justify-end">
-                              <button type="submit" disabled={submitting || !replyText}
+                              <button type="submit" disabled={submitting || !replyText || aiGenerating}
                                 className="btn btn-primary btn-sm">
                                 {submitting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...</> : <><Send className="w-3.5 h-3.5" /> Send Reply & Resolve</>}
                               </button>

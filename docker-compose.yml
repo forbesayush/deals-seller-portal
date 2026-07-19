@@ -6,9 +6,9 @@ services:
     container_name: deals_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: portal
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgrespassword}
+      POSTGRES_DB: ${POSTGRES_DB:-portal}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -23,8 +23,8 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/portal
-      - SECRET_KEY=super-secret-deals-portal-key-for-auth-2026
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/${POSTGRES_DB:-portal}
+      - SECRET_KEY=${SECRET_KEY:-super-secret-deals-portal-key-for-auth-2026}
     ports:
       - "5000:5000"
 

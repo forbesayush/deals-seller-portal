@@ -17,6 +17,32 @@ def fixture_db_session():
     Base.metadata.create_all(bind=engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal()
+    
+    # Seed default deals
+    default_deals = [
+        {'id': 'DEA001', 'product_code': 'AMZ001', 'product_name': 'boAt Rockerz 255 Pro+ Wireless Earphones', 'platform': 'Amazon', 'price': 1299.0, 'cashback': 300.0, 'slots': 4, 'active': True},
+        {'id': 'DEA002', 'product_code': 'AMZ002', 'product_name': 'Noise ColorFit Pro 4 Smartwatch', 'platform': 'Amazon', 'price': 2499.0, 'cashback': 500.0, 'slots': 4, 'active': True},
+        {'id': 'DEA003', 'product_code': 'FLK001', 'product_name': 'Redmi 13C 4G Smartphone (128GB)', 'platform': 'Flipkart', 'price': 8999.0, 'cashback': 800.0, 'slots': 5, 'active': True},
+        {'id': 'DEA004', 'product_code': 'FLK002', 'product_name': 'Mi 43" 4K Ultra HD Android TV', 'platform': 'Flipkart', 'price': 24999.0, 'cashback': 2000.0, 'slots': 3, 'active': True},
+        {'id': 'DEA005', 'product_code': 'BLK001', 'product_name': 'Amul Butter (500g)', 'platform': 'Blinkit', 'price': 290.0, 'cashback': 60.0, 'slots': 6, 'active': True},
+        {'id': 'DEA006', 'product_code': 'AMZ003', 'product_name': 'HP 15 Laptop Intel Core i5 (8GB/512GB)', 'platform': 'Amazon', 'price': 49999.0, 'cashback': 3500.0, 'slots': 2, 'active': True},
+        {'id': 'DEA007', 'product_code': 'FLK003', 'product_name': 'Puma Men\'s Running Shoes', 'platform': 'Flipkart', 'price': 2999.0, 'cashback': 400.0, 'slots': 4, 'active': True},
+    ]
+    from src.models.models import Deal
+    for d in default_deals:
+        deal_row = Deal(
+            id=d['id'],
+            product_code=d['product_code'],
+            product_name=d['product_name'],
+            platform=d['platform'],
+            price=d['price'],
+            cashback=d['cashback'],
+            slots=d['slots'],
+            active=d['active']
+        )
+        session.add(deal_row)
+    session.commit()
+
     try:
         yield session
     finally:
@@ -185,8 +211,8 @@ def test_live_deals_crud_and_order_fees(db_session):
 
     # 3. Query active deals
     active_deals = biz_logic.get_active_deals(db_session)
-    assert len(active_deals) == 1
-    assert active_deals[0].product_name == "Super Test Widget"
+    assert len(active_deals) == 8
+    assert any(d.product_name == "Super Test Widget" for d in active_deals)
 
     # 4. Submit order utilizing dynamic deal
     order_schema = OrderCreate(
@@ -211,7 +237,8 @@ def test_live_deals_crud_and_order_fees(db_session):
     assert updated_deal.active is False
 
     active_deals_after = biz_logic.get_active_deals(db_session)
-    assert len(active_deals_after) == 0
+    assert len(active_deals_after) == 7
+    assert not any(d.product_name == "Super Test Widget" for d in active_deals_after)
 
     # 6. Delete deal
     deleted = biz_logic.delete_deal(db_session, deal.id, admin, "127.0.0.1", "pytest")
@@ -402,6 +429,85 @@ def test_wallet_withdrawals(db_session):
     assert rejected_wth.status == 'rejected'
     # Verify balance reverted back to ₹50.0
     assert wallet.withdrawable_cashback == 50.0
+
+
+def test_stale_deal_submission(db_session):
+    """Verify that order creation fails for deleted or paused deals (stale submissions)."""
+    from fastapi import HTTPException
+    
+    # 1. Setup admin and buyer
+    admin_schema = UserRegister(name="Admin User", email="admin@test.com", mobile="1234567890", password="adminpassword")
+    admin = biz_logic.register_user(db_session, admin_schema, "127.0.0.1", "pytest")
+    admin.role = "admin"
+    
+    buyer_schema = UserRegister(name="Buyer User", email="buyer@test.com", mobile="9123337436", password="buyerpassword")
+    buyer = biz_logic.register_user(db_session, buyer_schema, "127.0.0.1", "pytest")
+    
+    # 2. Create deal
+    deal_schema = DealCreate(
+        productCode="STALE01",
+        productName="Stale Test Widget",
+        platform="Amazon",
+        price=1000.0,
+        cashback=200.0,
+        slots=5,
+        active=True
+    )
+    deal = biz_logic.create_deal(db_session, deal_schema, admin, "127.0.0.1", "pytest")
+    assert deal.active is True
+    
+    # 3. Create order for active deal -> should succeed
+    order_schema = OrderCreate(
+        orderNo="402-STALE-ACTIVE",
+        productCode="STALE01",
+        platform="Amazon",
+        mediator="Direct",
+        dealType="Review",
+        orderDate="2026-07-13",
+        amount=1000.0,
+        deduction=0.0
+    )
+    order = biz_logic.create_order(db_session, order_schema, buyer, buyer, "127.0.0.1", "pytest")
+    assert order.current_status == "pending_review"
+    
+    # 4. Deactivate (pause) deal
+    update_schema = DealUpdate(active=False)
+    biz_logic.update_deal(db_session, deal.id, update_schema, admin, "127.0.0.1", "pytest")
+    
+    # Try creating order for paused deal -> should fail with 400
+    order_schema_paused = OrderCreate(
+        orderNo="402-STALE-PAUSED",
+        productCode="STALE01",
+        platform="Amazon",
+        mediator="Direct",
+        dealType="Review",
+        orderDate="2026-07-13",
+        amount=1000.0,
+        deduction=0.0
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        biz_logic.create_order(db_session, order_schema_paused, buyer, buyer, "127.0.0.1", "pytest")
+    assert excinfo.value.status_code == 400
+    assert "paused" in excinfo.value.detail.lower()
+    
+    # 5. Delete deal
+    biz_logic.delete_deal(db_session, deal.id, admin, "127.0.0.1", "pytest")
+    
+    # Try creating order for deleted deal -> should fail with 400
+    order_schema_deleted = OrderCreate(
+        orderNo="402-STALE-DELETED",
+        productCode="STALE01",
+        platform="Amazon",
+        mediator="Direct",
+        dealType="Review",
+        orderDate="2026-07-13",
+        amount=1000.0,
+        deduction=0.0
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        biz_logic.create_order(db_session, order_schema_deleted, buyer, buyer, "127.0.0.1", "pytest")
+    assert excinfo.value.status_code == 400
+    assert "not found" in excinfo.value.detail.lower() or "deleted" in excinfo.value.detail.lower()
 
 
 

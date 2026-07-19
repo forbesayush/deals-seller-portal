@@ -1,4 +1,4 @@
-﻿# 🛒 Project 5 — deals.seller Deal Portal Clone
+# 🛒 Project 5 — deals.seller Deal Portal Clone
 
 A full-featured **cashback deal management portal** clone of [deal.deals.seller.com](https://deal.deals.seller.com/), built as a static HTML/CSS/JavaScript single-page application with a secure authentication system and a full admin panel.
 
@@ -67,8 +67,7 @@ project 5/deal-portal/
 
 | Role | Identifier | Password |
 |------|-----------|----------|
-| **Admin / Owner** | `admin` | `admin@123` |
-| **Demo Buyer** | `alwaysayushsourav162@gmail.com` | `user@123` |
+| **Demo Buyer** | `9123337436` | `ekta@123` |
 
 ---
 

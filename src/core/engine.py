@@ -197,11 +197,12 @@ def create_order(db: Session, schema: OrderCreate, buyer: User, actor: User, ip:
         raise HTTPException(status_code=400, detail=f"Order ID {schema.orderNo} already exists")
 
     # Get product price. Check if code in database first
-    deal = db.query(Deal).filter(Deal.product_code == schema.productCode, Deal.active == True).first()
-    if deal:
-        price = deal.price
-    else:
-        price = PRODUCT_CATALOG[schema.productCode]['price'] if schema.productCode in PRODUCT_CATALOG else schema.amount
+    deal = db.query(Deal).filter(Deal.product_code == schema.productCode).first()
+    if not deal:
+        raise HTTPException(status_code=400, detail="Deal not found or has been deleted")
+    if not deal.active:
+        raise HTTPException(status_code=400, detail="This deal is currently paused and cannot accept submissions")
+    price = deal.price
     
     # Run automatic calculations passing db
     calc = calculate_fees(schema.productCode, price, 1, schema.deduction, db)

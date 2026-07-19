@@ -36,7 +36,8 @@ from src.schemas.schemas import (
     AnalyticsSummaryResponse, VipTierResponse,
     FeatureFlagUpdate, FeatureFlagResponse,
     ReferralStatsResponse, NotificationResponse,
-    RevenueChartResponse, SystemHealthResponse
+    RevenueChartResponse, SystemHealthResponse,
+    AISuggestReplyRequest, AIChatRequest
 )
 from src.middleware.auth import (
     get_current_user, create_access_token, verify_password, sha256,
@@ -144,7 +145,7 @@ def seed_database(db: Session):
         db.add(u)
 
     buyers = [
-        {'id': 'USR001', 'name': 'Ayush Chatterjee', 'email': 'alwaysayushsourav162@gmail.com', 'mobile': '9123337436', 'password': 'ekta123'},
+        {'id': 'USR001', 'name': 'Ayush Chatterjee', 'email': 'alwaysayushsourav162@gmail.com', 'mobile': '9123337436', 'password': 'ekta@123'},
         {'id': 'USR002', 'name': 'Shivam Raj',       'email': 'shivamraj@example.com',          'mobile': '9876543210', 'password': 'user@123'},
         {'id': 'USR003', 'name': 'Priya Sharma',     'email': 'priya@example.com',              'mobile': '9988776655', 'password': 'user@123'},
         {'id': 'USR004', 'name': 'Rahul Mehta',      'email': 'rahul@example.com',              'mobile': '9812345678', 'password': 'user@123', 'status': 'suspended'},
@@ -672,6 +673,8 @@ def get_deal_detail(
     deal = db.query(Deal).filter(Deal.id == deal_id).first()
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
+    if current_user.role not in ('admin', 'super_admin', 'manager', 'auditor', 'staff') and not deal.active:
+        raise HTTPException(status_code=403, detail="Deal is paused or inactive")
     return deal.to_dict()
 
 
@@ -971,6 +974,125 @@ def review_ticket(
 
 
 # ─────────────────────────────────────────────
+#  LOCAL OLLAMA AI ASSISTANCE ENDPOINTS (NEW)
+# ─────────────────────────────────────────────
+@app.post("/api/ai/suggest-reply", tags=["AI"])
+def suggest_ticket_reply(
+    schema: AISuggestReplyRequest,
+    current_user: User = Depends(require_staff),
+    db: Session = Depends(get_db)
+):
+    ollama_url = biz_logic.get_system_setting(db, "ollama_url", "http://localhost:11434").strip()
+    ollama_model = biz_logic.get_system_setting(db, "ollama_model", "deepseek-coder:6.7b").strip()
+    
+    prompt = (
+        "You are a helpful customer support agent for a cashback deal portal called 'deals.seller'.\n"
+        f"A buyer has submitted a support ticket:\n"
+        f"Subject: {schema.title}\n"
+        f"Body: {schema.description}\n\n"
+        "Write a polite, professional, and helpful response to resolve their query. "
+        "Keep the response concise, clear, and direct. Do not add any greeting placeholders like '[My Name]' or '[Your Name]'; "
+        "simply sign off as 'Deals Seller Support Team'."
+    )
+    
+    try:
+        import requests
+        res = requests.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": ollama_model,
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=15.0
+        )
+        if res.status_code == 200:
+            data = res.json()
+            reply = data.get("response", "").strip()
+            return {"success": True, "suggestion": reply}
+        else:
+            return {"success": False, "detail": f"Ollama returned error: {res.text}"}
+    except Exception as e:
+        return {"success": False, "detail": f"Could not connect to local Ollama on {ollama_url}. Error: {str(e)}"}
+
+
+@app.post("/api/ai/chat", tags=["AI"])
+def chat_assistant(
+    schema: AIChatRequest,
+    current_user: User = Depends(require_buyer),
+    db: Session = Depends(get_db)
+):
+    ollama_url = biz_logic.get_system_setting(db, "ollama_url", "http://localhost:11434").strip()
+    ollama_model = biz_logic.get_system_setting(db, "ollama_model", "deepseek-coder:6.7b").strip()
+    
+    # Fetch user context
+    wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
+    orders = db.query(Order).filter(Order.buyer_id == current_user.id).all()
+    
+    wallet_info = (
+        f"Pending: {wallet.pending_cashback}, "
+        f"Approved: {wallet.approved_cashback}, "
+        f"Withdrawable: {wallet.withdrawable_cashback}, "
+        f"Total Withdrawn: {wallet.total_withdrawn}"
+    ) if wallet else "No wallet found"
+    
+    orders_info = []
+    for o in orders[:5]:
+        orders_info.append(
+            f"- Order {o.order_no} ({o.platform}): status '{o.current_status}', cashback ₹{o.net_amount}"
+        )
+    orders_str = "\n".join(orders_info) if orders_info else "No orders placed yet."
+    
+    system_prompt = (
+        "You are the Deals Seller Portal virtual assistant. You help buyers with their cashback deals and orders.\n"
+        f"User Profile Info:\n"
+        f"- Name: {current_user.name}\n"
+        f"- Email: {current_user.email}\n"
+        f"- VIP Tier: {current_user.vip_tier}\n"
+        f"- Wallet Balance: {wallet_info}\n"
+        f"- Recent Orders:\n{orders_str}\n\n"
+        "Guidelines:\n"
+        "- Answer client queries using the profile information. Be polite, precise, and professional.\n"
+        "- If asked about withdrawal rules: Minimum withdrawal is ₹100.\n"
+        "- If asked about fee: Platform fee is 5% deducted from cashback.\n"
+        "- Keep responses direct and concise (under 3 sentences where possible). Avoid long-winded output.\n"
+    )
+    
+    history_str = ""
+    if schema.history:
+        for msg in schema.history[-6:]:
+            history_str += f"{msg.role.capitalize()}: {msg.content}\n"
+            
+    full_prompt = (
+        f"{system_prompt}\n"
+        "Chat History:\n"
+        f"{history_str}"
+        f"User: {schema.message}\n"
+        "Assistant:"
+    )
+    
+    try:
+        import requests
+        res = requests.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": ollama_model,
+                "prompt": full_prompt,
+                "stream": False
+            },
+            timeout=15.0
+        )
+        if res.status_code == 200:
+            data = res.json()
+            reply = data.get("response", "").strip()
+            return {"success": True, "response": reply}
+        else:
+            return {"success": False, "detail": f"Ollama returned error: {res.text}"}
+    except Exception as e:
+        return {"success": False, "detail": f"Could not connect to local Ollama on {ollama_url}. Error: {str(e)}"}
+
+
+# ─────────────────────────────────────────────
 #  ANNOUNCEMENTS API
 # ─────────────────────────────────────────────
 @app.get("/api/announcements", tags=["Announcements"])
@@ -1119,6 +1241,11 @@ def get_order_timeline(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if current_user.role not in ('admin', 'super_admin', 'manager', 'auditor', 'staff') and order.buyer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not have permission to view this order's timeline")
     timeline = biz_logic.get_order_status_timeline(db, order_id)
     return [t.to_dict() for t in timeline]
 

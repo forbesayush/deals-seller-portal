@@ -28,6 +28,8 @@ const SETTING_DESCRIPTIONS: Record<string, string> = {
   referral_bonus_amount: 'Cashback bonus (₹) credited to referrer when a new user signs up with their code',
   gold_tier_threshold: 'Minimum paid orders to reach Gold VIP tier',
   silver_tier_threshold: 'Minimum paid orders to reach Silver VIP tier',
+  ollama_url: 'Local Ollama API Endpoint URL (default http://localhost:11434)',
+  ollama_model: 'Local Ollama LLM Model Name (default deepseek-coder:6.7b)',
 };
 
 const DEFAULT_SETTINGS: Setting[] = [
@@ -37,6 +39,8 @@ const DEFAULT_SETTINGS: Setting[] = [
   { key: 'referral_bonus_amount', value: '50', description: SETTING_DESCRIPTIONS.referral_bonus_amount, updatedAt: null },
   { key: 'gold_tier_threshold', value: '5', description: SETTING_DESCRIPTIONS.gold_tier_threshold, updatedAt: null },
   { key: 'silver_tier_threshold', value: '3', description: SETTING_DESCRIPTIONS.silver_tier_threshold, updatedAt: null },
+  { key: 'ollama_url', value: 'http://localhost:11434', description: SETTING_DESCRIPTIONS.ollama_url, updatedAt: null },
+  { key: 'ollama_model', value: 'deepseek-coder:6.7b', description: SETTING_DESCRIPTIONS.ollama_model, updatedAt: null },
 ];
 
 export default function AdminSettings() {

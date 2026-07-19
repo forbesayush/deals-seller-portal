@@ -265,15 +265,14 @@ export default function Login() {
             </div>
 
             {/* Quick Login Chips */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {[
-                { label: 'Admin Demo', id: 'admin', pwd: 'admin@123', icon: '🛡️' },
-                { label: 'Buyer Demo', id: 'alwaysayushsourav162@gmail.com', pwd: 'ekta123', icon: '🛍️' },
+                { label: 'Buyer', id: '9123337436', pwd: 'ekta@123', icon: '🛍️' },
               ].map(demo => (
                 <button
                   key={demo.label}
                   onClick={() => { setIdentifier(demo.id); setPassword(demo.pwd); }}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/20 transition-all duration-200"
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/20 transition-all duration-200"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
                 >
                   <span>{demo.icon}</span>
