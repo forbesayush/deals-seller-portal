@@ -51,7 +51,7 @@ interface StatCard {
 function DashStat({ card }: { card: StatCard }) {
   const Icon = card.icon;
   return (
-    <div className="premium-card p-5 cursor-pointer hover:shadow-card-hover transition-all duration-200 group"
+    <div className="premium-card liquid-glass p-5 cursor-pointer hover:shadow-card-hover transition-all duration-200 group"
       onClick={() => card.href && (window.location.href = card.href)}>
       <div className="flex items-start justify-between">
         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${card.bg}`}>
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
 
             {/* ── Feature 12/13: Revenue Chart + Analytics ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 premium-card card-accent-violet p-5">
+              <div className="lg:col-span-2 premium-card liquid-glass card-accent-violet p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-extrabold text-base">Revenue Overview</h3>
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Feature 14: System Health Card */}
-              <div className="premium-card card-accent-emerald p-5">
+              <div className="premium-card liquid-glass card-accent-emerald p-5">
                 <h3 className="font-extrabold mb-4">System Health</h3>
                 <div className="space-y-3">
                   {[
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
             {/* ── Feature 15: Deal Performance + Feature 16: Recent Users ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Deal Performance */}
-              <div className="premium-card overflow-hidden">
+              <div className="premium-card liquid-glass overflow-hidden">
                 <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                   <h3 className="font-extrabold">Deal Performance</h3>
                   <a href="/admin/deals" className="text-xs text-brand-600 dark:text-violet-400 font-bold hover:underline flex items-center gap-1">
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Recent Users */}
-              <div className="premium-card overflow-hidden">
+              <div className="premium-card liquid-glass overflow-hidden">
                 <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                   <h3 className="font-extrabold">Recent Users</h3>
                   <a href="/admin/users" className="text-xs text-brand-600 dark:text-violet-400 font-bold hover:underline flex items-center gap-1">
@@ -394,7 +394,7 @@ export default function AdminDashboard() {
             {/* ── Feature 17: Recent Orders + Feature 18/19: Tickets & Announcements ── */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* Recent Orders */}
-              <div className="xl:col-span-2 premium-card overflow-hidden">
+              <div className="xl:col-span-2 premium-card liquid-glass overflow-hidden">
                 <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                   <h3 className="font-extrabold">Recent Orders</h3>
                   <a href="/admin/orders" className="text-xs text-brand-600 dark:text-violet-400 font-bold hover:underline flex items-center gap-1">
@@ -437,7 +437,7 @@ export default function AdminDashboard() {
 
               {/* Tickets & Announcements */}
               <div className="space-y-4">
-                <div className="premium-card overflow-hidden">
+                <div className="premium-card liquid-glass overflow-hidden">
                   <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                     <h3 className="font-extrabold text-sm">Open Tickets</h3>
                     <a href="/admin/tickets" className="text-xs text-brand-600 dark:text-violet-400 font-bold">View all</a>
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                <div className="premium-card overflow-hidden">
+                <div className="premium-card liquid-glass overflow-hidden">
                   <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                     <h3 className="font-extrabold text-sm">Announcements</h3>
                     <a href="/admin/announcements" className="text-xs text-brand-600 dark:text-violet-400 font-bold">Manage</a>
@@ -488,7 +488,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* ── Feature 20: Recent Refunds ── */}
-            <div className="premium-card card-accent-rose overflow-hidden">
+            <div className="premium-card liquid-glass card-accent-rose overflow-hidden">
               <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
                 <h3 className="font-extrabold">Recent Refund Requests</h3>
                 <a href="/admin/refunds" className="text-xs text-brand-600 dark:text-violet-400 font-bold hover:underline flex items-center gap-1">
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
               ].map(item => {
                 const Icon = item.icon;
                 return (
-                  <a key={item.href} href={item.href} className="premium-card p-4 hover:shadow-card-hover transition-all group">
+                  <a key={item.href} href={item.href} className="premium-card liquid-glass p-4 hover:shadow-card-hover transition-all group">
                     <Icon className="w-5 h-5 text-brand-600 dark:text-violet-400 mb-2" />
                     <p className="font-bold text-sm group-hover:text-brand-600 dark:group-hover:text-violet-400 transition-colors">{item.label}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>

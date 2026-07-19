@@ -222,7 +222,7 @@ def create_order(db: Session, schema: OrderCreate, buyer: User, actor: User, ip:
         order_no=schema.orderNo,
         order_code=generate_order_code(),
         tracking_number=generate_tracking_number(),
-        product_name=calc['productName'],
+        product_name=schema.orderName.strip() if schema.orderName and schema.orderName.strip() else calc['productName'],
         product_price=price,
         quantity=1,
         buyer_id=buyer.id,
