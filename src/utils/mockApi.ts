@@ -16,15 +16,12 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded')) {
-      const existingUsers = getStorage('ds_users', []);
-      const usr = existingUsers.find((u: any) => u.id === 'USR005');
-      if (usr) {
-        return;
-      }
-      // Force update by clearing flag
-      localStorage.removeItem('ds_seeded');
+    if (localStorage.getItem('ds_seeded_v3')) {
+      return;
     }
+    // Clean old storage versions to force a fresh seed
+    localStorage.removeItem('ds_seeded');
+    localStorage.removeItem('ds_seeded_v2');
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -43,15 +40,7 @@ if (typeof window !== 'undefined') {
     setStorage('ds_users', users);
 
     // Seed Deals
-    const deals = [
-      { id: 'DEA001', productCode: 'AMZ001', productName: 'boAt Rockerz 255 Pro+ Wireless Earphones', platform: 'Amazon', price: 1299.0, cashback: 300.0, slots: 4, active: true, featured: true },
-      { id: 'DEA002', productCode: 'AMZ002', productName: 'Noise ColorFit Pro 4 Smartwatch', platform: 'Amazon', price: 2499.0, cashback: 500.0, slots: 4, active: true, featured: false },
-      { id: 'DEA003', productCode: 'FLK001', productName: 'Redmi 13C 4G Smartphone (128GB)', platform: 'Flipkart', price: 8999.0, cashback: 800.0, slots: 5, active: true, featured: true },
-      { id: 'DEA004', productCode: 'FLK002', productName: 'Mi 43" 4K Ultra HD Android TV', platform: 'Flipkart', price: 24999.0, cashback: 2000.0, slots: 3, active: true, featured: false },
-      { id: 'DEA005', productCode: 'BLK001', productName: 'Amul Butter (500g)', platform: 'Blinkit', price: 290.0, cashback: 60.0, slots: 6, active: true, featured: false },
-      { id: 'DEA006', productCode: 'AMZ003', productName: 'HP 15 Laptop Intel Core i5 (8GB/512GB)', platform: 'Amazon', price: 49999.0, cashback: 3500.0, slots: 2, active: true, featured: false },
-      { id: 'DEA007', productCode: 'FLK003', productName: 'Puma Men\'s Running Shoes', platform: 'Flipkart', price: 2999.0, cashback: 400.0, slots: 4, active: true, featured: false },
-    ];
+    const deals: any[] = [];
     setStorage('ds_deals', deals);
 
     // Seed Wallets
@@ -135,7 +124,7 @@ if (typeof window !== 'undefined') {
     ];
     setStorage('ds_transactions', txs);
 
-    localStorage.setItem('ds_seeded', 'true');
+    localStorage.setItem('ds_seeded_v3', 'true');
   };
 
   // Run database initialization
