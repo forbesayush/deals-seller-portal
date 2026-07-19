@@ -16,12 +16,13 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded_v3')) {
+    if (localStorage.getItem('ds_seeded_v4')) {
       return;
     }
     // Clean old storage versions to force a fresh seed
     localStorage.removeItem('ds_seeded');
     localStorage.removeItem('ds_seeded_v2');
+    localStorage.removeItem('ds_seeded_v3');
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -40,7 +41,88 @@ if (typeof window !== 'undefined') {
     setStorage('ds_users', users);
 
     // Seed Deals
-    const deals: any[] = [];
+    const deals = [
+      {
+        id: 'DEA101',
+        productCode: 'PRM001',
+        productName: 'Premium Deal — Sony WH-1000XM5',
+        platform: 'Amazon',
+        price: 29990.0,
+        cashback: 3500.0,
+        slots: 10,
+        active: true,
+        category: 'Electronics',
+        description: 'Premium Sony wireless noise cancelling headphones with industry-leading audio quality.',
+        rating: 4.8,
+        dealType: 'cashback',
+        minOrderValue: 25000.0,
+        maxPerUser: 1,
+        claimedCount: 0,
+        featured: true,
+        tags: ['premium', 'sony', 'audio'],
+        createdAt: today
+      },
+      {
+        id: 'DEA102',
+        productCode: 'EMP001',
+        productName: 'Empty Deal — Standard Product Placeholder',
+        platform: 'Flipkart',
+        price: 999.0,
+        cashback: 100.0,
+        slots: 50,
+        active: true,
+        category: 'General',
+        description: 'An empty/placeholder test deal for standard validation checks.',
+        rating: 4.0,
+        dealType: 'cashback',
+        minOrderValue: 0.0,
+        maxPerUser: 5,
+        claimedCount: 0,
+        featured: false,
+        tags: ['empty', 'test', 'placeholder'],
+        createdAt: today
+      },
+      {
+        id: 'DEA103',
+        productCode: 'ORG001',
+        productName: 'Original Deal — boAt Stone 350 Speaker',
+        platform: 'Amazon',
+        price: 1499.0,
+        cashback: 250.0,
+        slots: 25,
+        active: true,
+        category: 'Electronics',
+        description: 'BoAt portable Bluetooth speaker with immersive sound and long battery life.',
+        rating: 4.4,
+        dealType: 'cashback',
+        minOrderValue: 1000.0,
+        maxPerUser: 2,
+        claimedCount: 0,
+        featured: true,
+        tags: ['original', 'boat', 'audio'],
+        createdAt: today
+      },
+      {
+        id: 'DEA104',
+        productCode: 'EXC001',
+        productName: 'Exchange Deal — OnePlus Nord CE4 Lite',
+        platform: 'Flipkart',
+        price: 19999.0,
+        cashback: 1800.0,
+        slots: 15,
+        active: true,
+        category: 'Mobiles',
+        description: 'Special exchange offer deal for the latest OnePlus mid-ranger phone.',
+        rating: 4.5,
+        dealType: 'cashback',
+        minOrderValue: 15000.0,
+        maxPerUser: 1,
+        claimedCount: 0,
+        featured: false,
+        tags: ['exchange', 'oneplus', 'mobile'],
+        createdAt: today
+      }
+    ];
     setStorage('ds_deals', deals);
 
     // Seed Wallets
@@ -124,7 +206,7 @@ if (typeof window !== 'undefined') {
     ];
     setStorage('ds_transactions', txs);
 
-    localStorage.setItem('ds_seeded_v3', 'true');
+    localStorage.setItem('ds_seeded_v4', 'true');
   };
 
   // Run database initialization

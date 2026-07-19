@@ -31,10 +31,11 @@ export default function Login() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const seeded = localStorage.getItem('ds_seeded_v3');
+      const seeded = localStorage.getItem('ds_seeded_v4');
       if (!seeded) {
         localStorage.removeItem('ds_seeded');
         localStorage.removeItem('ds_seeded_v2');
+        localStorage.removeItem('ds_seeded_v3');
         localStorage.removeItem('ds_users');
         localStorage.removeItem('ds_deals');
         localStorage.removeItem('ds_wallets');

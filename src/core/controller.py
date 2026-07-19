@@ -248,8 +248,101 @@ def seed_database(db: Session):
                 w.refund_balance = round(w.refund_balance + r['amount'], 2)
 
     # 4. Seed deals catalog
-    # Completely delete the default deals if they exist in the database
+    # Completely delete the old default deals if they exist in the database
     db.query(Deal).filter(Deal.id.in_(['DEA001', 'DEA002', 'DEA003', 'DEA004', 'DEA005', 'DEA006', 'DEA007'])).delete(synchronize_session=False)
+    db.commit()
+
+    # Seed the 4 new types of deals requested by the user
+    new_deals = [
+        {
+            'id': 'DEA101',
+            'product_code': 'PRM001',
+            'product_name': 'Premium Deal — Sony WH-1000XM5',
+            'platform': 'Amazon',
+            'price': 29990.0,
+            'cashback': 3500.0,
+            'slots': 10,
+            'active': True,
+            'category': 'Electronics',
+            'description': 'Premium Sony wireless noise cancelling headphones with industry-leading audio quality.',
+            'rating': 4.8,
+            'deal_type': 'cashback',
+            'min_order_value': 25000.0,
+            'max_per_user': 1,
+            'featured': True,
+            'tags': 'premium,sony,audio',
+            'created_at': '2026-07-19'
+        },
+        {
+            'id': 'DEA102',
+            'product_code': 'EMP001',
+            'product_name': 'Empty Deal — Standard Product Placeholder',
+            'platform': 'Flipkart',
+            'price': 999.0,
+            'cashback': 100.0,
+            'slots': 50,
+            'active': True,
+            'category': 'General',
+            'description': 'An empty/placeholder test deal for standard validation checks.',
+            'rating': 4.0,
+            'deal_type': 'cashback',
+            'min_order_value': 0.0,
+            'max_per_user': 5,
+            'featured': False,
+            'tags': 'empty,test,placeholder',
+            'created_at': '2026-07-19'
+        },
+        {
+            'id': 'DEA103',
+            'product_code': 'ORG001',
+            'product_name': 'Original Deal — boAt Stone 350 Speaker',
+            'platform': 'Amazon',
+            'price': 1499.0,
+            'cashback': 250.0,
+            'slots': 25,
+            'active': True,
+            'category': 'Electronics',
+            'description': 'BoAt portable Bluetooth speaker with immersive sound and long battery life.',
+            'rating': 4.4,
+            'deal_type': 'cashback',
+            'min_order_value': 1000.0,
+            'max_per_user': 2,
+            'featured': True,
+            'tags': 'original,boat,audio',
+            'created_at': '2026-07-19'
+        },
+        {
+            'id': 'DEA104',
+            'product_code': 'EXC001',
+            'product_name': 'Exchange Deal — OnePlus Nord CE4 Lite',
+            'platform': 'Flipkart',
+            'price': 19999.0,
+            'cashback': 1800.0,
+            'slots': 15,
+            'active': True,
+            'category': 'Mobiles',
+            'description': 'Special exchange offer deal for the latest OnePlus mid-ranger phone.',
+            'rating': 4.5,
+            'deal_type': 'cashback',
+            'min_order_value': 15000.0,
+            'max_per_user': 1,
+            'featured': False,
+            'tags': 'exchange,oneplus,mobile',
+            'created_at': '2026-07-19'
+        }
+    ]
+    for d in new_deals:
+        existing = db.query(Deal).filter(Deal.id == d['id']).first()
+        if not existing:
+            deal_row = Deal(
+                id=d['id'], product_code=d['product_code'], product_name=d['product_name'],
+                platform=d['platform'], price=d['price'], cashback=d['cashback'],
+                slots=d['slots'], active=d['active'], category=d['category'],
+                description=d['description'], rating=d['rating'], deal_type=d['deal_type'],
+                min_order_value=d['min_order_value'], max_per_user=d['max_per_user'],
+                featured=d['featured'], tags=d['tags'], created_at=d['created_at']
+            )
+            db.add(deal_row)
     db.commit()
     print("[OK] Mock seed complete.")
 
