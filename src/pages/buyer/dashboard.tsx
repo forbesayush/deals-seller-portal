@@ -116,6 +116,7 @@ export default function BuyerDashboard() {
   const [orderNo, setOrderNo] = useState('');
   const [orderName, setOrderName] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
+  const [orderDeduction, setOrderDeduction] = useState('');
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderMsg, setOrderMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -274,6 +275,24 @@ export default function BuyerDashboard() {
     setActiveTab('orders');
   };
 
+  const getExpectedRefundInfo = () => {
+    if (!selectedDeal) return null;
+    const price = parseFloat(orderAmount) || 0;
+    const cashback = selectedDeal.cashback || 0;
+    const defaultFee = price ? Math.round(price * 0.05 * 100) / 100 : 0;
+    const customDeduction = orderDeduction ? parseFloat(orderDeduction) : 0;
+    const deductionToApply = customDeduction > 0 ? customDeduction : defaultFee;
+    const expectedNet = Math.round((cashback - deductionToApply) * 100) / 100;
+    return {
+      cashback,
+      deduction: deductionToApply,
+      net: expectedNet,
+      isCustom: customDeduction > 0
+    };
+  };
+
+  const refundInfo = getExpectedRefundInfo();
+
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDeal || !orderNo || !orderAmount) { setOrderMsg({ type: 'error', text: 'Fill all required fields' }); return; }
@@ -287,13 +306,15 @@ export default function BuyerDashboard() {
           platform: selectedDeal.platform, mediator: 'Self',
           dealType: selectedDeal.dealType || 'cashback',
           orderDate: new Date().toISOString().split('T')[0],
-          amount: parseFloat(orderAmount), deduction: 0, screenshot: false,
+          amount: parseFloat(orderAmount),
+          deduction: orderDeduction ? parseFloat(orderDeduction) : 0,
+          screenshot: false,
         }),
       });
       const data = await res.json();
       if (res.ok) {
         setOrderMsg({ type: 'success', text: `Order submitted! Code: ${data.orderCode}` });
-        setOrderNo(''); setOrderName(''); setOrderAmount(''); setSelectedDeal(null); setShowOrderForm(false);
+        setOrderNo(''); setOrderName(''); setOrderAmount(''); setOrderDeduction(''); setSelectedDeal(null); setShowOrderForm(false);
         fetchOrders(); fetchWallet();
       } else {
         setOrderMsg({ type: 'error', text: data.detail || 'Failed' });
@@ -551,6 +572,27 @@ export default function BuyerDashboard() {
                         <label className="section-label">Amount Paid (₹) *</label>
                         <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input" required />
                       </div>
+                      <div>
+                        <label className="section-label">Cut / Custom Deduction (Optional)</label>
+                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="Default: 5% of amount" className="input" />
+                      </div>
+                      {refundInfo && (
+                        <div className="sm:col-span-2 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/10 border border-brand-100 dark:border-brand-900/30 text-xs space-y-2 animate-fade-up">
+                          <p className="font-extrabold text-[10px] uppercase tracking-wider text-brand-600 dark:text-violet-400">Live Payout / Refund Preview</p>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 dark:text-slate-400">Base Deal Cashback:</span>
+                            <span className="font-extrabold">{formatINR(refundInfo.cashback)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 dark:text-slate-400">Deduction applied {refundInfo.isCustom ? "(Custom Cut)" : "(5% Processing Fee)"}:</span>
+                            <span className="font-extrabold text-rose-500">-{formatINR(refundInfo.deduction)}</span>
+                          </div>
+                          <div className="border-t pt-2 mt-2 flex justify-between font-extrabold text-sm" style={{ borderColor: 'var(--color-border)' }}>
+                            <span className="text-slate-800 dark:text-slate-200">Rest Net Refund:</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">{formatINR(refundInfo.net)}</span>
+                          </div>
+                        </div>
+                      )}
                       {!selectedDeal && (
                         <div className="sm:col-span-2">
                           <label className="section-label">Select Deal *</label>
@@ -611,7 +653,7 @@ export default function BuyerDashboard() {
                             <th>Order No</th>
                             <th>Product</th>
                             <th>Amount</th>
-                            <th>Cashback</th>
+                            <th>Refund (Net)</th>
                             <th>Status</th>
                             <th>Date</th>
                           </tr>
@@ -630,7 +672,12 @@ export default function BuyerDashboard() {
                                 <p className="text-xs text-slate-400">{order.platform}</p>
                               </td>
                               <td className="font-bold text-sm">{formatINR(order.productPrice)}</td>
-                              <td className="font-bold text-sm text-emerald-600">{formatINR(order.cashbackAmount)}</td>
+                              <td className="text-sm">
+                                <p className="font-bold text-emerald-600">{formatINR(order.netAmount)}</p>
+                                {order.deductionAmount > 0 && (
+                                  <p className="text-[10px] text-rose-500 font-semibold">- {formatINR(order.deductionAmount)} cut</p>
+                                )}
+                              </td>
                               <td><StatusBadge status={order.currentStatus} /></td>
                               <td className="text-xs text-slate-400">{order.orderDate}</td>
                             </tr>
