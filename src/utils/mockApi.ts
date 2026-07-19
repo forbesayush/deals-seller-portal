@@ -159,11 +159,13 @@ if (typeof window !== 'undefined') {
     // ── AUTHENTICATION APIS ──
     if (pathname === '/api/auth/login' && method === 'POST') {
       const { identifier, password } = body;
+      const cleanIdentifier = typeof identifier === 'string' ? identifier.trim() : '';
+      const cleanPassword = typeof password === 'string' ? password.trim() : '';
       const users = getStorage('ds_users', []);
       
       // Support standard identifiers: email, mobile, or name, as well as Flask fallback stubs
       const adminStubs: Record<string, string> = { admin: 'ADM001', owner: 'ADM002', ekta: 'ADM003' };
-      const lookupId = adminStubs[identifier] || identifier;
+      const lookupId = adminStubs[cleanIdentifier] || cleanIdentifier;
 
       const user = users.find((u: any) => 
         u.email === lookupId || 
@@ -172,7 +174,7 @@ if (typeof window !== 'undefined') {
         u.id === lookupId
       );
 
-      if (!user || user.password !== password) {
+      if (!user || user.password !== cleanPassword) {
         return jsonResponse({ success: false, detail: 'Invalid credentials. Please try again.' }, 401);
       }
       if (user.status === 'suspended') {

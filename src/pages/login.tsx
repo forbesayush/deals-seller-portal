@@ -51,7 +51,9 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier || !password) {
+    const cleanIdentifier = identifier ? identifier.trim() : '';
+    const cleanPassword = password ? password.trim() : '';
+    if (!cleanIdentifier || !cleanPassword) {
       setError('Please enter your credentials');
       return;
     }
@@ -61,7 +63,7 @@ export default function Login() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier: cleanIdentifier, password: cleanPassword }),
       });
       const data = await res.json();
       if (res.ok && data.success) {

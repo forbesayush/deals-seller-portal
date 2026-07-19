@@ -277,19 +277,22 @@ def login(schema: UserLogin, response: Response, request: Request, db: Session =
         )
     LOGIN_RATE_LIMITS[ip].append(now)
 
+    clean_identifier = schema.identifier.strip() if schema.identifier else ""
+    clean_password = schema.password.strip() if schema.password else ""
+
     user = db.query(User).filter(
-        (User.email == schema.identifier) |
-        (User.mobile == schema.identifier) |
-        (User.name == schema.identifier)
+        (User.email == clean_identifier) |
+        (User.mobile == clean_identifier) |
+        (User.name == clean_identifier)
     ).first()
 
     # Old Flask username stubs fallback mapping
     admin_usernames = {'admin': 'ADM001', 'owner': 'ADM002', 'ekta': 'ADM003'}
-    if not user and schema.identifier in admin_usernames:
-        user = db.query(User).filter(User.id == admin_usernames[schema.identifier]).first()
+    if not user and clean_identifier in admin_usernames:
+        user = db.query(User).filter(User.id == admin_usernames[clean_identifier]).first()
 
-    if not user or not verify_password(schema.password, user.password_hash):
-        biz_logic.record_audit(db, None, "Login Failure", "users", None, ip, ua, {"identifier": schema.identifier})
+    if not user or not verify_password(clean_password, user.password_hash):
+        biz_logic.record_audit(db, None, "Login Failure", "users", None, ip, ua, {"identifier": clean_identifier})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials. Please try again."
