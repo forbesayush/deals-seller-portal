@@ -16,7 +16,15 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded')) return;
+    if (localStorage.getItem('ds_seeded')) {
+      const existingUsers = getStorage('ds_users', []);
+      const usr = existingUsers.find((u: any) => u.id === 'USR001');
+      if (usr && usr.password === 'ekta@123') {
+        return;
+      }
+      // Force update by clearing flag
+      localStorage.removeItem('ds_seeded');
+    }
 
     const today = new Date().toISOString().split('T')[0];
 
