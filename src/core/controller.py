@@ -120,30 +120,30 @@ def health_check():
 #  DATABASE SEED FUNCTION
 # ─────────────────────────────────────────────
 def seed_database(db: Session):
-    """Seed the database with default data if empty (Idempotent)."""
+    """Seed the database with default data and keep users up to date (Idempotent)."""
     # Create tables if not exist
     Base.metadata.create_all(bind=engine)
     
-    # Check if admins exist
-    if db.query(User).filter(User.role == 'admin').count() > 0:
-        return  # already seeded
-        
-    print("[OK] Seeding database with enterprise mock data...")
     today = today_date()
 
-    # 1. Seed users (admins & buyers)
+    # 1. Seed/Update admins
     admins = [
         {'id': 'ADM001', 'name': 'Admin — deals.seller',  'email': 'admin@deals.seller.com',  'mobile': None, 'password': 'admin@123', 'role': 'admin'},
         {'id': 'ADM002', 'name': 'Owner — deals.seller',  'email': 'owner@deals.seller.com',  'mobile': None, 'password': 'owner@123', 'role': 'admin'},
         {'id': 'ADM003', 'name': 'Ekta — Admin',          'email': 'ekta@deals.seller.com',   'mobile': None, 'password': 'ayushu08', 'role': 'admin'},
     ]
     for a in admins:
-        u = User(
-            id=a['id'], name=a['name'], email=a['email'], mobile=a['mobile'],
-            password_hash=sha256(a['password']), role=a['role'], status='active', joined=today, verified=True
-        )
-        db.add(u)
+        existing = db.query(User).filter(User.id == a['id']).first()
+        if not existing:
+            u = User(
+                id=a['id'], name=a['name'], email=a['email'], mobile=a['mobile'],
+                password_hash=sha256(a['password']), role=a['role'], status='active', joined=today, verified=True
+            )
+            db.add(u)
+        else:
+            existing.password_hash = sha256(a['password'])
 
+    # 2. Seed/Update buyers
     buyers = [
         {'id': 'USR001', 'name': 'Ayush Chatterjee', 'email': 'alwaysayushsourav162@gmail.com', 'mobile': '9123337436', 'password': 'ekta@123'},
         {'id': 'USR002', 'name': 'Shivam Raj',       'email': 'shivamraj@example.com',          'mobile': '9876543210', 'password': 'user@123'},
@@ -153,26 +153,40 @@ def seed_database(db: Session):
         {'id': 'USR006', 'name': 'Shivam Kumar',    'email': 'shivam.kumar@example.com',       'mobile': '7050798925', 'password': 'shivam@123'},
     ]
     for b in buyers:
-        u = User(
-            id=b['id'], name=b['name'], email=b['email'], mobile=b['mobile'],
-            password_hash=sha256(b['password']), role='buyer', status=b.get('status', 'active'), joined=today, verified=True
-        )
-        db.add(u)
-        
-        # Create user wallet
-        wallet = Wallet(
-            id=f"WLT{b['id'][3:]}",
-            user_id=b['id'],
-            pending_cashback=0.0,
-            approved_cashback=0.0,
-            locked_cashback=0.0,
-            withdrawable_cashback=0.0,
-            refund_balance=0.0,
-            last_updated=now_iso()
-        )
-        db.add(wallet)
-
+        existing = db.query(User).filter(User.id == b['id']).first()
+        if not existing:
+            u = User(
+                id=b['id'], name=b['name'], email=b['email'], mobile=b['mobile'],
+                password_hash=sha256(b['password']), role='buyer', status=b.get('status', 'active'), joined=today, verified=True
+            )
+            db.add(u)
+            
+            # Create user wallet
+            wallet = Wallet(
+                id=f"WLT{b['id'][3:]}",
+                user_id=b['id'],
+                pending_cashback=0.0,
+                approved_cashback=0.0,
+                locked_cashback=0.0,
+                withdrawable_cashback=0.0,
+                refund_balance=0.0,
+                last_updated=now_iso()
+            )
+            db.add(wallet)
+        else:
+            existing.password_hash = sha256(b['password'])
+            existing.mobile = b['mobile']
+            existing.email = b['email']
+            existing.name = b['name']
+            
     db.commit()
+
+    # Check if orders already seeded
+    if db.query(Order).count() > 0:
+        # Completely delete the default deals if they exist in the database
+        db.query(Deal).filter(Deal.id.in_(['DEA001', 'DEA002', 'DEA003', 'DEA004', 'DEA005', 'DEA006', 'DEA007'])).delete(synchronize_session=False)
+        db.commit()
+        return
 
     # 2. Seed orders
     orders = [
