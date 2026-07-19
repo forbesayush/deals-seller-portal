@@ -18,8 +18,8 @@ if (typeof window !== 'undefined') {
   const seedDatabase = () => {
     if (localStorage.getItem('ds_seeded')) {
       const existingUsers = getStorage('ds_users', []);
-      const usr = existingUsers.find((u: any) => u.id === 'USR001');
-      if (usr && usr.password === 'ekta@123') {
+      const usr = existingUsers.find((u: any) => u.id === 'USR005');
+      if (usr) {
         return;
       }
       // Force update by clearing flag
@@ -37,6 +37,8 @@ if (typeof window !== 'undefined') {
       { id: 'USR002', name: 'Shivam Raj', email: 'shivamraj@example.com', mobile: '9876543210', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'SHIVAM2' },
       { id: 'USR003', name: 'Priya Sharma', email: 'priya@example.com', mobile: '9988776655', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'PRIYA3' },
       { id: 'USR004', name: 'Rahul Mehta', email: 'rahul@example.com', mobile: '9812345678', password: 'user@123', role: 'buyer', status: 'suspended', joined: today, verified: true, referral: 'RAHUL4' },
+      { id: 'USR005', name: 'Krish Kumar', email: 'krish@example.com', mobile: '9883668754', password: 'krish@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'KRISH5' },
+      { id: 'USR006', name: 'Shivam Kumar', email: 'shivam.kumar@example.com', mobile: '7050798925', password: 'shivam@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'SHIVAM6' },
     ];
     setStorage('ds_users', users);
 

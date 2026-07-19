@@ -149,6 +149,8 @@ def seed_database(db: Session):
         {'id': 'USR002', 'name': 'Shivam Raj',       'email': 'shivamraj@example.com',          'mobile': '9876543210', 'password': 'user@123'},
         {'id': 'USR003', 'name': 'Priya Sharma',     'email': 'priya@example.com',              'mobile': '9988776655', 'password': 'user@123'},
         {'id': 'USR004', 'name': 'Rahul Mehta',      'email': 'rahul@example.com',              'mobile': '9812345678', 'password': 'user@123', 'status': 'suspended'},
+        {'id': 'USR005', 'name': 'Krish Kumar',      'email': 'krish@example.com',              'mobile': '9883668754', 'password': 'krish@123'},
+        {'id': 'USR006', 'name': 'Shivam Kumar',    'email': 'shivam.kumar@example.com',       'mobile': '7050798925', 'password': 'shivam@123'},
     ]
     for b in buyers:
         u = User(
