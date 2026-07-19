@@ -29,6 +29,26 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const seeded = localStorage.getItem('ds_seeded_v3');
+      if (!seeded) {
+        localStorage.removeItem('ds_seeded');
+        localStorage.removeItem('ds_seeded_v2');
+        localStorage.removeItem('ds_users');
+        localStorage.removeItem('ds_deals');
+        localStorage.removeItem('ds_wallets');
+        localStorage.removeItem('ds_transactions');
+        localStorage.removeItem('ds_withdrawals');
+        localStorage.removeItem('ds_refunds');
+        localStorage.removeItem('ds_tickets');
+        localStorage.removeItem('ds_settings');
+        localStorage.removeItem('ds_feature_flags');
+        localStorage.removeItem('ds_audit_logs');
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier || !password) {
