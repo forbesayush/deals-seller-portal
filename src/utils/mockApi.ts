@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded_v8')) {
+    if (localStorage.getItem('ds_seeded_v9')) {
       return;
     }
     // Clean old storage versions to force a fresh clean seed without sample data
@@ -30,6 +30,8 @@ if (typeof window !== 'undefined') {
     localStorage.removeItem('ds_seeded_v5');
     localStorage.removeItem('ds_seeded_v6');
     localStorage.removeItem('ds_seeded_v7');
+    localStorage.removeItem('ds_seeded_v8');
+    localStorage.removeItem('ds_users'); // Reset user credentials to ensure latest default passwords match
 
     // Force purge cached sample deals and order history from browser localStorage
     localStorage.removeItem('ds_deals');
@@ -115,7 +117,7 @@ if (typeof window !== 'undefined') {
     setStorage('ds_claims', []);
     setStorage('ds_transactions', []);
 
-    localStorage.setItem('ds_seeded_v8', 'true');
+    localStorage.setItem('ds_seeded_v9', 'true');
   };
 
   // Run database initialization
@@ -152,21 +154,29 @@ if (typeof window !== 'undefined') {
       const { identifier, password } = body;
       const cleanIdentifier = typeof identifier === 'string' ? identifier.trim() : '';
       const cleanPassword = typeof password === 'string' ? password.trim() : '';
+      const cleanDigits = cleanIdentifier.replace(/\D/g, '');
       const users = getStorage('ds_users', []);
       
       // Support standard identifiers: email, mobile, or name, as well as Flask fallback stubs
       const adminStubs: Record<string, string> = { admin: 'ADM001', owner: 'ADM002', ekta: 'ADM003' };
       const lookupId = adminStubs[cleanIdentifier.toLowerCase()] || cleanIdentifier.toLowerCase();
 
-      const user = users.find((u: any) => 
-        (u.email && u.email.toLowerCase() === lookupId) || 
-        (u.mobile && u.mobile === cleanIdentifier) || 
-        (u.name && u.name.toLowerCase() === lookupId) || 
-        (u.id && u.id.toLowerCase() === lookupId)
-      );
+      const user = users.find((u: any) => {
+        const uEmail = (u.email || '').toLowerCase();
+        const uName = (u.name || '').toLowerCase();
+        const uId = (u.id || '').toLowerCase();
+        const uMobileDigits = String(u.mobile || '').replace(/\D/g, '');
 
-      if (!user || user.password !== cleanPassword) {
-        return jsonResponse({ success: false, detail: 'Invalid credentials. Please check your email and password.' }, 401);
+        return (
+          uEmail === lookupId ||
+          uName === lookupId ||
+          uId === lookupId ||
+          (cleanDigits.length >= 7 && uMobileDigits.length >= 7 && uMobileDigits.endsWith(cleanDigits))
+        );
+      });
+
+      if (!user || user.password.trim() !== cleanPassword) {
+        return jsonResponse({ success: false, detail: 'Invalid credentials. Please check your email/mobile and password.' }, 401);
       }
       if (user.status === 'suspended') {
         return jsonResponse({ success: false, detail: 'Your account has been suspended.' }, 403);
