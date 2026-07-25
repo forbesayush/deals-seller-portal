@@ -156,17 +156,17 @@ if (typeof window !== 'undefined') {
       
       // Support standard identifiers: email, mobile, or name, as well as Flask fallback stubs
       const adminStubs: Record<string, string> = { admin: 'ADM001', owner: 'ADM002', ekta: 'ADM003' };
-      const lookupId = adminStubs[cleanIdentifier] || cleanIdentifier;
+      const lookupId = adminStubs[cleanIdentifier.toLowerCase()] || cleanIdentifier.toLowerCase();
 
       const user = users.find((u: any) => 
-        u.email === lookupId || 
-        u.mobile === lookupId || 
-        u.name === lookupId || 
-        u.id === lookupId
+        (u.email && u.email.toLowerCase() === lookupId) || 
+        (u.mobile && u.mobile === cleanIdentifier) || 
+        (u.name && u.name.toLowerCase() === lookupId) || 
+        (u.id && u.id.toLowerCase() === lookupId)
       );
 
       if (!user || user.password !== cleanPassword) {
-        return jsonResponse({ success: false, detail: 'Invalid credentials. Please try again.' }, 401);
+        return jsonResponse({ success: false, detail: 'Invalid credentials. Please check your email and password.' }, 401);
       }
       if (user.status === 'suspended') {
         return jsonResponse({ success: false, detail: 'Your account has been suspended.' }, 403);
