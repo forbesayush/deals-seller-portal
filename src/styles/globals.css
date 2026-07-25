@@ -529,25 +529,8 @@ html.dark .notif-dot { border-color: #1e293b; }
 .status-dot.error    { @apply bg-rose-500; }
 
 /* ─────────────────────────────────────────────
-   ADVANCED LIQUID UI & UX SYSTEM
+   CLEAN & EYES-COMFORTABLE STATIC LIQUID UI
 ───────────────────────────────────────────── */
-@keyframes liquidFloat1 {
-  0%, 100% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.15); }
-  66% { transform: translate(-20px, 20px) scale(0.95); }
-}
-
-@keyframes liquidFloat2 {
-  0%, 100% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(-40px, 30px) scale(1.1); }
-  66% { transform: translate(25px, -35px) scale(0.9); }
-}
-
-@keyframes liquidShimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .liquid-bg-mesh {
   position: relative;
   overflow: hidden;
@@ -561,9 +544,8 @@ html.dark .notif-dot { border-color: #1e293b; }
   width: 450px;
   height: 450px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 70%);
-  filter: blur(60px);
-  animation: liquidFloat1 18s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, transparent 70%);
+  filter: blur(80px);
   pointer-events: none;
   z-index: 0;
 }
@@ -576,28 +558,32 @@ html.dark .notif-dot { border-color: #1e293b; }
   width: 500px;
   height: 500px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(14, 165, 233, 0.05) 50%, transparent 70%);
-  filter: blur(70px);
-  animation: liquidFloat2 22s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  filter: blur(90px);
   pointer-events: none;
   z-index: 0;
 }
 
 html.dark .liquid-bg-mesh::before {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
 }
 
 html.dark .liquid-bg-mesh::after {
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.18) 0%, rgba(56, 189, 248, 0.08) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
 }
 
 .liquid-gradient-text {
-  background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #10b981 100%);
-  background-size: 200% auto;
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 50%, #059669 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: liquidShimmer 6s linear infinite;
+}
+
+html.dark .liquid-gradient-text {
+  background: linear-gradient(135deg, #c084fc 0%, #38bdf8 50%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .liquid-card-glow {
