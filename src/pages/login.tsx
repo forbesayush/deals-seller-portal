@@ -231,35 +231,7 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Quick Autofill Pills (Sign In mode only) */}
-            {!isRegister && (
-              <div className="mb-6">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Quick 1-Click Demo Login:</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setIdentifier('alwaysayushsourav162@gmail.com'); setPassword('ekta@123'); setError(''); }}
-                    className="liquid-pill cursor-pointer"
-                  >
-                    👤 Buyer Account
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setIdentifier('admin@deals.seller.com'); setPassword('admin@123'); setError(''); }}
-                    className="liquid-pill cursor-pointer"
-                  >
-                    🛡️ Admin Panel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setIdentifier('owner@deals.seller.com'); setPassword('owner@123'); setError(''); }}
-                    className="liquid-pill cursor-pointer"
-                  >
-                    👑 Owner Desk
-                  </button>
-                </div>
-              </div>
-            )}
+
 
             {/* Success Alert */}
             {successMsg && (
