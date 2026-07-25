@@ -111,19 +111,22 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
           You pay {formatINR(netPayable)} ({formatINR(deal.price)} - {formatINR(deal.cashback)})
         </p>
 
-        {/* Slots & Category */}
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className={`text-xs font-bold ${slotsColor}`}>
-            {deal.slots === 0 ? '⚠ No slots left' : `${deal.slots} slot${deal.slots !== 1 ? 's' : ''} remaining`}
-          </span>
-          {deal.category && deal.category !== 'General' && (
-            <span className="badge badge-slate text-[10px]">
-              <Tag className="w-2.5 h-2.5" /> {deal.category}
+        {/* Slots & Progress Bar */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className={`font-bold ${slotsColor}`}>
+              {deal.slots <= (deal.claimedCount || 0) ? '⚠ Sold Out' : `${(deal.slots || 0) - (deal.claimedCount || 0)} of ${deal.slots} slots left`}
             </span>
-          )}
-          {deal.claimedCount ? (
-            <span className="text-[10px] text-slate-400 ml-auto">{deal.claimedCount} claimed</span>
-          ) : null}
+            <span className="text-[10px] text-slate-400 font-medium">
+              {deal.claimedCount || 0} claimed
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${deal.slots <= (deal.claimedCount || 0) ? 'bg-rose-500' : (deal.slots - (deal.claimedCount || 0)) <= 2 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${Math.min(100, Math.max(5, (((deal.claimedCount || 0) / (deal.slots || 1)) * 100)))}%` }}
+            />
+          </div>
         </div>
 
         {/* Tags */}
@@ -140,10 +143,10 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
         {/* Claim Button */}
         <button
           onClick={() => onClaim?.(deal)}
-          disabled={deal.slots === 0 || !deal.active}
-          className={`w-full btn btn-primary btn-sm justify-between group-hover:shadow-glow-violet transition-all ${deal.slots === 0 || !deal.active ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={((deal.slots || 0) - (deal.claimedCount || 0)) <= 0 || !deal.active}
+          className={`w-full btn btn-primary btn-sm justify-between group-hover:shadow-glow-violet transition-all ${((deal.slots || 0) - (deal.claimedCount || 0)) <= 0 || !deal.active ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <span>{deal.slots === 0 ? 'Sold Out' : !deal.active ? 'Inactive' : 'Claim Deal'}</span>
+          <span>{((deal.slots || 0) - (deal.claimedCount || 0)) <= 0 ? 'Sold Out' : !deal.active ? 'Inactive' : 'Claim Deal Slot'}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

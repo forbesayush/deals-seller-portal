@@ -13,16 +13,31 @@ if (typeof window !== 'undefined') {
 
   const setStorage = (key: string, data: any) => {
     localStorage.setItem(key, JSON.stringify(data));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ds_storage_update', { detail: { key } }));
+    }
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded_v4')) {
+    if (localStorage.getItem('ds_seeded_v7')) {
       return;
     }
-    // Clean old storage versions to force a fresh seed
+    // Clean old storage versions to force a fresh clean seed without sample orders
     localStorage.removeItem('ds_seeded');
     localStorage.removeItem('ds_seeded_v2');
     localStorage.removeItem('ds_seeded_v3');
+    localStorage.removeItem('ds_seeded_v4');
+    localStorage.removeItem('ds_seeded_v5');
+    localStorage.removeItem('ds_seeded_v6');
+
+    // Force purge cached order history from browser localStorage
+    localStorage.removeItem('ds_orders');
+    localStorage.removeItem('ds_refunds');
+    localStorage.removeItem('ds_transactions');
+    localStorage.removeItem('ds_withdrawals');
+    localStorage.removeItem('ds_tickets');
+    localStorage.removeItem('ds_user_activity');
+    localStorage.removeItem('ds_claims');
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -40,141 +55,179 @@ if (typeof window !== 'undefined') {
     ];
     setStorage('ds_users', users);
 
-    // Seed Deals
+    // Seed Genuine Active Deals (Fake deals removed)
     const deals = [
       {
         id: 'DEA101',
         productCode: 'PRM001',
-        productName: 'Premium Deal — Sony WH-1000XM5',
+        productName: 'Sony WH-1000XM5 Wireless Headphones',
         platform: 'Amazon',
         price: 29990.0,
         cashback: 3500.0,
         slots: 10,
         active: true,
         category: 'Electronics',
-        description: 'Premium Sony wireless noise cancelling headphones with industry-leading audio quality.',
+        description: 'Industry-leading noise cancelling headphones with 30-hr battery life and crystal clear sound.',
         rating: 4.8,
         dealType: 'cashback',
         minOrderValue: 25000.0,
         maxPerUser: 1,
         claimedCount: 0,
         featured: true,
-        tags: ['premium', 'sony', 'audio'],
-        createdAt: today
-      },
-      {
-        id: 'DEA102',
-        productCode: 'EMP001',
-        productName: 'Empty Deal — Standard Product Placeholder',
-        platform: 'Flipkart',
-        price: 999.0,
-        cashback: 100.0,
-        slots: 50,
-        active: true,
-        category: 'General',
-        description: 'An empty/placeholder test deal for standard validation checks.',
-        rating: 4.0,
-        dealType: 'cashback',
-        minOrderValue: 0.0,
-        maxPerUser: 5,
-        claimedCount: 0,
-        featured: false,
-        tags: ['empty', 'test', 'placeholder'],
+        tags: ['sony', 'audio', 'headphones'],
         createdAt: today
       },
       {
         id: 'DEA103',
         productCode: 'ORG001',
-        productName: 'Original Deal — boAt Stone 350 Speaker',
+        productName: 'boAt Stone 350 Portable Speaker',
         platform: 'Amazon',
         price: 1499.0,
         cashback: 250.0,
         slots: 25,
         active: true,
         category: 'Electronics',
-        description: 'BoAt portable Bluetooth speaker with immersive sound and long battery life.',
+        description: 'BoAt portable Bluetooth speaker with IPX7 waterproof body and punchy bass sound.',
         rating: 4.4,
         dealType: 'cashback',
         minOrderValue: 1000.0,
         maxPerUser: 2,
         claimedCount: 0,
         featured: true,
-        tags: ['original', 'boat', 'audio'],
+        tags: ['boat', 'speaker', 'audio'],
         createdAt: today
       },
       {
         id: 'DEA104',
         productCode: 'EXC001',
-        productName: 'Exchange Deal — OnePlus Nord CE4 Lite',
+        productName: 'OnePlus Nord CE4 Lite 5G',
         platform: 'Flipkart',
         price: 19999.0,
         cashback: 1800.0,
         slots: 15,
         active: true,
         category: 'Mobiles',
-        description: 'Special exchange offer deal for the latest OnePlus mid-ranger phone.',
+        description: 'Smooth 120Hz AMOLED display with 50MP Sony LYT-600 main camera & 80W SUPERVOOC charging.',
         rating: 4.5,
         dealType: 'cashback',
         minOrderValue: 15000.0,
         maxPerUser: 1,
         claimedCount: 0,
         featured: false,
-        tags: ['exchange', 'oneplus', 'mobile'],
+        tags: ['oneplus', 'mobile', '5g'],
+        createdAt: today
+      },
+      {
+        id: 'DEA105',
+        productCode: 'APP002',
+        productName: 'Apple AirPods Pro (2nd Gen) USB-C',
+        platform: 'Amazon',
+        price: 21900.0,
+        cashback: 2500.0,
+        slots: 12,
+        active: true,
+        category: 'Electronics',
+        description: 'Pro-level active noise cancellation, adaptive audio, spatial audio and USB-C MagSafe case.',
+        rating: 4.9,
+        dealType: 'cashback',
+        minOrderValue: 20000.0,
+        maxPerUser: 1,
+        claimedCount: 0,
+        featured: true,
+        tags: ['apple', 'airpods', 'premium'],
+        createdAt: today
+      },
+      {
+        id: 'DEA106',
+        productCode: 'SAM004',
+        productName: 'Samsung Galaxy S24 Ultra 5G (256GB)',
+        platform: 'Flipkart',
+        price: 129999.0,
+        cashback: 12000.0,
+        slots: 8,
+        active: true,
+        category: 'Mobiles',
+        description: 'Galaxy AI powered flagship phone with 200MP quad camera, S-Pen and Snapdragon 8 Gen 3.',
+        rating: 4.9,
+        dealType: 'cashback',
+        minOrderValue: 100000.0,
+        maxPerUser: 1,
+        claimedCount: 0,
+        featured: true,
+        tags: ['samsung', 'flagship', 'mobile'],
+        createdAt: today
+      },
+      {
+        id: 'DEA107',
+        productCode: 'NIK001',
+        productName: 'Nike Air Zoom Pegasus 40 Running Shoes',
+        platform: 'Myntra',
+        price: 9695.0,
+        cashback: 1500.0,
+        slots: 20,
+        active: true,
+        category: 'Fashion',
+        description: 'Responsive cushion running shoes with breathable mesh upper and dual Nike Zoom Air units.',
+        rating: 4.7,
+        dealType: 'cashback',
+        minOrderValue: 8000.0,
+        maxPerUser: 2,
+        claimedCount: 0,
+        featured: false,
+        tags: ['nike', 'shoes', 'running'],
+        createdAt: today
+      },
+      {
+        id: 'DEA108',
+        productCode: 'DYS001',
+        productName: 'Dyson Airwrap Multi-Styler Complete',
+        platform: 'Nykaa',
+        price: 45900.0,
+        cashback: 5000.0,
+        slots: 5,
+        active: true,
+        category: 'Beauty',
+        description: 'Styles hair using Coanda airflow without extreme heat. Includes re-engineered attachments.',
+        rating: 4.8,
+        dealType: 'cashback',
+        minOrderValue: 40000.0,
+        maxPerUser: 1,
+        claimedCount: 0,
+        featured: true,
+        tags: ['dyson', 'beauty', 'haircare'],
         createdAt: today
       }
     ];
     setStorage('ds_deals', deals);
 
-    // Seed Wallets
+    // Seed Wallets (Clean 0 balance)
     const wallets = [
-      { id: 'WLT001', userId: 'USR001', pendingCashback: 535.05, approvedCashback: 1076.0, lockedCashback: 0.0, withdrawableCashback: 1076.0, refundBalance: 276.0, lastUpdated: new Date().toISOString() },
-      { id: 'WLT002', userId: 'USR002', pendingCashback: 235.05, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
-      { id: 'WLT003', userId: 'USR003', pendingCashback: 235.05, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
+      { id: 'WLT001', userId: 'USR001', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
+      { id: 'WLT002', userId: 'USR002', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
+      { id: 'WLT003', userId: 'USR003', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
       { id: 'WLT004', userId: 'USR004', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
     ];
     setStorage('ds_wallets', wallets);
 
-    // Seed Orders
-    const orders = [
-      { id: 'ORD001', orderNo: '402-0025862-2109921', orderCode: 'ORD-987123', trackingNumber: 'TRK-981273', productName: 'boAt Rockerz 255 Pro+ Wireless Earphones', productPrice: 1299.00, quantity: 1, buyerId: 'USR002', cashbackPct: 23.09, cashbackAmount: 300.0, processingFee: 64.95, deductionAmount: 30.00, netAmount: 270.00, refundStatus: 'not_eligible', approvalStatus: 'pending_review', currentStatus: 'order_filled', orderDate: '2026-06-26', submittedDate: '2026-06-26', paidDate: null, platform: 'Amazon', priority: 'normal', screenshot: true },
-      { id: 'ORD002', orderNo: '406-1422779-1212359', orderCode: 'ORD-123490', trackingNumber: 'TRK-881273', productName: 'Noise ColorFit Pro 4 Smartwatch', productPrice: 2499.00, quantity: 1, buyerId: 'USR001', cashbackPct: 20.01, cashbackAmount: 500.0, processingFee: 124.95, deductionAmount: 20.00, netAmount: 480.00, refundStatus: 'not_eligible', approvalStatus: 'pending_review', currentStatus: 'order_filled', orderDate: '2026-06-16', submittedDate: '2026-06-16', paidDate: null, platform: 'Amazon', priority: 'normal', screenshot: true },
-      { id: 'ORD003', orderNo: '402-0437892-3137934', orderCode: 'ORD-548912', trackingNumber: 'TRK-771234', productName: 'boAt Rockerz 255 Pro+ Wireless Earphones', productPrice: 1299.00, quantity: 1, buyerId: 'USR001', cashbackPct: 23.09, cashbackAmount: 300.0, processingFee: 64.95, deductionAmount: 23.00, netAmount: 277.00, refundStatus: 'cleared', approvalStatus: 'approved', currentStatus: 'paid', orderDate: '2026-05-18', submittedDate: '2026-05-18', paidDate: '2026-06-01', platform: 'Amazon', priority: 'normal', screenshot: true },
-      { id: 'ORD004', orderNo: '402-5031051-7769965', orderCode: 'ORD-991278', trackingNumber: 'TRK-441299', productName: 'Noise ColorFit Pro 4 Smartwatch', productPrice: 2499.00, quantity: 1, buyerId: 'USR001', cashbackPct: 20.01, cashbackAmount: 500.0, processingFee: 124.95, deductionAmount: 23.00, netAmount: 477.00, refundStatus: 'not_eligible', approvalStatus: 'pending_review', currentStatus: 'cancelled', orderDate: '2026-05-18', submittedDate: '2026-05-18', paidDate: null, platform: 'Amazon', priority: 'normal', screenshot: true },
-      { id: 'ORD005', orderNo: '403-1863178-4809140', orderCode: 'ORD-332901', trackingNumber: 'TRK-112399', productName: 'Redmi 13C 4G Smartphone (128GB)', productPrice: 8999.00, quantity: 1, buyerId: 'USR001', cashbackPct: 8.89, cashbackAmount: 800.0, processingFee: 449.95, deductionAmount: 18.00, netAmount: 782.00, refundStatus: 'cleared', approvalStatus: 'approved', currentStatus: 'paid', orderDate: '2026-05-07', submittedDate: '2026-05-07', paidDate: '2026-05-23', platform: 'Flipkart', priority: 'normal', screenshot: true },
-      { id: 'ORD006', orderNo: '408-1123456-9087654', orderCode: 'ORD-871239', trackingNumber: 'TRK-667123', productName: 'Redmi 13C 4G Smartphone (128GB)', productPrice: 8999.00, quantity: 1, buyerId: 'USR002', cashbackPct: 8.89, cashbackAmount: 800.0, processingFee: 449.95, deductionAmount: 35.00, netAmount: 765.00, refundStatus: 'pending', approvalStatus: 'pending_review', currentStatus: 'under_review', orderDate: '2026-06-20', submittedDate: '2026-06-20', paidDate: null, platform: 'Flipkart', priority: 'normal', screenshot: true },
-      { id: 'ORD007', orderNo: 'FLK-9876543210', orderCode: 'ORD-761239', trackingNumber: 'TRK-556123', productName: 'Redmi 13C 4G Smartphone (128GB)', productPrice: 8999.00, quantity: 1, buyerId: 'USR003', cashbackPct: 8.89, cashbackAmount: 800.0, processingFee: 449.95, deductionAmount: 200.00, netAmount: 600.00, refundStatus: 'not_eligible', approvalStatus: 'pending_review', currentStatus: 'order_filled', orderDate: '2026-06-25', submittedDate: '2026-06-25', paidDate: null, platform: 'Flipkart', priority: 'normal', screenshot: true },
-      { id: 'ORD008', orderNo: 'BLK-1122334455', orderCode: 'ORD-112299', trackingNumber: 'TRK-223399', productName: 'Amul Butter (500g)', productPrice: 290.00, quantity: 1, buyerId: 'USR003', cashbackPct: 20.68, cashbackAmount: 60.0, processingFee: 14.50, deductionAmount: 25.00, netAmount: 35.00, refundStatus: 'not_eligible', approvalStatus: 'pending_review', currentStatus: 'pending_review', orderDate: '2026-07-01', submittedDate: '2026-07-01', paidDate: null, platform: 'Blinkit', priority: 'normal', screenshot: true },
-    ];
-    setStorage('ds_orders', orders);
+    // Empty Orders (Clean State)
+    setStorage('ds_orders', []);
 
-    // Seed Refunds
-    const refunds = [
-      { id: 'REF001', orderId: 'ORD003', orderNo: '402-0437892-3137934', userId: 'USR001', userName: 'Ayush Chatterjee', reason: 'Cashback not credited', amount: 276.00, upi: 'ayush@upi', status: 'resolved', submittedAt: '2026-05-20T10:30:00Z', reviewedAt: '2026-05-21T14:45:00Z', resolvedAt: '2026-05-22T09:00:00Z' },
-      { id: 'REF002', orderId: 'ORD006', orderNo: '408-1123456-9087654', userId: 'USR002', userName: 'Shivam Raj', reason: 'Wrong product delivered', amount: 415.00, upi: 'shivam@upi', status: 'pending', submittedAt: '2026-06-22T08:00:00Z' },
-      { id: 'REF003', orderId: 'ORD007', orderNo: 'FLK-9876543210', userId: 'USR003', userName: 'Priya Sharma', reason: 'Order not delivered', amount: 8799.00, upi: 'priya@upi', status: 'under_review', submittedAt: '2026-06-27T16:20:00Z', reviewedAt: '2026-06-27T18:00:00Z' },
-    ];
-    setStorage('ds_refunds', refunds);
+    // Empty Refunds (Clean State)
+    setStorage('ds_refunds', []);
 
     // Seed Announcements
     const announcements = [
-      { id: 'ANN001', title: 'Welcome to the New Deal Portal!', body: 'Check out the high-yield cashback deals on Amazon & Flipkart.', type: 'info', active: true, pinned: true, createdAt: '2026-07-01T00:00:00Z' },
-      { id: 'ANN002', title: 'Withdrawal Processing Time Cut to 4 Hours!', body: 'We have updated our mediator processing, and all UPI withdrawals are now instant.', type: 'success', active: true, pinned: false, createdAt: '2026-07-10T12:00:00Z' },
+      { id: 'ANN001', title: 'Welcome to the New Deal Portal!', body: 'Check out high-yield cashback deals on Amazon, Flipkart, Myntra & Nykaa.', type: 'info', active: true, pinned: true, createdAt: '2026-07-01T00:00:00Z' },
+      { id: 'ANN002', title: 'Withdrawal Processing Time Cut to Instant UPI!', body: 'We have updated our mediator processing, and all UPI withdrawals are now instant.', type: 'success', active: true, pinned: false, createdAt: '2026-07-10T12:00:00Z' },
+      { id: 'ANN003', title: '🔥 Flash Sale: 10% Extra Cashback on Apple & Samsung!', body: 'Limited deal slots unlocked for Galaxy S24 Ultra & AirPods Pro 2.', type: 'warning', active: true, pinned: true, createdAt: '2026-07-20T09:00:00Z' },
     ];
     setStorage('ds_announcements', announcements);
 
-    // Seed Support Tickets
-    const tickets = [
-      { id: 'TCK001', userId: 'USR001', userName: 'Ayush Chatterjee', subject: 'Delayed payout for Amazon order', body: 'My order was marked paid yesterday but I have not received the UPI transfer.', status: 'open', priority: 'high', createdAt: '2026-07-12T09:00:00Z' },
-      { id: 'TCK002', userId: 'USR002', userName: 'Shivam Raj', subject: 'Account verification pending', body: 'Please verify my account verification files.', status: 'resolved', priority: 'normal', response: 'Verified. Welcome!', createdAt: '2026-07-10T08:00:00Z' },
-    ];
-    setStorage('ds_tickets', tickets);
+    // Empty Support Tickets
+    setStorage('ds_tickets', []);
 
-    // Seed Withdrawals
-    const withdrawals = [
-      { id: 'WTH001', userId: 'USR001', userName: 'Ayush Chatterjee', amount: 500.0, method: 'UPI', accountDetails: 'ayush@upi', status: 'processed', createdAt: '2026-07-10T10:00:00Z', processedAt: '2026-07-10T14:00:00Z' },
-      { id: 'WTH002', userId: 'USR001', userName: 'Ayush Chatterjee', amount: 200.0, method: 'Bank Transfer', accountDetails: 'Acc: 123456789, IFSC: SBIN000123', status: 'pending', createdAt: '2026-07-15T09:00:00Z' },
-    ];
-    setStorage('ds_withdrawals', withdrawals);
+    // Empty Withdrawals
+    setStorage('ds_withdrawals', []);
 
     // Seed Settings & Flags
     const settings = {
@@ -198,15 +251,11 @@ if (typeof window !== 'undefined') {
     ];
     setStorage('ds_audit_logs', logs);
 
-    // Seed Transactions
-    const txs = [
-      { id: 'TX001', walletId: 'WLT001', orderId: 'ORD003', amount: 277.0, type: 'credit', category: 'cashback_approved', status: 'completed', description: 'Cashback approved for ORD003', timestamp: '2026-06-01T12:00:00Z' },
-      { id: 'TX002', walletId: 'WLT001', orderId: 'ORD005', amount: 782.0, type: 'credit', category: 'cashback_approved', status: 'completed', description: 'Cashback approved for ORD005', timestamp: '2026-05-23T15:00:00Z' },
-      { id: 'TX003', walletId: 'WLT001', orderId: null, amount: 500.0, type: 'debit', category: 'withdrawal', status: 'completed', description: 'Withdrawal payout processed', timestamp: '2026-07-10T14:00:00Z' },
-    ];
-    setStorage('ds_transactions', txs);
+    setStorage('ds_user_activity', []);
+    setStorage('ds_claims', []);
+    setStorage('ds_transactions', []);
 
-    localStorage.setItem('ds_seeded_v4', 'true');
+    localStorage.setItem('ds_seeded_v7', 'true');
   };
 
   // Run database initialization
@@ -423,28 +472,91 @@ if (typeof window !== 'undefined') {
       if (method === 'GET') {
         const currentUser = getCurrentUser();
         const activeOnly = searchParams.get('active_only') === 'true' || (currentUser && currentUser.role === 'buyer');
-        const filtered = activeOnly ? deals.filter((d: any) => d.active) : deals;
+        // Live Sync availability filter: active === true and remaining slots > 0
+        const filtered = activeOnly 
+          ? deals.filter((d: any) => d.active && ((d.slots || 0) - (d.claimedCount || 0)) > 0) 
+          : deals;
         return jsonResponse(filtered);
       }
       if (method === 'POST') {
         const id = 'DEA' + Math.floor(Math.random() * 900 + 100);
-        const newDeal = { id, active: true, ...body };
+        const newDeal = { id, active: true, claimedCount: 0, ...body };
         deals.push(newDeal);
         setStorage('ds_deals', deals);
         return jsonResponse(newDeal);
       }
     }
 
+    if (pathname === '/api/claims/my' && method === 'GET') {
+      const currentUser = getCurrentUser();
+      if (!currentUser) return jsonResponse([]);
+      const claims = getStorage('ds_claims', []);
+      const userClaims = claims.filter((c: any) => c.userId === currentUser.id);
+      return jsonResponse(userClaims);
+    }
+
     if (pathname.startsWith('/api/deals/')) {
       const parts = pathname.replace('/api/deals/', '').split('/');
       const dealId = parts[0];
-      const subRoute = parts[1]; // like 'clone', 'slots' etc.
+      const subRoute = parts[1]; // like 'clone', 'slots', 'claim' etc.
 
       const deals = getStorage('ds_deals', []);
       const dealIdx = deals.findIndex((d: any) => d.id === dealId);
 
       if (dealIdx === -1) return jsonResponse({ detail: 'Deal not found' }, 404);
       const deal = deals[dealIdx];
+
+      if (method === 'POST' && subRoute === 'claim') {
+        const currentUser = getCurrentUser();
+        if (!currentUser) return jsonResponse({ detail: 'Authentication required' }, 401);
+
+        const claims = getStorage('ds_claims', []);
+        const existing = claims.find((c: any) => c.userId === currentUser.id && c.dealId === dealId && c.status === 'active');
+        if (existing) {
+          return jsonResponse({ success: true, claim: existing, message: 'Deal slot already reserved' });
+        }
+
+        const availSlots = (deal.slots || 0) - (deal.claimedCount || 0);
+        if (availSlots <= 0) {
+          deal.active = false;
+          setStorage('ds_deals', deals);
+          return jsonResponse({ detail: 'No available slots remaining for this deal' }, 400);
+        }
+
+        deal.claimedCount = (deal.claimedCount || 0) + 1;
+        if (deal.claimedCount >= deal.slots) {
+          deal.active = false;
+        }
+        deals[dealIdx] = deal;
+        setStorage('ds_deals', deals);
+
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        const newClaim = {
+          id: 'CLM' + Math.floor(Math.random() * 9000 + 1000),
+          userId: currentUser.id,
+          dealId: deal.id,
+          productCode: deal.productCode,
+          productName: deal.productName,
+          cashback: deal.cashback,
+          claimedAt: new Date().toISOString(),
+          expiresAt,
+          status: 'active'
+        };
+        claims.push(newClaim);
+        setStorage('ds_claims', claims);
+
+        const activityLogs = getStorage('ds_user_activity', []);
+        activityLogs.unshift({
+          id: 'ACT' + Math.floor(Math.random() * 90000 + 10000),
+          userId: currentUser.id,
+          action: 'Claimed Deal Slot',
+          details: `Reserved slot for ${deal.productName} (15m lock token)`,
+          timestamp: new Date().toISOString()
+        });
+        setStorage('ds_user_activity', activityLogs);
+
+        return jsonResponse({ success: true, claim: newClaim });
+      }
 
       if (method === 'GET' && !subRoute) {
         const currentUser = getCurrentUser();
@@ -467,6 +579,7 @@ if (typeof window !== 'undefined') {
           const cloned = {
             ...original,
             id: newId,
+            claimedCount: 0,
             productCode: original.productCode + '-CLONE',
             productName: original.productName + ' (Copy)'
           };
@@ -479,6 +592,9 @@ if (typeof window !== 'undefined') {
           const { slots, new_slots } = body;
           const targetSlots = slots !== undefined ? slots : new_slots;
           deals[dealIdx].slots = parseInt(targetSlots || '0');
+          if (deals[dealIdx].slots > deals[dealIdx].claimedCount) {
+            deals[dealIdx].active = true;
+          }
           setStorage('ds_deals', deals);
           return jsonResponse(deals[dealIdx]);
         }
@@ -999,7 +1115,7 @@ if (typeof window !== 'undefined') {
       return jsonResponse(tickets[tIdx]);
     }
 
-    // ── USER PROFILE & REGISTER APIS ──
+    // ── USER PROFILE, SECURITY & ACTIVITY LOG APIS ──
     if (pathname === '/api/users/profile' && method === 'PUT') {
       const user = getCurrentUser();
       const users = getStorage('ds_users', []);
@@ -1010,6 +1126,61 @@ if (typeof window !== 'undefined') {
         setStorage('ds_users', users);
         return jsonResponse({ success: true, user: users[uIdx] });
       }
+    }
+
+    if (pathname === '/api/users/change-password' && method === 'POST') {
+      const user = getCurrentUser();
+      if (!user) return jsonResponse({ detail: 'Authentication required' }, 401);
+      const { oldPassword, newPassword } = body;
+      const users = getStorage('ds_users', []);
+      const uIdx = users.findIndex((u: any) => u.id === user.id);
+
+      if (uIdx === -1 || users[uIdx].password !== oldPassword) {
+        return jsonResponse({ detail: 'Current password is incorrect' }, 400);
+      }
+
+      users[uIdx].password = newPassword;
+      setStorage('ds_users', users);
+
+      const logs = getStorage('ds_user_activity', []);
+      logs.unshift({
+        id: 'ACT' + Math.floor(Math.random() * 90000 + 10000),
+        userId: user.id,
+        action: 'Password Changed',
+        details: 'Account security password updated',
+        timestamp: new Date().toISOString()
+      });
+      setStorage('ds_user_activity', logs);
+
+      return jsonResponse({ success: true, message: 'Password updated successfully' });
+    }
+
+    if (pathname === '/api/users/activity-logs' && method === 'GET') {
+      const user = getCurrentUser();
+      if (!user) return jsonResponse([]);
+      const logs = getStorage('ds_user_activity', []);
+      const userLogs = logs.filter((l: any) => l.userId === user.id);
+      return jsonResponse(userLogs);
+    }
+
+    if (pathname === '/api/calculator/estimate' && method === 'POST') {
+      const { price, cashbackPct, platformFeePct } = body;
+      const numericPrice = parseFloat(price) || 0;
+      const numericPct = parseFloat(cashbackPct) || 10;
+      const feePct = parseFloat(platformFeePct) || 5;
+
+      const grossCashback = (numericPrice * numericPct) / 100;
+      const platformFee = (grossCashback * feePct) / 100;
+      const netEarnings = Math.max(0, grossCashback - platformFee);
+      const effectiveDiscount = numericPrice > 0 ? ((netEarnings / numericPrice) * 100).toFixed(2) : '0';
+
+      return jsonResponse({
+        purchasePrice: numericPrice,
+        grossCashback: Math.round(grossCashback * 100) / 100,
+        platformFee: Math.round(platformFee * 100) / 100,
+        netCashback: Math.round(netEarnings * 100) / 100,
+        effectiveDiscountPct: effectiveDiscount
+      });
     }
 
     if (pathname === '/api/users') {

@@ -13,7 +13,7 @@ import {
   Tag, Megaphone, CreditCard, BarChart3, MessageCircle, Sparkles
 } from 'lucide-react';
 
-type BuyerTab = 'deals' | 'orders' | 'wallet' | 'withdraw' | 'tickets' | 'referral' | 'profile' | 'announcements';
+type BuyerTab = 'deals' | 'orders' | 'wallet' | 'withdraw' | 'tickets' | 'referral' | 'profile' | 'announcements' | 'calculator' | 'activity';
 
 function formatINR(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
@@ -71,6 +71,7 @@ export default function BuyerDashboard() {
   const [dealPlatform, setDealPlatform] = useState('All');
   const [dealCategory, setDealCategory] = useState('All');
   const [selectedDeal, setSelectedDeal] = useState<any>(null); // Feature 2: Deal Detail Modal
+  const [claimedToken, setClaimedToken] = useState<any>(null); // Deal Claim Lock Token
 
   // Orders state (Feature 3)
   const [orders, setOrders] = useState<any[]>([]);
@@ -96,13 +97,16 @@ export default function BuyerDashboard() {
   const [ticketLoading, setTicketLoading] = useState(false);
   const [ticketMsg, setTicketMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Profile (Feature 8)
+  // Profile & Password (Feature 8)
   const [editProfile, setEditProfile] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileUpi, setProfileUpi] = useState(user?.upi || '');
   const [profileBio, setProfileBio] = useState(user?.bio || '');
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Referral (Feature 9)
   const [referralStats, setReferralStats] = useState<any>(null);
@@ -111,12 +115,21 @@ export default function BuyerDashboard() {
   // Announcements (Feature 10)
   const [announcements, setAnnouncements] = useState<any[]>([]);
 
+  // Activity Log (Feature 11)
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+
+  // Calculator State (Feature 12)
+  const [calcPrice, setCalcPrice] = useState('10000');
+  const [calcPct, setCalcPct] = useState('15');
+  const [calcResult, setCalcResult] = useState<any>(null);
+
   // Order submission (Feature 3 - wizard)
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderNo, setOrderNo] = useState('');
   const [orderName, setOrderName] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
   const [orderDeduction, setOrderDeduction] = useState('');
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderMsg, setOrderMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -130,14 +143,30 @@ export default function BuyerDashboard() {
   useEffect(() => {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
-    fetchDeals();
-    fetchWallet();
-    fetchAnnouncements();
-    fetchOrders();
-    fetchTransactions();
-    fetchWithdrawals();
-    fetchTickets();
-    fetchReferral();
+    
+    const loadAllData = () => {
+      fetchDeals();
+      fetchWallet();
+      fetchAnnouncements();
+      fetchOrders();
+      fetchTransactions();
+      fetchWithdrawals();
+      fetchTickets();
+      fetchReferral();
+      fetchActivityLogs();
+    };
+
+    loadAllData();
+
+    // Live Sync Storage Listener across tabs & window updates
+    const handleSync = () => { loadAllData(); };
+    window.addEventListener('ds_storage_update', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('ds_storage_update', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
   const fetchDeals = async () => {
@@ -196,6 +225,72 @@ export default function BuyerDashboard() {
       const res = await fetch('/api/announcements?active_only=true');
       if (res.ok) setAnnouncements(await res.json());
     } catch { /* silent */ }
+  };
+
+  const fetchActivityLogs = async () => {
+    try {
+      const res = await fetch('/api/users/activity-logs');
+      if (res.ok) setActivityLogs(await res.json());
+    } catch { /* silent */ }
+  };
+
+  const handleClaimSlot = async (deal: any) => {
+    try {
+      const res = await fetch(`/api/deals/${deal.id}/claim`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setClaimedToken(data.claim);
+        setSelectedDeal(deal);
+        setOrderName(deal.productName || '');
+        setOrderAmount(deal.price ? String(deal.price) : '');
+        setShowOrderForm(true);
+        setActiveTab('orders');
+        fetchDeals();
+        fetchActivityLogs();
+      } else {
+        alert(data.detail || 'Could not claim slot');
+      }
+    } catch {
+      alert('Error claiming deal slot');
+    }
+  };
+
+  const handleCalculateProfit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/calculator/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price: calcPrice, cashbackPct: calcPct, platformFeePct: 5 })
+      });
+      if (res.ok) {
+        setCalcResult(await res.json());
+      }
+    } catch { /* silent */ }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oldPassword || !newPassword) {
+      setPasswordMsg({ type: 'error', text: 'Enter current and new password' });
+      return;
+    }
+    try {
+      const res = await fetch('/api/users/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword, newPassword })
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setPasswordMsg({ type: 'success', text: 'Password updated successfully!' });
+        setOldPassword('');
+        setNewPassword('');
+        fetchActivityLogs();
+      } else {
+        setPasswordMsg({ type: 'error', text: d.detail || 'Password update failed' });
+      }
+    } catch { setPasswordMsg({ type: 'error', text: 'Network error' }); }
   };
 
   const handleWithdraw = async (e: React.FormEvent) => {
@@ -269,10 +364,7 @@ export default function BuyerDashboard() {
   };
 
   const handleClaimDeal = (deal: any) => {
-    setSelectedDeal(deal);
-    setOrderName(deal?.productName || '');
-    setShowOrderForm(true);
-    setActiveTab('orders');
+    handleClaimSlot(deal);
   };
 
   const getExpectedRefundInfo = () => {
@@ -381,8 +473,8 @@ export default function BuyerDashboard() {
     o.orderCode?.toLowerCase().includes(orderSearch.toLowerCase())
   );
 
-  const platforms = ['All', ...Array.from(new Set(deals.map(d => d.platform)))];
-  const categories = ['All', ...Array.from(new Set(deals.map(d => d.category).filter(Boolean)))];
+  const platforms = ['All', ...Array.from(new Set(deals.map(d => d.platform))).filter(p => Boolean(p) && p !== 'All')];
+  const categories = ['All', ...Array.from(new Set(deals.map(d => d.category))).filter(c => Boolean(c) && c !== 'All')];
   const featuredDeals = deals.filter(d => d.featured);
   const displayDeals = deals;
 
@@ -391,8 +483,10 @@ export default function BuyerDashboard() {
     { id: 'orders', icon: ShoppingBag, label: 'Orders', count: orders.length },
     { id: 'wallet', icon: Wallet, label: 'Wallet' },
     { id: 'withdraw', icon: ArrowDownToLine, label: 'Withdraw' },
+    { id: 'calculator', icon: TrendingUp, label: 'Calculator' },
     { id: 'tickets', icon: Ticket, label: 'Support', count: tickets.filter(t => t.status === 'open').length },
     { id: 'referral', icon: Gift, label: 'Referrals' },
+    { id: 'activity', icon: Clock, label: 'Activity Log' },
     { id: 'announcements', icon: Bell, label: 'Announce', count: announcements.length },
     { id: 'profile', icon: User, label: 'Profile' },
   ];
@@ -931,7 +1025,7 @@ export default function BuyerDashboard() {
 
             {/* ─── TAB: PROFILE (Feature 8) ─── */}
             {activeTab === 'profile' && (
-              <div className="animate-fade-up max-w-lg">
+              <div className="animate-fade-up max-w-2xl space-y-6">
                 <div className="premium-card card-accent-violet p-6">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-glow-violet">
@@ -980,6 +1074,106 @@ export default function BuyerDashboard() {
                       {profileLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Save Profile'}
                     </button>
                   </form>
+                </div>
+
+                {/* Password Change Card */}
+                <div className="premium-card p-6">
+                  <h4 className="text-base font-extrabold mb-4 flex items-center gap-2">
+                    🔒 Account Security & Password
+                  </h4>
+                  {passwordMsg && (
+                    <div className={`p-3 rounded-xl text-sm mb-4 ${passwordMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600'}`}>
+                      {passwordMsg.text}
+                    </div>
+                  )}
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div>
+                      <label className="section-label">Current Password</label>
+                      <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="input" placeholder="••••••••" />
+                    </div>
+                    <div>
+                      <label className="section-label">New Password</label>
+                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input" placeholder="••••••••" />
+                    </div>
+                    <button type="submit" className="btn btn-secondary w-full">
+                      Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB: CALCULATOR ─── */}
+            {activeTab === 'calculator' && (
+              <div className="animate-fade-up max-w-xl">
+                <div className="premium-card p-6">
+                  <h3 className="text-xl font-extrabold mb-2 flex items-center gap-2">
+                    🧮 Net Cashback & Profit Calculator
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-6">Calculate exact net earnings and savings after platform deductions before placing an order.</p>
+
+                  <form onSubmit={handleCalculateProfit} className="space-y-4">
+                    <div>
+                      <label className="section-label">Product Purchase Price (₹)</label>
+                      <input type="number" value={calcPrice} onChange={e => setCalcPrice(e.target.value)} className="input text-lg font-bold" placeholder="10000" />
+                    </div>
+                    <div>
+                      <label className="section-label">Cashback Offer (%)</label>
+                      <input type="number" value={calcPct} onChange={e => setCalcPct(e.target.value)} className="input text-lg font-bold" placeholder="15" />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-full">
+                      Calculate Earnings
+                    </button>
+                  </form>
+
+                  {calcResult && (
+                    <div className="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500 font-semibold">Gross Cashback:</span>
+                        <span className="font-extrabold text-blue-500">{formatINR(calcResult.grossCashback)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500 font-semibold">Platform Processing Fee (5%):</span>
+                        <span className="font-extrabold text-rose-500">-{formatINR(calcResult.platformFee)}</span>
+                      </div>
+                      <hr className="border-slate-200 dark:border-slate-700" />
+                      <div className="flex justify-between text-base">
+                        <span className="font-bold">Estimated Net Earnings:</span>
+                        <span className="font-extrabold text-emerald-500 text-lg">{formatINR(calcResult.netCashback)}</span>
+                      </div>
+                      <p className="text-xs text-emerald-600 font-bold text-center">
+                        🎉 Effective Discount: {calcResult.effectiveDiscountPct}% of purchase price!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB: ACTIVITY LOG (Feature 11) ─── */}
+            {activeTab === 'activity' && (
+              <div className="animate-fade-up max-w-2xl">
+                <div className="premium-card p-6">
+                  <h3 className="text-lg font-extrabold mb-4 flex items-center gap-2">
+                    📋 Account Activity & Audit Trail
+                  </h3>
+                  {activityLogs.length === 0 ? (
+                    <p className="text-sm text-slate-400">No account activity recorded yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {activityLogs.map((log: any) => (
+                        <div key={log.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-150 dark:border-slate-800 flex items-center justify-between">
+                          <div>
+                            <p className="font-extrabold text-sm">{log.action}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{log.details}</p>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono font-medium">
+                            {log.timestamp?.slice(0, 16).replace('T', ' ')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

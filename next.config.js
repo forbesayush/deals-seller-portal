@@ -18,12 +18,15 @@ const nextConfig = {
   },
 
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    if (process.env.BACKEND_API_URL) {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${process.env.BACKEND_API_URL}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
 
   // Allow images from common hosting providers

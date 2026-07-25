@@ -108,6 +108,14 @@ export default function AdminDeals() {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     fetchDeals();
+
+    const handleSync = () => { fetchDeals(); };
+    window.addEventListener('ds_storage_update', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('ds_storage_update', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [fetchDeals]);
 
   const openCreate = () => {
