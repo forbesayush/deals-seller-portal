@@ -1,5 +1,25 @@
 import { create } from 'zustand';
 
+// ── JWT Token helpers for MongoDB mode ──
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('ds_jwt_token');
+}
+
+export function setAuthToken(token: string | null) {
+  if (typeof window === 'undefined') return;
+  if (token) localStorage.setItem('ds_jwt_token', token);
+  else localStorage.removeItem('ds_jwt_token');
+}
+
+// Augmented fetch that injects JWT Authorization header when token exists
+export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as Record<string, string> || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return fetch(input, { ...init, headers });
+}
+
 interface UserState {
   id: string;
   name: string;
@@ -33,11 +53,11 @@ export const useAuth = create<AuthStore>((set) => ({
   loading: true,
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   setAuthenticated: (status) => set({ isAuthenticated: status }),
-  
+
   checkAuth: async () => {
     set({ loading: true });
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await authFetch('/api/auth/me');
       const data = await res.json();
       if (data.success && data.user) {
         set({ user: data.user, isAuthenticated: true });
@@ -53,10 +73,11 @@ export const useAuth = create<AuthStore>((set) => ({
 
   logout: async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
-      // ignore
-    }
+      await authFetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {/* ignore */}
+    setAuthToken(null);
+    // Clear mock session too
+    if (typeof window !== 'undefined') sessionStorage.removeItem('ds_session_user_id');
     set({ user: null, isAuthenticated: false });
     window.location.href = '/login';
   }

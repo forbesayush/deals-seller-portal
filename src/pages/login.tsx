@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, setAuthToken, authFetch } from '@/hooks/useAuth';
 import {
   KeyRound, ArrowRight, Loader2, Eye, EyeOff,
   ShieldCheck, Sparkles, TrendingUp, Users, Tag
@@ -61,6 +61,7 @@ export default function Login() {
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          if (data.token) setAuthToken(data.token);
           setUser(data.user);
           setSuccessMsg('Account created successfully! Redirecting to dashboard...');
           setTimeout(() => {
@@ -85,7 +86,8 @@ export default function Login() {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          const meRes = await fetch('/api/auth/me');
+          if (data.token) setAuthToken(data.token);
+          const meRes = await authFetch('/api/auth/me');
           const meData = await meRes.json();
           if (meData.success) {
             setUser(meData.user);

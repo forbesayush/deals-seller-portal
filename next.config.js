@@ -15,7 +15,9 @@ const nextConfig = {
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BACKEND_API_URL: process.env.BACKEND_API_URL || '',
+    NEXT_PUBLIC_USE_MONGODB: process.env.NEXT_PUBLIC_USE_MONGODB || 'false',
   },
+
 
   async rewrites() {
     if (process.env.BACKEND_API_URL) {

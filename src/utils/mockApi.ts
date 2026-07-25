@@ -1,10 +1,21 @@
 // ─────────────────────────────────────────────────────────────
 //  deals.seller — Standalone Client-Side Mock API Router
-//  Intercepts all window.fetch('/api/*') calls and acts as a 
+//  Intercepts all window.fetch('/api/*') calls and acts as a
 //  browser-based backend using localStorage for 100% database persistence.
+//
+//  ⚡ MONGODB MODE: When NEXT_PUBLIC_USE_MONGODB=true, this mock is
+//  completely disabled and all /api/* calls go to real Next.js API routes
+//  backed by MongoDB Atlas for cross-device persistence.
 // ─────────────────────────────────────────────────────────────
 
-if (typeof window !== 'undefined') {
+// Skip mock entirely when MongoDB is configured
+const USE_MONGODB = typeof window !== 'undefined' && (process.env.NEXT_PUBLIC_USE_MONGODB === 'true');
+if (USE_MONGODB) {
+  // MongoDB mode: do NOT override window.fetch. All /api/* calls pass through
+  // to Next.js API routes which talk to MongoDB Atlas.
+  console.info('[deals.seller] 🍃 MongoDB mode active — using real cloud database');
+} else if (typeof window !== 'undefined') {
+
   // Mock Database Setup & Helpers
   const getStorage = (key: string, defaultVal: any) => {
     const data = localStorage.getItem(key);
