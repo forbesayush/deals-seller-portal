@@ -592,11 +592,13 @@ export default function BuyerDashboard() {
                     />
                   </div>
                   <select value={dealPlatform} onChange={e => setDealPlatform(e.target.value)} className="select text-sm w-auto">
-                    {platforms.map(p => <option key={p} value={p}>{p}</option>)}
+                    {platforms.map(p => <option key={p} value={p}>{p === 'All' ? 'All Platforms' : p}</option>)}
                   </select>
-                  <select value={dealCategory} onChange={e => setDealCategory(e.target.value)} className="select text-sm w-auto">
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  {categories.length > 1 && (
+                    <select value={dealCategory} onChange={e => setDealCategory(e.target.value)} className="select text-sm w-auto">
+                      {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
+                    </select>
+                  )}
                   <button onClick={fetchDeals} className="btn btn-ghost btn-sm">
                     <RefreshCw className="w-4 h-4" />
                   </button>
