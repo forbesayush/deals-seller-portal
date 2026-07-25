@@ -130,6 +130,7 @@ export default function BuyerDashboard() {
   const [orderName, setOrderName] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
   const [orderDeduction, setOrderDeduction] = useState('');
+  const [orderDealType, setOrderDealType] = useState('Original');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderMsg, setOrderMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -397,7 +398,7 @@ export default function BuyerDashboard() {
           orderNo, productCode: selectedDeal.productCode,
           orderName: orderName.trim() || selectedDeal.productName,
           platform: selectedDeal.platform, mediator: 'Self',
-          dealType: selectedDeal.dealType || 'cashback',
+          dealType: orderDealType || selectedDeal.dealType || 'Original',
           orderDate: new Date().toISOString().split('T')[0],
           amount: parseFloat(orderAmount),
           deduction: orderDeduction ? parseFloat(orderDeduction) : 0,
@@ -705,17 +706,33 @@ export default function BuyerDashboard() {
                       )}
                       {!selectedDeal && (
                         <div className="sm:col-span-2">
-                          <label className="section-label">Select Deal *</label>
-                          <select className="select" onChange={e => {
+                          <label className="section-label">SELECT DEAL *</label>
+                          <select className="select liquid-glass-input rounded-xl" onChange={e => {
                             const d = deals.find(d => d.id === e.target.value);
                             setSelectedDeal(d || null);
                             setOrderName(d?.productName || '');
+                            if (d?.dealType) setOrderDealType(d.dealType);
                           }}>
                             <option value="">-- Select a deal --</option>
-                            {deals.map(d => <option key={d.id} value={d.id}>{d.productName} ({d.platform})</option>)}
+                            {deals.map(d => (
+                              <option key={d.id} value={d.id}>
+                                {d.productName} — {d.dealType === 'Original' ? '✨ Original' : d.dealType === 'Exchange' ? '🔄 Exchange' : d.dealType === 'Empty' ? '📦 Empty' : d.dealType === 'Review' ? '⭐ Review' : d.dealType === 'Cashback' ? '💰 Cashback' : d.dealType === 'Rating' ? '🌟 Rating' : (d.dealType || '✨ Original')} ({d.platform})
+                              </option>
+                            ))}
                           </select>
                         </div>
                       )}
+                      <div className="sm:col-span-2">
+                        <label className="section-label">SELECT DEAL TYPE *</label>
+                        <select value={orderDealType} onChange={e => setOrderDealType(e.target.value)} className="select liquid-glass-input rounded-xl">
+                          <option value="Original">✨ Original</option>
+                          <option value="Exchange">🔄 Exchange</option>
+                          <option value="Empty">📦 Empty</option>
+                          <option value="Review">⭐ Review</option>
+                          <option value="Cashback">💰 Cashback</option>
+                          <option value="Rating">🌟 Rating</option>
+                        </select>
+                      </div>
                       <div className="sm:col-span-2">
                         {orderMsg && (
                           <div className={`p-3 rounded-xl text-sm mb-3 ${orderMsg.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600'}`}>
