@@ -245,7 +245,122 @@ if (typeof window !== 'undefined') {
 
       // Auto login session
       sessionStorage.setItem('ds_session_user_id', newUserId);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('ds_storage_update'));
+      }
       return jsonResponse({ success: true, message: 'Account created successfully!', user: newUser });
+    }
+
+    // ── USER MANAGEMENT APIS ──
+    if (pathname === '/api/users/all' && method === 'GET') {
+      let users = getStorage('ds_users', []);
+      const q = searchParams.get('q')?.toLowerCase();
+      const role = searchParams.get('role');
+      const statusFilter = searchParams.get('status_filter');
+
+      if (q) {
+        users = users.filter((u: any) =>
+          u.name?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q) ||
+          u.id?.toLowerCase().includes(q) ||
+          (u.mobile && u.mobile.includes(q))
+        );
+      }
+      if (role && role !== 'All') {
+        users = users.filter((u: any) => u.role === role);
+      }
+      if (statusFilter && statusFilter !== 'All') {
+        users = users.filter((u: any) => u.status === statusFilter);
+      }
+      return jsonResponse(users);
+    }
+
+    if (pathname === '/api/users/create' && method === 'POST') {
+      const { name, email, mobile, password, role } = body;
+      const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      const cleanName = typeof name === 'string' ? name.trim() : '';
+      const cleanPassword = typeof password === 'string' ? password.trim() : '';
+      const cleanMobile = typeof mobile === 'string' ? mobile.trim() : '';
+
+      if (!cleanEmail || !cleanName || !cleanPassword) {
+        return jsonResponse({ success: false, detail: 'Please fill in all required fields.' }, 400);
+      }
+
+      const users = getStorage('ds_users', []);
+      if (users.some((u: any) => u.email === cleanEmail)) {
+        return jsonResponse({ success: false, detail: 'User with this email already exists.' }, 400);
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const newUserId = (role === 'admin' || role === 'super_admin' ? 'ADM' : 'USR') + Math.floor(Math.random() * 90000 + 10000);
+      const newUser = {
+        id: newUserId,
+        name: cleanName,
+        email: cleanEmail,
+        mobile: cleanMobile || null,
+        password: cleanPassword,
+        role: role || 'buyer',
+        status: 'active',
+        joined: today,
+        verified: true,
+        referral: (cleanName.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, '') || 'USER') + Math.floor(Math.random() * 900 + 100),
+      };
+
+      users.push(newUser);
+      setStorage('ds_users', users);
+
+      if (role === 'buyer') {
+        const wallets = getStorage('ds_wallets', []);
+        wallets.push({
+          id: 'WLT' + Math.floor(Math.random() * 90000 + 10000),
+          userId: newUserId,
+          pendingCashback: 0.0,
+          approvedCashback: 0.0,
+          lockedCashback: 0.0,
+          withdrawableCashback: 0.0,
+          refundBalance: 0.0,
+          lastUpdated: new Date().toISOString(),
+        });
+        setStorage('ds_wallets', wallets);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('ds_storage_update'));
+      }
+      return jsonResponse({ success: true, user: newUser });
+    }
+
+    if (pathname.startsWith('/api/users/')) {
+      const parts = pathname.replace('/api/users/', '').split('/');
+      const userId = parts[0];
+      const users = getStorage('ds_users', []);
+      const uIdx = users.findIndex((u: any) => u.id === userId);
+
+      if (uIdx !== -1) {
+        if (method === 'GET') {
+          return jsonResponse(users[uIdx]);
+        }
+        if (method === 'PATCH' || method === 'PUT') {
+          const { role, status, name, mobile } = body;
+          if (role) users[uIdx].role = role;
+          if (status) users[uIdx].status = status;
+          if (name) users[uIdx].name = name;
+          if (mobile !== undefined) users[uIdx].mobile = mobile;
+          setStorage('ds_users', users);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('ds_storage_update'));
+          }
+          return jsonResponse(users[uIdx]);
+        }
+        if (method === 'DELETE') {
+          users.splice(uIdx, 1);
+          setStorage('ds_users', users);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('ds_storage_update'));
+          }
+          return jsonResponse({ success: true });
+        }
+      }
     }
 
     // ── SYSTEM SETTINGS & FEATURE FLAGS ──
