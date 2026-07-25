@@ -152,8 +152,8 @@ if (typeof window !== 'undefined') {
     // ── AUTHENTICATION APIS ──
     if (pathname === '/api/auth/login' && method === 'POST') {
       const { identifier, password } = body;
-      const cleanIdentifier = typeof identifier === 'string' ? identifier.trim() : '';
-      const cleanPassword = typeof password === 'string' ? password.trim() : '';
+      const cleanIdentifier = typeof identifier === 'string' ? identifier.replace(/^[\s,]+|[\s,]+$/g, '').trim() : '';
+      const cleanPassword = typeof password === 'string' ? password.replace(/^[\s,]+|[\s,]+$/g, '').trim() : '';
       const cleanDigits = cleanIdentifier.replace(/\D/g, '');
       const users = getStorage('ds_users', []);
       
