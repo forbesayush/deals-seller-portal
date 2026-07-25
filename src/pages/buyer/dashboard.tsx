@@ -510,14 +510,14 @@ export default function BuyerDashboard() {
             sidebarCollapsed={sidebarCollapsed}
           />
 
-          <main className="flex-1 p-6 pt-[88px]">
+          <main className="flex-1 p-6 pt-[88px] liquid-bg-mesh">
             {/* Welcome Card */}
-            <div className="premium-card card-accent-violet mb-6 p-5 flex items-center justify-between">
+            <div className="premium-card liquid-card-glow card-accent-violet mb-6 p-5 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>Welcome back 👋</p>
-                <h2 className="text-2xl font-extrabold mt-0.5">{user?.name}</h2>
+                <h2 className="text-2xl font-extrabold mt-0.5 liquid-gradient-text">{user?.name}</h2>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="badge badge-violet">{user?.vipTier || 'Standard'} Member</span>
+                  <span className="liquid-pill">{user?.vipTier || 'Standard'} Member</span>
                   <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                     {user?.role === 'buyer' ? 'Buyer Portal' : user?.role}
                   </span>

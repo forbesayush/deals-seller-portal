@@ -48,7 +48,7 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
   const slotsColor = deal.slots <= 2 ? 'text-rose-500' : deal.slots <= 5 ? 'text-amber-500' : 'text-emerald-500';
 
   return (
-    <div className={`deal-card group relative ${deal.featured ? 'ring-2 ring-brand-500/30' : ''} ${compact ? '' : ''}`}>
+    <div className={`deal-card liquid-card-glow group relative ${deal.featured ? 'ring-2 ring-brand-500/30' : ''} ${compact ? '' : ''}`}>
       {/* Featured Badge */}
       {deal.featured && (
         <div className="absolute top-3 right-3 z-10 badge badge-violet gap-1 shadow-sm">
