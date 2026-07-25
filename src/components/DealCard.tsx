@@ -58,11 +58,21 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
 
       {/* Card Body */}
       <div className="p-4">
-        {/* Top Row: Platform + Save */}
+        {/* Top Row: Platform + Deal Type + Save */}
         <div className="flex items-center justify-between mb-3">
-          <span className={`badge ${platformColor} text-xs`}>
-            {platformIcon} {deal.platform}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`badge ${platformColor} text-xs`}>
+              {platformIcon} {deal.platform}
+            </span>
+            {deal.dealType && (
+              <span className="badge badge-violet text-[10px] uppercase font-bold tracking-wider">
+                {deal.dealType === 'original' || deal.dealType === 'Original' ? '✨ Original' :
+                 deal.dealType === 'exchange' || deal.dealType === 'Exchange' ? '🔄 Exchange' :
+                 deal.dealType === 'empty' || deal.dealType === 'Empty' ? '📦 Empty' :
+                 deal.dealType === 'review' || deal.dealType === 'Review' ? '⭐ Review' : deal.dealType}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5">
             {expiry && (
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${expiry.color}`}>

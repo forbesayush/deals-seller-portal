@@ -17,7 +17,7 @@ function formatINR(n: number) {
 
 const PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Meesho', 'Blinkit', 'Nykaa', 'Ajio', 'Other'];
 const CATEGORIES = ['General', 'Electronics', 'Fashion', 'Groceries', 'Home & Kitchen', 'Beauty', 'Sports', 'Books', 'Toys'];
-const DEAL_TYPES = ['cashback', 'review', 'rating', 'image_review', 'qa', 'video'];
+const DEAL_TYPES = ['Original', 'Exchange', 'Empty', 'Review', 'Cashback', 'Rating', 'Image Review', 'Q&A', 'Video'];
 
 interface DealFormData {
   productCode: string;
@@ -42,7 +42,7 @@ interface DealFormData {
 const DEFAULT_FORM: DealFormData = {
   productCode: '', productName: '', platform: 'Amazon', price: '', cashback: '',
   slots: 5, active: true, category: 'General', expiresAt: '', description: '',
-  imageUrl: '', rating: 4.5, dealType: 'cashback', minOrderValue: 0, maxPerUser: 1,
+  imageUrl: '', rating: 4.5, dealType: 'Original', minOrderValue: 0, maxPerUser: 1,
   featured: false, tags: '',
 };
 
