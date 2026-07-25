@@ -19,18 +19,20 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded_v7')) {
+    if (localStorage.getItem('ds_seeded_v8')) {
       return;
     }
-    // Clean old storage versions to force a fresh clean seed without sample orders
+    // Clean old storage versions to force a fresh clean seed without sample data
     localStorage.removeItem('ds_seeded');
     localStorage.removeItem('ds_seeded_v2');
     localStorage.removeItem('ds_seeded_v3');
     localStorage.removeItem('ds_seeded_v4');
     localStorage.removeItem('ds_seeded_v5');
     localStorage.removeItem('ds_seeded_v6');
+    localStorage.removeItem('ds_seeded_v7');
 
-    // Force purge cached order history from browser localStorage
+    // Force purge cached sample deals and order history from browser localStorage
+    localStorage.removeItem('ds_deals');
     localStorage.removeItem('ds_orders');
     localStorage.removeItem('ds_refunds');
     localStorage.removeItem('ds_transactions');
@@ -55,150 +57,8 @@ if (typeof window !== 'undefined') {
     ];
     setStorage('ds_users', users);
 
-    // Seed Genuine Active Deals (Fake deals removed)
-    const deals = [
-      {
-        id: 'DEA101',
-        productCode: 'PRM001',
-        productName: 'Sony WH-1000XM5 Wireless Headphones',
-        platform: 'Amazon',
-        price: 29990.0,
-        cashback: 3500.0,
-        slots: 10,
-        active: true,
-        category: 'Electronics',
-        description: 'Industry-leading noise cancelling headphones with 30-hr battery life and crystal clear sound.',
-        rating: 4.8,
-        dealType: 'cashback',
-        minOrderValue: 25000.0,
-        maxPerUser: 1,
-        claimedCount: 0,
-        featured: true,
-        tags: ['sony', 'audio', 'headphones'],
-        createdAt: today
-      },
-      {
-        id: 'DEA103',
-        productCode: 'ORG001',
-        productName: 'boAt Stone 350 Portable Speaker',
-        platform: 'Amazon',
-        price: 1499.0,
-        cashback: 250.0,
-        slots: 25,
-        active: true,
-        category: 'Electronics',
-        description: 'BoAt portable Bluetooth speaker with IPX7 waterproof body and punchy bass sound.',
-        rating: 4.4,
-        dealType: 'cashback',
-        minOrderValue: 1000.0,
-        maxPerUser: 2,
-        claimedCount: 0,
-        featured: true,
-        tags: ['boat', 'speaker', 'audio'],
-        createdAt: today
-      },
-      {
-        id: 'DEA104',
-        productCode: 'EXC001',
-        productName: 'OnePlus Nord CE4 Lite 5G',
-        platform: 'Flipkart',
-        price: 19999.0,
-        cashback: 1800.0,
-        slots: 15,
-        active: true,
-        category: 'Mobiles',
-        description: 'Smooth 120Hz AMOLED display with 50MP Sony LYT-600 main camera & 80W SUPERVOOC charging.',
-        rating: 4.5,
-        dealType: 'cashback',
-        minOrderValue: 15000.0,
-        maxPerUser: 1,
-        claimedCount: 0,
-        featured: false,
-        tags: ['oneplus', 'mobile', '5g'],
-        createdAt: today
-      },
-      {
-        id: 'DEA105',
-        productCode: 'APP002',
-        productName: 'Apple AirPods Pro (2nd Gen) USB-C',
-        platform: 'Amazon',
-        price: 21900.0,
-        cashback: 2500.0,
-        slots: 12,
-        active: true,
-        category: 'Electronics',
-        description: 'Pro-level active noise cancellation, adaptive audio, spatial audio and USB-C MagSafe case.',
-        rating: 4.9,
-        dealType: 'cashback',
-        minOrderValue: 20000.0,
-        maxPerUser: 1,
-        claimedCount: 0,
-        featured: true,
-        tags: ['apple', 'airpods', 'premium'],
-        createdAt: today
-      },
-      {
-        id: 'DEA106',
-        productCode: 'SAM004',
-        productName: 'Samsung Galaxy S24 Ultra 5G (256GB)',
-        platform: 'Flipkart',
-        price: 129999.0,
-        cashback: 12000.0,
-        slots: 8,
-        active: true,
-        category: 'Mobiles',
-        description: 'Galaxy AI powered flagship phone with 200MP quad camera, S-Pen and Snapdragon 8 Gen 3.',
-        rating: 4.9,
-        dealType: 'cashback',
-        minOrderValue: 100000.0,
-        maxPerUser: 1,
-        claimedCount: 0,
-        featured: true,
-        tags: ['samsung', 'flagship', 'mobile'],
-        createdAt: today
-      },
-      {
-        id: 'DEA107',
-        productCode: 'NIK001',
-        productName: 'Nike Air Zoom Pegasus 40 Running Shoes',
-        platform: 'Myntra',
-        price: 9695.0,
-        cashback: 1500.0,
-        slots: 20,
-        active: true,
-        category: 'Fashion',
-        description: 'Responsive cushion running shoes with breathable mesh upper and dual Nike Zoom Air units.',
-        rating: 4.7,
-        dealType: 'cashback',
-        minOrderValue: 8000.0,
-        maxPerUser: 2,
-        claimedCount: 0,
-        featured: false,
-        tags: ['nike', 'shoes', 'running'],
-        createdAt: today
-      },
-      {
-        id: 'DEA108',
-        productCode: 'DYS001',
-        productName: 'Dyson Airwrap Multi-Styler Complete',
-        platform: 'Nykaa',
-        price: 45900.0,
-        cashback: 5000.0,
-        slots: 5,
-        active: true,
-        category: 'Beauty',
-        description: 'Styles hair using Coanda airflow without extreme heat. Includes re-engineered attachments.',
-        rating: 4.8,
-        dealType: 'cashback',
-        minOrderValue: 40000.0,
-        maxPerUser: 1,
-        claimedCount: 0,
-        featured: true,
-        tags: ['dyson', 'beauty', 'haircare'],
-        createdAt: today
-      }
-    ];
-    setStorage('ds_deals', deals);
+    // Initial Deals: Clean 0 deals (Deals only appear when Admin creates live deals)
+    setStorage('ds_deals', []);
 
     // Seed Wallets (Clean 0 balance)
     const wallets = [
@@ -255,7 +115,7 @@ if (typeof window !== 'undefined') {
     setStorage('ds_claims', []);
     setStorage('ds_transactions', []);
 
-    localStorage.setItem('ds_seeded_v7', 'true');
+    localStorage.setItem('ds_seeded_v8', 'true');
   };
 
   // Run database initialization
