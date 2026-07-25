@@ -65,11 +65,13 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
               {platformIcon} {deal.platform}
             </span>
             {deal.dealType && (
-              <span className="badge badge-violet text-[10px] uppercase font-bold tracking-wider">
-                {deal.dealType === 'original' || deal.dealType === 'Original' ? '✨ Original' :
-                 deal.dealType === 'exchange' || deal.dealType === 'Exchange' ? '🔄 Exchange' :
-                 deal.dealType === 'empty' || deal.dealType === 'Empty' ? '📦 Empty' :
-                 deal.dealType === 'review' || deal.dealType === 'Review' ? '⭐ Review' : deal.dealType}
+              <span className={`badge ${deal.dealType.toLowerCase() === 'exchange' ? 'badge-blue' : deal.dealType.toLowerCase() === 'empty' ? 'badge-slate' : deal.dealType.toLowerCase() === 'review' ? 'badge-amber' : deal.dealType.toLowerCase() === 'cashback' ? 'badge-emerald' : deal.dealType.toLowerCase() === 'rating' ? 'badge-pink' : 'badge-violet'} text-[10px] uppercase font-bold tracking-wider`}>
+                {deal.dealType.toLowerCase() === 'original' ? '✨ Original' :
+                 deal.dealType.toLowerCase() === 'exchange' ? '🔄 Exchange' :
+                 deal.dealType.toLowerCase() === 'empty' ? '📦 Empty' :
+                 deal.dealType.toLowerCase() === 'review' ? '⭐ Review' :
+                 deal.dealType.toLowerCase() === 'cashback' ? '💰 Cashback' :
+                 deal.dealType.toLowerCase() === 'rating' ? '🌟 Rating' : deal.dealType}
               </span>
             )}
           </div>

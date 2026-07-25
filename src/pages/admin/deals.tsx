@@ -17,7 +17,7 @@ function formatINR(n: number) {
 
 const PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Meesho', 'Blinkit', 'Nykaa', 'Ajio', 'Other'];
 const CATEGORIES = ['General', 'Electronics', 'Fashion', 'Groceries', 'Home & Kitchen', 'Beauty', 'Sports', 'Books', 'Toys'];
-const DEAL_TYPES = ['Original', 'Exchange', 'Empty', 'Review', 'Cashback', 'Rating', 'Image Review', 'Q&A', 'Video'];
+const DEAL_TYPES = ['Original', 'Exchange', 'Empty', 'Review', 'Cashback', 'Rating'];
 
 interface DealFormData {
   productCode: string;
@@ -464,7 +464,16 @@ export default function AdminDeals() {
                 <div>
                   <label className="section-label">Deal Type</label>
                   <select value={formData.dealType} onChange={e => setFormData(p => ({ ...p, dealType: e.target.value }))} className="select">
-                    {DEAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    {DEAL_TYPES.map(t => (
+                      <option key={t} value={t}>
+                        {t === 'Original' ? '✨ Original' :
+                         t === 'Exchange' ? '🔄 Exchange' :
+                         t === 'Empty' ? '📦 Empty' :
+                         t === 'Review' ? '⭐ Review' :
+                         t === 'Cashback' ? '💰 Cashback' :
+                         t === 'Rating' ? '🌟 Rating' : t}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
