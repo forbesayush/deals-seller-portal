@@ -385,6 +385,87 @@ if (typeof window !== 'undefined') {
       }
     }
 
+    // ── SUPPORT TICKETS APIS ──
+    if (pathname === '/api/tickets') {
+      const tickets = getStorage('ds_tickets', []);
+      if (method === 'GET') {
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.role === 'buyer') {
+          return jsonResponse(tickets.filter((t: any) => t.userId === currentUser.id));
+        }
+        return jsonResponse(tickets);
+      }
+      if (method === 'POST') {
+        const currentUser = getCurrentUser();
+        const { title, description, category, orderNo, priority } = body;
+        const newTicket = {
+          id: 'TCK' + Math.floor(Math.random() * 90000 + 10000),
+          userId: currentUser ? currentUser.id : 'GUEST',
+          userName: currentUser ? currentUser.name : 'Buyer',
+          userEmail: currentUser ? currentUser.email : '',
+          title: title || 'Support Query',
+          description: description || '',
+          category: category || 'General',
+          orderNo: orderNo || null,
+          status: 'open',
+          priority: priority || 'medium',
+          reply: null,
+          repliedAt: null,
+          createdAt: new Date().toISOString(),
+        };
+        tickets.unshift(newTicket);
+        setStorage('ds_tickets', tickets);
+
+        if (currentUser) {
+          const activityLogs = getStorage('ds_user_activity', []);
+          activityLogs.unshift({
+            id: 'ACT' + Math.floor(Math.random() * 90000 + 10000),
+            userId: currentUser.id,
+            action: 'Submitted Support Ticket',
+            details: `Created ticket ${newTicket.id}: ${newTicket.title}`,
+            timestamp: new Date().toISOString(),
+          });
+          setStorage('ds_user_activity', activityLogs);
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('ds_storage_update'));
+        }
+        return jsonResponse(newTicket);
+      }
+    }
+
+    if (pathname.startsWith('/api/tickets/')) {
+      const ticketId = pathname.replace('/api/tickets/', '');
+      const tickets = getStorage('ds_tickets', []);
+      const ticketIdx = tickets.findIndex((t: any) => t.id === ticketId);
+
+      if (ticketIdx !== -1) {
+        if (method === 'GET') {
+          return jsonResponse(tickets[ticketIdx]);
+        }
+        if (method === 'PATCH' || method === 'PUT') {
+          const { reply, status } = body;
+          if (reply !== undefined) tickets[ticketIdx].reply = reply;
+          tickets[ticketIdx].status = status || 'resolved';
+          tickets[ticketIdx].repliedAt = new Date().toISOString();
+          setStorage('ds_tickets', tickets);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('ds_storage_update'));
+          }
+          return jsonResponse(tickets[ticketIdx]);
+        }
+        if (method === 'DELETE') {
+          tickets.splice(ticketIdx, 1);
+          setStorage('ds_tickets', tickets);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('ds_storage_update'));
+          }
+          return jsonResponse({ success: true });
+        }
+      }
+    }
+
     // ── DEALS APIS ──
     if (pathname === '/api/deals') {
       const deals = getStorage('ds_deals', []);

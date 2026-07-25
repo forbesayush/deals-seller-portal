@@ -94,6 +94,15 @@ export default function AdminTickets() {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     if (isAuthenticated) fetchTickets();
+
+    const handleSync = () => { if (isAuthenticated) fetchTickets(); };
+    window.addEventListener('ds_storage_update', handleSync);
+    window.addEventListener('storage', handleSync);
+
+    return () => {
+      window.removeEventListener('ds_storage_update', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [isAuthenticated]);
 
   const handleReply = async (e: React.FormEvent) => {
