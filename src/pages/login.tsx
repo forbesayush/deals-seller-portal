@@ -14,11 +14,16 @@ const FEATURES = [
 ];
 
 export default function Login() {
+  const [isRegister, setIsRegister] = useState(false);
   const [identifier, setIdentifier] = useState('');
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [activeFeature, setActiveFeature] = useState(0);
   const setUser = useAuth((state) => state.setUser);
 
@@ -29,61 +34,74 @@ export default function Login() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const seeded = localStorage.getItem('ds_seeded_v4');
-      if (!seeded) {
-        localStorage.removeItem('ds_seeded');
-        localStorage.removeItem('ds_seeded_v2');
-        localStorage.removeItem('ds_seeded_v3');
-        localStorage.removeItem('ds_users');
-        localStorage.removeItem('ds_deals');
-        localStorage.removeItem('ds_wallets');
-        localStorage.removeItem('ds_transactions');
-        localStorage.removeItem('ds_withdrawals');
-        localStorage.removeItem('ds_refunds');
-        localStorage.removeItem('ds_tickets');
-        localStorage.removeItem('ds_settings');
-        localStorage.removeItem('ds_feature_flags');
-        localStorage.removeItem('ds_audit_logs');
-      }
-    }
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanIdentifier = identifier ? identifier.trim() : '';
-    const cleanPassword = password ? password.trim() : '';
-    if (!cleanIdentifier || !cleanPassword) {
-      setError('Please enter your credentials');
-      return;
-    }
     setError('');
+    setSuccessMsg('');
     setLoading(true);
+
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: cleanIdentifier, password: cleanPassword }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const meRes = await fetch('/api/auth/me');
-        const meData = await meRes.json();
-        if (meData.success) {
-          setUser(meData.user);
-          const role = meData.user.role;
-          if (['admin', 'super_admin', 'manager', 'auditor'].includes(role)) {
-            window.location.href = '/admin/dashboard';
-          } else {
+      if (isRegister) {
+        if (!name.trim() || !identifier.trim() || !password.trim()) {
+          setError('Please fill in all required fields (Full Name, Email, Password).');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: identifier.trim(),
+            mobile: mobile.trim(),
+            password: password.trim(),
+            referralCode: referralCode.trim(),
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setUser(data.user);
+          setSuccessMsg('Account created successfully! Redirecting to dashboard...');
+          setTimeout(() => {
             window.location.href = '/buyer/dashboard';
-          }
+          }, 800);
+        } else {
+          setError(data.detail || 'Could not create account. Please check details.');
         }
       } else {
-        setError(data.detail || 'Invalid credentials. Please try again.');
+        const cleanIdentifier = identifier ? identifier.trim() : '';
+        const cleanPassword = password ? password.trim() : '';
+        if (!cleanIdentifier || !cleanPassword) {
+          setError('Please enter your credentials');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: cleanIdentifier, password: cleanPassword }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const meRes = await fetch('/api/auth/me');
+          const meData = await meRes.json();
+          if (meData.success) {
+            setUser(meData.user);
+            const role = meData.user.role;
+            if (['admin', 'super_admin', 'manager', 'auditor'].includes(role)) {
+              window.location.href = '/admin/dashboard';
+            } else {
+              window.location.href = '/buyer/dashboard';
+            }
+          }
+        } else {
+          setError(data.detail || 'Invalid credentials. Please try again.');
+        }
       }
     } catch {
-      setError('Connection error. Please check if the server is running.');
+      setError('Connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -205,41 +223,53 @@ export default function Login() {
             </div>
 
             <div className="mb-6">
-              <h2 className="text-3xl font-extrabold tracking-tight">Welcome back</h2>
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                {isRegister ? 'Create an Account' : 'Welcome back'}
+              </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                Sign in to continue to your portal
+                {isRegister ? 'Join thousands of buyers earning instant cashback' : 'Sign in to continue to your portal'}
               </p>
             </div>
 
-            {/* Quick Autofill Pills */}
-            <div className="mb-6">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Quick 1-Click Demo Login:</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setIdentifier('alwaysayushsourav162@gmail.com'); setPassword('ekta@123'); setError(''); }}
-                  className="liquid-pill cursor-pointer"
-                >
-                  👤 Buyer Account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setIdentifier('admin@deals.seller.com'); setPassword('admin@123'); setError(''); }}
-                  className="liquid-pill cursor-pointer"
-                >
-                  🛡️ Admin Panel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setIdentifier('owner@deals.seller.com'); setPassword('owner@123'); setError(''); }}
-                  className="liquid-pill cursor-pointer"
-                >
-                  👑 Owner Desk
-                </button>
+            {/* Quick Autofill Pills (Sign In mode only) */}
+            {!isRegister && (
+              <div className="mb-6">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Quick 1-Click Demo Login:</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIdentifier('alwaysayushsourav162@gmail.com'); setPassword('ekta@123'); setError(''); }}
+                    className="liquid-pill cursor-pointer"
+                  >
+                    👤 Buyer Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIdentifier('admin@deals.seller.com'); setPassword('admin@123'); setError(''); }}
+                    className="liquid-pill cursor-pointer"
+                  >
+                    🛡️ Admin Panel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIdentifier('owner@deals.seller.com'); setPassword('owner@123'); setError(''); }}
+                    className="liquid-pill cursor-pointer"
+                  >
+                    👑 Owner Desk
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Error */}
+            {/* Success Alert */}
+            {successMsg && (
+              <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2 animate-slide-in">
+                <Sparkles className="w-4 h-4 flex-shrink-0" />
+                {successMsg}
+              </div>
+            )}
+
+            {/* Error Alert */}
             {error && (
               <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2 animate-slide-in">
                 <ShieldCheck className="w-4 h-4 flex-shrink-0" />
@@ -247,30 +277,61 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Identifier */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name (Register Mode) */}
+              {isRegister && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="input rounded-xl"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Identifier (Email) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--color-text-muted)' }}>
-                  Email / Mobile / Username
+                <label className="block text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                  {isRegister ? 'Email Address *' : 'Email / Mobile / Username'}
                 </label>
                 <input
-                  type="text"
+                  type={isRegister ? 'email' : 'text'}
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
-                  placeholder="Enter email, mobile or username"
+                  placeholder={isRegister ? 'name@example.com' : 'Enter email, mobile or username'}
                   className="input rounded-xl"
-                  autoFocus
+                  required={isRegister}
                   autoComplete="username"
                 />
               </div>
 
+              {/* Mobile Number (Register Mode Optional) */}
+              {isRegister && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                    Mobile Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={mobile}
+                    onChange={e => setMobile(e.target.value)}
+                    placeholder="10-digit mobile number"
+                    className="input rounded-xl"
+                  />
+                </div>
+              )}
+
               {/* Password */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-                    Password
-                  </label>
-                </div>
+                <label className="block text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                  Password *
+                </label>
                 <div className="relative">
                   <input
                     type={showPwd ? 'text' : 'password'}
@@ -278,7 +339,8 @@ export default function Login() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="input rounded-xl pr-10"
-                    autoComplete="current-password"
+                    required
+                    autoComplete={isRegister ? 'new-password' : 'current-password'}
                   />
                   <button
                     type="button"
@@ -290,6 +352,22 @@ export default function Login() {
                 </div>
               </div>
 
+              {/* Referral Code (Register Mode Optional) */}
+              {isRegister && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                    Referral Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={e => setReferralCode(e.target.value)}
+                    placeholder="e.g. AYUSH123"
+                    className="input rounded-xl"
+                  />
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
@@ -297,15 +375,42 @@ export default function Login() {
                 className="btn btn-primary btn-lg w-full mt-2 rounded-xl"
               >
                 {loading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {isRegister ? 'Creating Account...' : 'Signing in...'}</>
                 ) : (
-                  <><span>Sign In</span><ArrowRight className="w-4 h-4" /></>
+                  <><span>{isRegister ? 'Create Account' : 'Sign In'}</span><ArrowRight className="w-4 h-4" /></>
                 )}
               </button>
             </form>
 
+            {/* Bottom Toggle Link */}
+            <p className="text-center text-xs mt-6" style={{ color: 'var(--color-text-muted)' }}>
+              {isRegister ? (
+                <>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setIsRegister(false); setError(''); setSuccessMsg(''); }}
+                    className="font-bold text-brand-600 dark:text-violet-400 hover:underline inline-flex items-center gap-0.5"
+                  >
+                    Sign in →
+                  </button>
+                </>
+              ) : (
+                <>
+                  New to deals.seller?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setIsRegister(true); setError(''); setSuccessMsg(''); }}
+                    className="font-bold text-brand-600 dark:text-violet-400 hover:underline inline-flex items-center gap-0.5"
+                  >
+                    Create an account →
+                  </button>
+                </>
+              )}
+            </p>
+
             {/* Footer */}
-            <p className="text-center text-[10px] mt-6" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="text-center text-[10px] mt-4" style={{ color: 'var(--color-text-muted)' }}>
               Protected by Liquid Enterprise Security. © 2026 deals.seller
             </p>
           </div>

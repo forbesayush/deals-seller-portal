@@ -189,6 +189,62 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ success: true });
     }
 
+    if (pathname === '/api/auth/register' && method === 'POST') {
+      const { name, email, mobile, password, referralCode } = body;
+      const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      const cleanName = typeof name === 'string' ? name.trim() : '';
+      const cleanPassword = typeof password === 'string' ? password.trim() : '';
+      const cleanMobile = typeof mobile === 'string' ? mobile.trim() : '';
+
+      if (!cleanEmail || !cleanName || !cleanPassword) {
+        return jsonResponse({ success: false, detail: 'Please fill in all required fields (Name, Email, Password).' }, 400);
+      }
+
+      const users = getStorage('ds_users', []);
+      if (users.some((u: any) => u.email === cleanEmail)) {
+        return jsonResponse({ success: false, detail: 'An account with this email address already exists.' }, 400);
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const newUserId = 'USR' + Math.floor(Math.random() * 90000 + 10000);
+      const userReferral = (cleanName.slice(0, 4).toUpperCase().replace(/[^A-Z]/g, '') || 'USER') + Math.floor(Math.random() * 900 + 100);
+
+      const newUser = {
+        id: newUserId,
+        name: cleanName,
+        email: cleanEmail,
+        mobile: cleanMobile || null,
+        password: cleanPassword,
+        role: 'buyer',
+        status: 'active',
+        joined: today,
+        verified: true,
+        referral: userReferral,
+        referredBy: referralCode || null,
+      };
+
+      users.push(newUser);
+      setStorage('ds_users', users);
+
+      // Create clean isolated user wallet
+      const wallets = getStorage('ds_wallets', []);
+      wallets.push({
+        id: 'WLT' + Math.floor(Math.random() * 90000 + 10000),
+        userId: newUserId,
+        pendingCashback: 0.0,
+        approvedCashback: 0.0,
+        lockedCashback: 0.0,
+        withdrawableCashback: 0.0,
+        refundBalance: 0.0,
+        lastUpdated: new Date().toISOString(),
+      });
+      setStorage('ds_wallets', wallets);
+
+      // Auto login session
+      sessionStorage.setItem('ds_session_user_id', newUserId);
+      return jsonResponse({ success: true, message: 'Account created successfully!', user: newUser });
+    }
+
     // ── SYSTEM SETTINGS & FEATURE FLAGS ──
     if (pathname === '/api/settings' && method === 'GET') {
       return jsonResponse(getStorage('ds_settings', {}));
