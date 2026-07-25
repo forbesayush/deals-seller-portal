@@ -70,6 +70,7 @@ export default function BuyerDashboard() {
   const [dealSearch, setDealSearch] = useState('');
   const [dealPlatform, setDealPlatform] = useState('All');
   const [dealCategory, setDealCategory] = useState('All');
+  const [dealTypeFilter, setDealTypeFilter] = useState('All');
   const [selectedDeal, setSelectedDeal] = useState<any>(null); // Feature 2: Deal Detail Modal
   const [claimedToken, setClaimedToken] = useState<any>(null); // Deal Claim Lock Token
 
@@ -477,7 +478,10 @@ export default function BuyerDashboard() {
   const platforms = ['All', ...Array.from(new Set([...DEFAULT_PLATFORMS, ...deals.map(d => d.platform)])).filter(p => Boolean(p) && p !== 'All')];
   const categories = ['All', ...Array.from(new Set(deals.map(d => d.category))).filter(c => Boolean(c) && c !== 'All')];
   const featuredDeals = deals.filter(d => d.featured);
-  const displayDeals = deals;
+  const displayDeals = deals.filter(d => {
+    if (dealTypeFilter !== 'All' && (d.dealType || '').toLowerCase() !== dealTypeFilter.toLowerCase()) return false;
+    return true;
+  });
 
   const tabs: { id: BuyerTab; icon: React.ElementType; label: string; count?: number }[] = [
     { id: 'deals', icon: Tag, label: 'Deals', count: deals.length },
@@ -594,6 +598,15 @@ export default function BuyerDashboard() {
                   </div>
                   <select value={dealPlatform} onChange={e => setDealPlatform(e.target.value)} className="select liquid-glass-input rounded-xl text-sm w-auto">
                     {platforms.map(p => <option key={p} value={p}>{p === 'All' ? 'All Platforms' : p}</option>)}
+                  </select>
+                  <select value={dealTypeFilter} onChange={e => setDealTypeFilter(e.target.value)} className="select liquid-glass-input rounded-xl text-sm w-auto">
+                    <option value="All">All Deal Types</option>
+                    <option value="Original">✨ Original</option>
+                    <option value="Exchange">🔄 Exchange</option>
+                    <option value="Empty">📦 Empty</option>
+                    <option value="Review">⭐ Review</option>
+                    <option value="Cashback">💰 Cashback</option>
+                    <option value="Rating">🌟 Rating</option>
                   </select>
                   {categories.length > 1 && (
                     <select value={dealCategory} onChange={e => setDealCategory(e.target.value)} className="select liquid-glass-input rounded-xl text-sm w-auto">
