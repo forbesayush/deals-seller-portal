@@ -69,18 +69,17 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed }: Head
 
   return (
     <header
-      className="fixed top-0 right-0 z-20 glass-panel border-b flex items-center gap-4 px-6"
+      className="fixed top-0 right-0 z-20 liquid-glass-navbar flex items-center gap-4 px-6"
       style={{
         left: sidebarWidth,
         height: 64,
-        borderColor: 'var(--color-border)',
         transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
       {/* Title */}
       {title && (
         <div className="hidden md:block">
-          <h1 className="text-lg font-extrabold tracking-tight">{title}</h1>
+          <h1 className="text-lg font-extrabold tracking-tight liquid-gradient-text">{title}</h1>
         </div>
       )}
 
@@ -94,7 +93,7 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed }: Head
               placeholder="Search users, orders, deals..."
               value={searchQuery}
               onChange={e => handleSearch(e.target.value)}
-              className="input pl-9 py-2 text-sm"
+              className="input liquid-glass-input rounded-xl pl-9 py-2 text-sm"
             />
             {searchQuery && (
               <button
