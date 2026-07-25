@@ -99,47 +99,47 @@ export default function Login() {
         <meta name="description" content="Sign in to the Deals Seller Portal to browse cashback deals, manage orders, and track your earnings." />
       </Head>
 
-      <div className="min-h-screen flex overflow-hidden" style={{ background: 'var(--color-bg)' }}>
+      <div className="min-h-screen flex overflow-hidden liquid-bg-mesh" style={{ background: 'var(--color-bg)' }}>
         {/* Left — Hero Panel (hidden on mobile) */}
         <div className="hidden lg:flex flex-1 relative items-center justify-center overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #0f1629 0%, #1a1040 50%, #0f1629 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #090d16 0%, #150d30 50%, #090d16 100%)' }}
         >
           {/* Orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-20 animate-float"
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-25 animate-float"
             style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
-          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full opacity-15 animate-float"
-            style={{ background: 'radial-gradient(circle, #4f46e5, transparent)', animationDelay: '2s' }} />
-          <div className="absolute top-1/2 right-1/3 w-48 h-48 rounded-full opacity-10 animate-float"
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full opacity-20 animate-float"
+            style={{ background: 'radial-gradient(circle, #3b82f6, transparent)', animationDelay: '2s' }} />
+          <div className="absolute top-1/2 right-1/3 w-48 h-48 rounded-full opacity-15 animate-float"
             style={{ background: 'radial-gradient(circle, #10b981, transparent)', animationDelay: '4s' }} />
 
           {/* Grid overlay */}
-          <div className="absolute inset-0 opacity-[0.03]"
+          <div className="absolute inset-0 opacity-[0.04]"
             style={{
               backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
-              backgroundSize: '50px 50px'
+              backgroundSize: '40px 40px'
             }}
           />
 
           <div className="relative z-10 text-white max-w-md px-12">
             {/* Logo */}
             <div className="flex items-center gap-3 mb-12">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-black text-lg shadow-glow-violet">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-500 to-emerald-400 flex items-center justify-center font-black text-lg shadow-glow-violet">
                 DS
               </div>
               <div>
                 <p className="font-extrabold text-xl tracking-tight">deals.seller</p>
-                <p className="text-xs text-white/50 font-semibold uppercase tracking-widest">Enterprise Portal</p>
+                <p className="text-xs text-white/50 font-semibold uppercase tracking-widest">Liquid Enterprise Portal</p>
               </div>
             </div>
 
             <h1 className="text-4xl font-extrabold leading-tight mb-4">
               Your all-in-one<br />
-              <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg, #a78bfa, #818cf8)' }}>
-                cashback platform
+              <span className="liquid-gradient-text">
+                liquid cashback platform
               </span>
             </h1>
             <p className="text-white/60 text-base leading-relaxed mb-12">
-              Discover live deals, track orders, manage your wallet, and earn cashback — all in one beautifully designed portal.
+              Discover live deals, track real-time orders, manage your wallet, and earn cashback — all in one state-of-the-art liquid interface.
             </p>
 
             {/* Feature Carousel */}
@@ -151,7 +151,7 @@ export default function Login() {
                     key={i}
                     className={`absolute inset-0 flex items-center gap-4 transition-all duration-700 ${i === activeFeature ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 backdrop-blur">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 backdrop-blur border border-white/20">
                       <Icon className="w-6 h-6 text-violet-300" />
                     </div>
                     <div>
@@ -178,12 +178,12 @@ export default function Login() {
             <div className="mt-12 grid grid-cols-3 gap-4">
               {[
                 { val: '10K+', label: 'Active Users' },
-                { val: '500+', label: 'Live Deals' },
+                { val: 'Live Sync', label: 'Availability' },
                 { val: '₹2Cr+', label: 'Cashback Paid' },
               ].map(s => (
-                <div key={s.label} className="text-center">
-                  <p className="text-2xl font-extrabold text-white">{s.val}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
+                <div key={s.label} className="text-center p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur">
+                  <p className="text-xl font-extrabold text-white">{s.val}</p>
+                  <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -191,29 +191,57 @@ export default function Login() {
         </div>
 
         {/* Right — Login Form */}
-        <div className="flex-1 lg:max-w-[480px] flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-sm animate-fade-up">
+        <div className="flex-1 lg:max-w-[500px] flex items-center justify-center px-6 py-12 relative z-10">
+          <div className="w-full max-w-md animate-fade-up premium-card liquid-card-glow p-8 rounded-3xl">
             {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center gap-3 mb-10">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-black text-white shadow-md">
+            <div className="lg:hidden flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center font-black text-white shadow-md">
                 DS
               </div>
               <div>
                 <p className="font-extrabold tracking-tight">deals.seller</p>
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest">Enterprise Portal</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest">Liquid Portal</p>
               </div>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-6">
               <h2 className="text-3xl font-extrabold tracking-tight">Welcome back</h2>
-              <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
                 Sign in to continue to your portal
               </p>
             </div>
 
+            {/* Quick Autofill Pills */}
+            <div className="mb-6">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Quick 1-Click Demo Login:</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('alwaysayushsourav162@gmail.com'); setPassword('ekta@123'); setError(''); }}
+                  className="liquid-pill cursor-pointer"
+                >
+                  👤 Buyer Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('admin@deals.seller.com'); setPassword('admin@123'); setError(''); }}
+                  className="liquid-pill cursor-pointer"
+                >
+                  🛡️ Admin Panel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIdentifier('owner@deals.seller.com'); setPassword('owner@123'); setError(''); }}
+                  className="liquid-pill cursor-pointer"
+                >
+                  👑 Owner Desk
+                </button>
+              </div>
+            </div>
+
             {/* Error */}
             {error && (
-              <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2 animate-slide-in">
+              <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm flex items-center gap-2 animate-slide-in">
                 <ShieldCheck className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -230,7 +258,7 @@ export default function Login() {
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
                   placeholder="Enter email, mobile or username"
-                  className="input"
+                  className="input rounded-xl"
                   autoFocus
                   autoComplete="username"
                 />
@@ -242,9 +270,6 @@ export default function Login() {
                   <label className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
                     Password
                   </label>
-                  <a href="#" className="text-xs font-bold text-brand-600 hover:text-brand-700 dark:text-violet-400">
-                    Forgot password?
-                  </a>
                 </div>
                 <div className="relative">
                   <input
@@ -252,7 +277,7 @@ export default function Login() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="input pr-10"
+                    className="input rounded-xl pr-10"
                     autoComplete="current-password"
                   />
                   <button
@@ -269,7 +294,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary btn-lg w-full mt-2"
+                className="btn btn-primary btn-lg w-full mt-2 rounded-xl"
               >
                 {loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
@@ -279,19 +304,9 @@ export default function Login() {
               </button>
             </form>
 
-
-
-            {/* Register link */}
-            <p className="text-center text-xs mt-8" style={{ color: 'var(--color-text-muted)' }}>
-              New to deals.seller?{' '}
-              <a href="/login" className="font-bold text-brand-600 dark:text-violet-400 hover:underline">
-                Create an account →
-              </a>
-            </p>
-
             {/* Footer */}
             <p className="text-center text-[10px] mt-6" style={{ color: 'var(--color-text-muted)' }}>
-              Protected by enterprise-grade security. © 2026 deals.seller
+              Protected by Liquid Enterprise Security. © 2026 deals.seller
             </p>
           </div>
         </div>
