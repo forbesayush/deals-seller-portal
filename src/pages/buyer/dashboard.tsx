@@ -588,14 +588,14 @@ export default function BuyerDashboard() {
                     <input
                       type="text" placeholder="Search deals..."
                       value={dealSearch} onChange={e => setDealSearch(e.target.value)}
-                      className="input pl-9 text-sm"
+                      className="input liquid-glass-input rounded-xl pl-9 text-sm"
                     />
                   </div>
-                  <select value={dealPlatform} onChange={e => setDealPlatform(e.target.value)} className="select text-sm w-auto">
+                  <select value={dealPlatform} onChange={e => setDealPlatform(e.target.value)} className="select liquid-glass-input rounded-xl text-sm w-auto">
                     {platforms.map(p => <option key={p} value={p}>{p === 'All' ? 'All Platforms' : p}</option>)}
                   </select>
                   {categories.length > 1 && (
-                    <select value={dealCategory} onChange={e => setDealCategory(e.target.value)} className="select text-sm w-auto">
+                    <select value={dealCategory} onChange={e => setDealCategory(e.target.value)} className="select liquid-glass-input rounded-xl text-sm w-auto">
                       {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
                     </select>
                   )}
