@@ -128,6 +128,7 @@ export default function BuyerDashboard() {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderNo, setOrderNo] = useState('');
   const [orderName, setOrderName] = useState('');
+  const [orderCodeInput, setOrderCodeInput] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
   const [orderDeduction, setOrderDeduction] = useState('');
   const [orderDealType, setOrderDealType] = useState('Original');
@@ -389,16 +390,20 @@ export default function BuyerDashboard() {
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDeal || !orderNo || !orderAmount) { setOrderMsg({ type: 'error', text: 'Fill all required fields' }); return; }
+    if (!orderNo || !orderAmount) { setOrderMsg({ type: 'error', text: 'Please fill in Order Number and Amount Paid.' }); return; }
     setOrderLoading(true);
     try {
+      const prodCode = orderCodeInput.trim() || selectedDeal?.productCode || ('DEA' + Math.floor(Math.random() * 900 + 100));
+      const prodName = orderName.trim() || selectedDeal?.productName || 'Order Submission';
+      const prodPlat = selectedDeal?.platform || 'Amazon';
+
       const res = await fetch('/api/orders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderNo, productCode: selectedDeal.productCode,
-          orderName: orderName.trim() || selectedDeal.productName,
-          platform: selectedDeal.platform, mediator: 'Self',
-          dealType: orderDealType || selectedDeal.dealType || 'Original',
+          orderNo, productCode: prodCode,
+          orderName: prodName,
+          platform: prodPlat, mediator: 'Self',
+          dealType: orderDealType || selectedDeal?.dealType || 'Original',
           orderDate: new Date().toISOString().split('T')[0],
           amount: parseFloat(orderAmount),
           deduction: orderDeduction ? parseFloat(orderDeduction) : 0,
@@ -408,7 +413,7 @@ export default function BuyerDashboard() {
       const data = await res.json();
       if (res.ok) {
         setOrderMsg({ type: 'success', text: `Order submitted! Code: ${data.orderCode}` });
-        setOrderNo(''); setOrderName(''); setOrderAmount(''); setOrderDeduction(''); setSelectedDeal(null); setShowOrderForm(false);
+        setOrderNo(''); setOrderName(''); setOrderCodeInput(''); setOrderAmount(''); setOrderDeduction(''); setSelectedDeal(null); setShowOrderForm(false);
         fetchOrders(); fetchWallet();
       } else {
         setOrderMsg({ type: 'error', text: data.detail || 'Failed' });
@@ -672,20 +677,24 @@ export default function BuyerDashboard() {
                     )}
                     <form onSubmit={handleOrderSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="section-label">Order Number *</label>
-                        <input value={orderNo} onChange={e => setOrderNo(e.target.value)} placeholder="e.g. 402-1234567-8901234" className="input" required />
+                        <label className="section-label">ORDER NUMBER *</label>
+                        <input value={orderNo} onChange={e => setOrderNo(e.target.value)} placeholder="e.g. 402-1234567-8901234" className="input liquid-glass-input rounded-xl" required />
                       </div>
                       <div>
-                        <label className="section-label">Order Name</label>
-                        <input value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Enter product/order name" className="input" />
+                        <label className="section-label">ORDER NAME</label>
+                        <input value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Enter product/order name" className="input liquid-glass-input rounded-xl" />
                       </div>
                       <div>
-                        <label className="section-label">Amount Paid (₹) *</label>
-                        <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input" required />
+                        <label className="section-label">CODE *</label>
+                        <input value={orderCodeInput} onChange={e => setOrderCodeInput(e.target.value)} placeholder="e.g. ORD-123456 or DEA101" className="input liquid-glass-input rounded-xl" required />
                       </div>
                       <div>
-                        <label className="section-label">Cut / Custom Deduction (Optional)</label>
-                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="Default: 5% of amount" className="input" />
+                        <label className="section-label">AMOUNT PAID (₹) *</label>
+                        <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input liquid-glass-input rounded-xl" required />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="section-label">CUT / CUSTOM DEDUCTION (OPTIONAL)</label>
+                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="Default: 5% of amount" className="input liquid-glass-input rounded-xl" />
                       </div>
                       {refundInfo && (
                         <div className="sm:col-span-2 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/10 border border-brand-100 dark:border-brand-900/30 text-xs space-y-2 animate-fade-up">
@@ -704,24 +713,7 @@ export default function BuyerDashboard() {
                           </div>
                         </div>
                       )}
-                      {!selectedDeal && (
-                        <div className="sm:col-span-2">
-                          <label className="section-label">SELECT DEAL *</label>
-                          <select className="select liquid-glass-input rounded-xl" onChange={e => {
-                            const d = deals.find(d => d.id === e.target.value);
-                            setSelectedDeal(d || null);
-                            setOrderName(d?.productName || '');
-                            if (d?.dealType) setOrderDealType(d.dealType);
-                          }}>
-                            <option value="">-- Select a deal --</option>
-                            {deals.map(d => (
-                              <option key={d.id} value={d.id}>
-                                {d.productName} — {d.dealType === 'Original' ? '✨ Original' : d.dealType === 'Exchange' ? '🔄 Exchange' : d.dealType === 'Empty' ? '📦 Empty' : d.dealType === 'Review' ? '⭐ Review' : d.dealType === 'Cashback' ? '💰 Cashback' : d.dealType === 'Rating' ? '🌟 Rating' : (d.dealType || '✨ Original')} ({d.platform})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+
                       <div className="sm:col-span-2">
                         <label className="section-label">SELECT DEAL TYPE *</label>
                         <select value={orderDealType} onChange={e => setOrderDealType(e.target.value)} className="select liquid-glass-input rounded-xl">
