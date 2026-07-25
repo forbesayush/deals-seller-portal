@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   };
 
   const seedDatabase = () => {
-    if (localStorage.getItem('ds_seeded_v9')) {
+    if (localStorage.getItem('ds_seeded_v10')) {
       return;
     }
     // Clean old storage versions to force a fresh clean seed without sample data
@@ -31,6 +31,7 @@ if (typeof window !== 'undefined') {
     localStorage.removeItem('ds_seeded_v6');
     localStorage.removeItem('ds_seeded_v7');
     localStorage.removeItem('ds_seeded_v8');
+    localStorage.removeItem('ds_seeded_v9');
     localStorage.removeItem('ds_users'); // Reset user credentials to ensure latest default passwords match
 
     // Force purge cached sample deals and order history from browser localStorage
@@ -45,17 +46,12 @@ if (typeof window !== 'undefined') {
 
     const today = new Date().toISOString().split('T')[0];
 
-    // Seed Users
+    // Seed Core System Accounts (Live Users populate dynamically via registration)
     const users = [
       { id: 'ADM001', name: 'Admin — deals.seller', email: 'admin@deals.seller.com', mobile: null, password: 'admin@123', role: 'admin', status: 'active', joined: today, verified: true, referral: 'ADMIN1' },
       { id: 'ADM002', name: 'Owner — deals.seller', email: 'owner@deals.seller.com', mobile: null, password: 'owner@123', role: 'admin', status: 'active', joined: today, verified: true, referral: 'ADMIN2' },
       { id: 'ADM003', name: 'Ekta — Admin', email: 'ekta@deals.seller.com', mobile: null, password: 'ayushu08', role: 'admin', status: 'active', joined: today, verified: true, referral: 'EKTA08' },
       { id: 'USR001', name: 'Ayush Chatterjee', email: 'alwaysayushsourav162@gmail.com', mobile: '9123337436', password: 'ekta@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'AYUSH123' },
-      { id: 'USR002', name: 'Shivam Raj', email: 'shivamraj@example.com', mobile: '9876543210', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'SHIVAM2' },
-      { id: 'USR003', name: 'Priya Sharma', email: 'priya@example.com', mobile: '9988776655', password: 'user@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'PRIYA3' },
-      { id: 'USR004', name: 'Rahul Mehta', email: 'rahul@example.com', mobile: '9812345678', password: 'user@123', role: 'buyer', status: 'suspended', joined: today, verified: true, referral: 'RAHUL4' },
-      { id: 'USR005', name: 'Krish Kumar', email: 'krish@example.com', mobile: '9883668754', password: 'krish@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'KRISH5' },
-      { id: 'USR006', name: 'Shivam Kumar', email: 'shivam.kumar@example.com', mobile: '7050798925', password: 'shivam@123', role: 'buyer', status: 'active', joined: today, verified: true, referral: 'SHIVAM6' },
     ];
     setStorage('ds_users', users);
 
@@ -65,9 +61,6 @@ if (typeof window !== 'undefined') {
     // Seed Wallets (Clean 0 balance)
     const wallets = [
       { id: 'WLT001', userId: 'USR001', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
-      { id: 'WLT002', userId: 'USR002', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
-      { id: 'WLT003', userId: 'USR003', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
-      { id: 'WLT004', userId: 'USR004', pendingCashback: 0.0, approvedCashback: 0.0, lockedCashback: 0.0, withdrawableCashback: 0.0, refundBalance: 0.0, lastUpdated: new Date().toISOString() },
     ];
     setStorage('ds_wallets', wallets);
 
@@ -117,7 +110,7 @@ if (typeof window !== 'undefined') {
     setStorage('ds_claims', []);
     setStorage('ds_transactions', []);
 
-    localStorage.setItem('ds_seeded_v9', 'true');
+    localStorage.setItem('ds_seeded_v10', 'true');
   };
 
   // Run database initialization
