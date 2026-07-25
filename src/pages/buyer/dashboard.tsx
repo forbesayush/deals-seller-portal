@@ -126,6 +126,7 @@ export default function BuyerDashboard() {
 
   // Order submission (Feature 3 - wizard)
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [isCustomOrder, setIsCustomOrder] = useState(false);
   const [orderNo, setOrderNo] = useState('');
   const [orderName, setOrderName] = useState('');
   const [orderCodeInput, setOrderCodeInput] = useState('');
@@ -646,17 +647,27 @@ export default function BuyerDashboard() {
             {/* ─── TAB: ORDERS (Feature 3) ─── */}
             {activeTab === 'orders' && (
               <div className="animate-fade-up">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <h3 className="font-extrabold text-lg">My Orders</h3>
-                  <button onClick={() => setShowOrderForm(!showOrderForm)} className="btn btn-primary btn-sm">
-                    <Plus className="w-4 h-4" /> New Order
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => { setIsCustomOrder(false); setShowOrderForm(!showOrderForm); }} className="btn btn-primary btn-sm">
+                      <Plus className="w-4 h-4" /> New Order
+                    </button>
+                    <button onClick={() => { setIsCustomOrder(true); setSelectedDeal(null); setShowOrderForm(true); }} className="btn btn-outline btn-sm border-brand-500/30 text-brand-600 dark:text-violet-400">
+                      <Plus className="w-4 h-4" /> Custom Order
+                    </button>
+                  </div>
                 </div>
 
                 {/* Order Submission Form */}
                 {showOrderForm && (
                   <div className="premium-card card-accent-violet p-5 mb-5 animate-fade-up">
-                    <h4 className="font-bold mb-4">Submit New Order</h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold">{isCustomOrder ? '📦 Submit Custom Order' : 'Submit New Order'}</h4>
+                      {isCustomOrder && (
+                        <span className="badge badge-violet text-xs font-bold">Custom Order Mode</span>
+                      )}
+                    </div>
                     {selectedDeal && (
                       <div className="flex items-center gap-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-950/20 mb-4 border border-brand-200 dark:border-brand-900">
                         <Tag className="w-4 h-4 text-brand-600" />
@@ -689,8 +700,8 @@ export default function BuyerDashboard() {
                         <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input liquid-glass-input rounded-xl" required />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="section-label">CUT / DEDUCTION AMOUNT (₹) (OPTIONAL)</label>
-                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="e.g. 50 (Direct ₹ Cut Amount)" className="input liquid-glass-input rounded-xl" />
+                        <label className="section-label">DEDUCTION AMOUNT (e.g. -50 deduction amt)</label>
+                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="50 (-50 deduction amt will be shown)" className="input liquid-glass-input rounded-xl" />
                       </div>
                       {refundInfo && (
                         <div className="sm:col-span-2 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/10 border border-brand-100 dark:border-brand-900/30 text-xs space-y-2 animate-fade-up">
@@ -700,8 +711,8 @@ export default function BuyerDashboard() {
                             <span className="font-extrabold">{formatINR(refundInfo.cashback)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500 dark:text-slate-400">Direct Cut / Deduction Amount:</span>
-                            <span className="font-extrabold text-rose-500">-{formatINR(refundInfo.deduction)}</span>
+                            <span className="text-slate-500 dark:text-slate-400">Deduction Amount:</span>
+                            <span className="font-extrabold text-rose-500">-{formatINR(refundInfo.deduction)} deduction amt</span>
                           </div>
                           <div className="border-t pt-2 mt-2 flex justify-between font-extrabold text-sm" style={{ borderColor: 'var(--color-border)' }}>
                             <span className="text-slate-800 dark:text-slate-200">Rest Net Refund:</span>
@@ -790,7 +801,7 @@ export default function BuyerDashboard() {
                               <td className="text-sm">
                                 <p className="font-bold text-emerald-600">{formatINR(order.netAmount)}</p>
                                 {order.deductionAmount > 0 && (
-                                  <p className="text-[10px] text-rose-500 font-semibold">- {formatINR(order.deductionAmount)} cut</p>
+                                  <p className="text-[10px] text-rose-500 font-semibold">-{formatINR(order.deductionAmount)} deduction amt</p>
                                 )}
                               </td>
                               <td><StatusBadge status={order.currentStatus} /></td>
