@@ -788,9 +788,8 @@ if (typeof window !== 'undefined') {
         let cashbackAmount = deal.cashback;
         let cashbackPct = Math.round((cashbackAmount / amount) * 10000) / 100;
 
-        const processingFee = Math.round(amount * 0.05 * 100) / 100;
-        const finalDeduction = deduction > 0 ? deduction : processingFee;
-        const netAmount = Math.round((cashbackAmount - finalDeduction) * 100) / 100;
+        const finalDeduction = typeof deduction === 'number' && !isNaN(deduction) && deduction >= 0 ? deduction : (parseFloat(deduction) || 0);
+        const netAmount = Math.max(0, Math.round((cashbackAmount - finalDeduction) * 100) / 100);
 
         const id = 'ORD' + Math.floor(Math.random() * 9000 + 1000);
         const newOrder = {
@@ -804,7 +803,7 @@ if (typeof window !== 'undefined') {
           buyerId: user.id,
           cashbackPct,
           cashbackAmount,
-          processingFee,
+          processingFee: finalDeduction,
           deductionAmount: finalDeduction,
           netAmount,
           refundStatus: 'not_eligible',

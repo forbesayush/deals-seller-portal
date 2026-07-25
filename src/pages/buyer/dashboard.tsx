@@ -372,17 +372,13 @@ export default function BuyerDashboard() {
 
   const getExpectedRefundInfo = () => {
     if (!selectedDeal) return null;
-    const price = parseFloat(orderAmount) || 0;
     const cashback = selectedDeal.cashback || 0;
-    const defaultFee = price ? Math.round(price * 0.05 * 100) / 100 : 0;
-    const customDeduction = orderDeduction ? parseFloat(orderDeduction) : 0;
-    const deductionToApply = customDeduction > 0 ? customDeduction : defaultFee;
-    const expectedNet = Math.round((cashback - deductionToApply) * 100) / 100;
+    const deductionToApply = orderDeduction ? parseFloat(orderDeduction) || 0 : 0;
+    const expectedNet = Math.max(0, Math.round((cashback - deductionToApply) * 100) / 100);
     return {
       cashback,
       deduction: deductionToApply,
       net: expectedNet,
-      isCustom: customDeduction > 0
     };
   };
 
@@ -693,8 +689,8 @@ export default function BuyerDashboard() {
                         <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input liquid-glass-input rounded-xl" required />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="section-label">CUT / CUSTOM DEDUCTION (OPTIONAL)</label>
-                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="Default: 5% of amount" className="input liquid-glass-input rounded-xl" />
+                        <label className="section-label">CUT / DEDUCTION AMOUNT (₹) (OPTIONAL)</label>
+                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="e.g. 50 (Direct ₹ Cut Amount)" className="input liquid-glass-input rounded-xl" />
                       </div>
                       {refundInfo && (
                         <div className="sm:col-span-2 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/10 border border-brand-100 dark:border-brand-900/30 text-xs space-y-2 animate-fade-up">
@@ -704,7 +700,7 @@ export default function BuyerDashboard() {
                             <span className="font-extrabold">{formatINR(refundInfo.cashback)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-500 dark:text-slate-400">Deduction applied {refundInfo.isCustom ? "(Custom Cut)" : "(5% Processing Fee)"}:</span>
+                            <span className="text-slate-500 dark:text-slate-400">Direct Cut / Deduction Amount:</span>
                             <span className="font-extrabold text-rose-500">-{formatINR(refundInfo.deduction)}</span>
                           </div>
                           <div className="border-t pt-2 mt-2 flex justify-between font-extrabold text-sm" style={{ borderColor: 'var(--color-border)' }}>
