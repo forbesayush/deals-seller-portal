@@ -788,3 +788,46 @@ html.dark .liquid-stat-box:hover {
   border: 1px solid rgba(245, 158, 11, 0.3);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
 }
+
+/* ─────────────────────────────────────────────
+   MOBILE (iOS & ANDROID) TOUCH & SAFE AREA SYSTEM
+───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 100%;
+    --header-height: 58px;
+  }
+
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Touch Target Optimizations (Minimum 44px for iOS guidelines) */
+  button, select, input, a {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .input, .select {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+  }
+
+  /* Data Table Mobile Touch Scroll */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    border-radius: 12px;
+  }
+
+  /* Mobile Modals & Cards Fullscreen Friendly */
+  .premium-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+}

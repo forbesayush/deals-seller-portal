@@ -126,14 +126,22 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
   const avatarGradient = avatarColors[roleColorMap[user?.role ?? ''] ?? 'rose'] ?? avatarColors.rose;
 
   return (
-    <aside
-      className={`
-        fixed top-0 left-0 h-screen z-30 flex flex-col
-        glass-panel border-r transition-all duration-300
-        ${collapsed ? 'w-[72px]' : 'w-[260px]'}
-      `}
-      style={{ borderColor: 'var(--color-border)' }}
-    >
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {!collapsed && (
+        <div
+          onClick={onToggle}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 md:hidden animate-fade-in"
+        />
+      )}
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen z-40 flex flex-col
+          glass-panel border-r transition-all duration-300
+          ${collapsed ? '-translate-x-full md:translate-x-0 md:w-[72px]' : 'translate-x-0 w-[260px]'}
+        `}
+        style={{ borderColor: 'var(--color-border)' }}
+      >
       {/* Logo */}
       <div className={`flex items-center h-16 px-4 border-b flex-shrink-0`}
         style={{ borderColor: 'var(--color-border)' }}>
@@ -229,5 +237,6 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
         )}
       </div>
     </aside>
+    </>
   );
 }

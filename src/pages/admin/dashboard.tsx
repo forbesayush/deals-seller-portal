@@ -97,7 +97,9 @@ function MiniChart({ data }: { data: number[] }) {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : true
+  );
   const [darkMode, setDarkMode] = useState(false);
 
   // Feature 11: Real-time stats
@@ -187,13 +189,16 @@ export default function AdminDashboard() {
       <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} darkMode={darkMode} />
 
-        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300"
-          style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}>
+        <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 w-full"
+          style={{
+            marginLeft: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : (sidebarCollapsed ? 72 : 260)
+          }}>
           <Header
             title="Command Center"
             darkMode={darkMode}
             onToggleDark={toggleDark}
             sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
 
           <main className="flex-1 p-6 pt-[88px] space-y-6">

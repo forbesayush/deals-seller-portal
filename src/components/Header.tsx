@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Sun, Moon, ChevronDown, X, LogOut, User, Settings } from 'lucide-react';
+import { Bell, Search, Sun, Moon, ChevronDown, X, LogOut, User, Settings, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
@@ -7,9 +7,10 @@ interface HeaderProps {
   darkMode: boolean;
   onToggleDark: () => void;
   sidebarCollapsed: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export function Header({ title, darkMode, onToggleDark, sidebarCollapsed }: HeaderProps) {
+export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -69,17 +70,24 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed }: Head
 
   return (
     <header
-      className="fixed top-0 right-0 z-20 liquid-glass-navbar flex items-center gap-4 px-6"
+      className="fixed top-0 right-0 z-20 liquid-glass-navbar flex items-center gap-3 px-4 md:px-6 h-16 transition-all duration-300"
       style={{
-        left: sidebarWidth,
-        height: 64,
-        transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
+        left: typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : sidebarWidth,
       }}
     >
+      {/* Mobile Menu Toggle Button */}
+      <button
+        onClick={onToggleSidebar}
+        className="p-2 rounded-xl border border-brand-500/20 md:hidden text-slate-700 dark:text-slate-200 hover:bg-brand-50/50"
+        aria-label="Toggle Mobile Menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
       {/* Title */}
       {title && (
-        <div className="hidden md:block">
-          <h1 className="text-lg font-extrabold tracking-tight liquid-gradient-text">{title}</h1>
+        <div>
+          <h1 className="text-base md:text-lg font-extrabold tracking-tight liquid-gradient-text line-clamp-1">{title}</h1>
         </div>
       )}
 
