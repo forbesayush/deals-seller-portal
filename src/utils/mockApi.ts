@@ -670,6 +670,10 @@ if (typeof window !== 'undefined') {
         });
         setStorage('ds_user_activity', activityLogs);
 
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('ds_storage_update'));
+        }
+
         return jsonResponse({ success: true, claim: newClaim });
       }
 
@@ -770,23 +774,26 @@ if (typeof window !== 'undefined') {
           return jsonResponse({ detail: `Order ID ${orderNo} already exists` }, 400);
         }
 
-        // Calculate Fees
+        // Calculate Fees & Update Deal Slots
         const deals = getStorage('ds_deals', []);
-        const deal = deals.find((d: any) => d.productCode === productCode);
-        if (!deal) {
-          return jsonResponse({ detail: "Deal not found or has been deleted" }, 400);
-        }
-        if (!deal.active) {
-          return jsonResponse({ detail: "This deal is currently paused and cannot accept submissions" }, 400);
+        const dealIdx = deals.findIndex((d: any) => d.productCode === productCode || d.id === productCode);
+        let deal = dealIdx !== -1 ? deals[dealIdx] : null;
+
+        if (deal) {
+          deals[dealIdx].claimedCount = (deals[dealIdx].claimedCount || 0) + 1;
+          if (deals[dealIdx].claimedCount >= deals[dealIdx].slots) {
+            deals[dealIdx].active = false;
+          }
+          setStorage('ds_deals', deals);
         }
 
-        let productName = deal.productName;
+        let productName = deal ? deal.productName : 'Order Submission';
         if (typeof orderName === 'string' && orderName.trim()) {
           productName = orderName.trim();
         }
-        let plat = deal.platform;
-        let cashbackAmount = deal.cashback;
-        let cashbackPct = Math.round((cashbackAmount / amount) * 10000) / 100;
+        let plat = deal ? deal.platform : 'Amazon';
+        let cashbackAmount = deal ? deal.cashback : amount;
+        let cashbackPct = Math.round((cashbackAmount / (amount || 1)) * 10000) / 100;
 
         const finalDeduction = typeof deduction === 'number' && !isNaN(deduction) && deduction >= 0 ? deduction : (parseFloat(deduction) || 0);
         const netAmount = Math.max(0, Math.round((cashbackAmount - finalDeduction) * 100) / 100);
@@ -843,6 +850,10 @@ if (typeof window !== 'undefined') {
           timestamp: new Date().toISOString()
         });
         setStorage('ds_transactions', txs);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('ds_storage_update'));
+        }
 
         return jsonResponse({ success: true, order: newOrder });
       }
