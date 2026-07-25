@@ -473,7 +473,8 @@ export default function BuyerDashboard() {
     o.orderCode?.toLowerCase().includes(orderSearch.toLowerCase())
   );
 
-  const platforms = ['All', ...Array.from(new Set(deals.map(d => d.platform))).filter(p => Boolean(p) && p !== 'All')];
+  const DEFAULT_PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Meesho', 'Blinkit', 'Nykaa', 'Ajio'];
+  const platforms = ['All', ...Array.from(new Set([...DEFAULT_PLATFORMS, ...deals.map(d => d.platform)])).filter(p => Boolean(p) && p !== 'All')];
   const categories = ['All', ...Array.from(new Set(deals.map(d => d.category))).filter(c => Boolean(c) && c !== 'All')];
   const featuredDeals = deals.filter(d => d.featured);
   const displayDeals = deals;
