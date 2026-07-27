@@ -14,28 +14,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { identifier, password } = req.body;
     const cleanId = (typeof identifier === 'string' ? identifier : '').trim().toLowerCase();
     const cleanPass = (typeof password === 'string' ? password : '').trim();
-    const digits = cleanId.replace(/\D/g, '');
 
     const users = db.collection('users');
-    const idEscaped = cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const idRegex = new RegExp(`^${idEscaped}`, 'i');
+    let user: any = null;
 
-    let user = await users.findOne({
-      $or: [
-        { email: cleanId },
-        { email: idRegex },
-        { referral: { $regex: cleanId, $options: 'i' } },
-        ...(digits.length >= 7 ? [{ mobile: { $regex: digits.slice(-7), $options: 'i' } }] : []),
-      ],
-    });
+    // 1. Direct username alias matches FIRST (high priority)
+    if (cleanId === 'admin' || cleanId === 'administrator') {
+      user = await users.findOne({ $or: [{ email: 'admin@deals.seller.com' }, { email: 'admin' }, { id: 'ADM001' }] });
+    } else if (cleanId === 'owner') {
+      user = await users.findOne({ $or: [{ email: 'owner@deals.seller.com' }, { email: 'owner' }, { id: 'ADM002' }] });
+    } else if (cleanId === 'ekta') {
+      user = await users.findOne({ $or: [{ email: 'ekta@deals.seller.com' }, { email: 'ekta' }, { id: 'ADM003' }] });
+    }
 
-    // Fallback: Support typing 'admin' or 'owner' as username
-    if (!user && (cleanId === 'admin' || cleanId === 'administrator')) {
-      user = await users.findOne({ email: 'admin@deals.seller.com' });
-    } else if (!user && cleanId === 'owner') {
-      user = await users.findOne({ email: 'owner@deals.seller.com' });
-    } else if (!user && cleanId === 'ekta') {
-      user = await users.findOne({ email: 'ekta@deals.seller.com' });
+    // 2. Exact email / mobile / id / referral matches
+    if (!user) {
+      const digits = cleanId.replace(/\D/g, '');
+      const exactRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+      user = await users.findOne({
+        $or: [
+          { email: exactRegex },
+          { id: cleanId.toUpperCase() },
+          { referral: cleanId.toUpperCase() },
+          ...(digits.length >= 7 ? [{ mobile: digits }] : []),
+          ...(digits.length >= 7 ? [{ mobile: { $regex: digits.slice(-10) } }] : []),
+        ],
+      });
     }
 
     if (!user || user.password.trim() !== cleanPass) {
