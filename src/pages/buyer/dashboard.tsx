@@ -60,12 +60,8 @@ function WalletCard({ wallet }: { wallet: any }) {
 const BRAND_OPTIONS = [
   { id: 'Amazon', name: '🛒 Amazon', placeholder: 'e.g. 408-1234567-8901234', hint: 'Amazon format: 408-XXXXXXX-XXXXXXX' },
   { id: 'Flipkart', name: '🛍️ Flipkart', placeholder: 'e.g. OD123456789012345', hint: 'Flipkart format: ODXXXXXXXXXXXXXXXX' },
+  { id: 'Meesho', name: '📦 Meesho', placeholder: 'e.g. 1234567890', hint: 'Meesho format: 10 digit Order ID' },
   { id: 'Myntra', name: '👗 Myntra', placeholder: 'e.g. 1234567-8901234-1', hint: 'Myntra format: XXXXXXX-XXXXXXX-X' },
-  { id: 'Nykaa', name: '💄 Nykaa', placeholder: 'e.g. NYK-12345678-901', hint: 'Nykaa format: NYK-XXXXXXXX-XXX' },
-  { id: 'Tata CLiQ', name: '📦 Tata CLiQ', placeholder: 'e.g. TC-987654321', hint: 'Tata CLiQ format: TC-XXXXXXXXX' },
-  { id: 'AJIO', name: '⚡ AJIO', placeholder: 'e.g. FN123456789', hint: 'AJIO format: FNXXXXXXXXX' },
-  { id: 'Reliance Digital', name: '📱 Reliance Digital', placeholder: 'e.g. RD-456789123', hint: 'Reliance Digital format: RD-XXXXXXXXX' },
-  { id: 'Other', name: '🌐 Other / Custom Brand', placeholder: 'e.g. ORD123456789', hint: 'Custom Brand Order ID' },
 ];
 
 export default function BuyerDashboard() {
@@ -489,8 +485,8 @@ export default function BuyerDashboard() {
     o.orderCode?.toLowerCase().includes(orderSearch.toLowerCase())
   );
 
-  const DEFAULT_PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Meesho', 'Blinkit', 'Nykaa', 'Ajio'];
-  const platforms = ['All', ...Array.from(new Set([...DEFAULT_PLATFORMS, ...deals.map(d => d.platform)])).filter(p => Boolean(p) && p !== 'All')];
+  const DEFAULT_PLATFORMS = ['Amazon', 'Flipkart', 'Meesho', 'Myntra'];
+  const platforms = ['All', 'Amazon', 'Flipkart', 'Meesho', 'Myntra'];
   const categories = ['All', ...Array.from(new Set(deals.map(d => d.category))).filter(c => Boolean(c) && c !== 'All')];
   const featuredDeals = deals.filter(d => d.featured);
   const displayDeals = deals.filter(d => {

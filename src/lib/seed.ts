@@ -38,7 +38,7 @@ export async function seedDatabase(db: Db) {
   const annCount = await announcements.countDocuments();
   if (annCount === 0) {
     await announcements.insertMany([
-      { id: 'ANN001', title: 'Welcome to the New Deal Portal!', body: 'Check out high-yield cashback deals on Amazon, Flipkart, Myntra & Nykaa.', type: 'info', active: true, pinned: true, createdAt: '2026-07-01T00:00:00Z' },
+      { id: 'ANN001', title: 'Welcome to the New Deal Portal!', body: 'Check out high-yield cashback deals on Amazon, Flipkart, Meesho & Myntra.', type: 'info', active: true, pinned: true, createdAt: '2026-07-01T00:00:00Z' },
       { id: 'ANN002', title: 'Withdrawal Processing Time Cut to Instant UPI!', body: 'All UPI withdrawals are now instant.', type: 'success', active: true, pinned: false, createdAt: '2026-07-10T12:00:00Z' },
       { id: 'ANN003', title: '🔥 Flash Sale: 10% Extra Cashback on Apple & Samsung!', body: 'Limited deal slots unlocked for Galaxy S24 Ultra & AirPods Pro 2.', type: 'warning', active: true, pinned: true, createdAt: '2026-07-20T09:00:00Z' },
     ]);

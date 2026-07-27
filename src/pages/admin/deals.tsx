@@ -15,7 +15,7 @@ function formatINR(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 }
 
-const PLATFORMS = ['Amazon', 'Flipkart', 'Myntra', 'Meesho', 'Blinkit', 'Nykaa', 'Ajio', 'Other'];
+const PLATFORMS = ['Amazon', 'Flipkart', 'Meesho', 'Myntra'];
 const CATEGORIES = ['General', 'Electronics', 'Fashion', 'Groceries', 'Home & Kitchen', 'Beauty', 'Sports', 'Books', 'Toys'];
 const DEAL_TYPES = ['Original', 'Exchange', 'Empty', 'Review', 'Cashback', 'Rating'];
 
