@@ -6,20 +6,10 @@ import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import {
   BarChart3, Users, ShoppingBag, TrendingUp, DollarSign,
-  Ticket, Tag, RefreshCw, AlertTriangle, ArrowLeft,
-  TrendingDown, Activity, ChevronRight
+  ShieldAlert, Copy, AlertTriangle, RefreshCw, Zap,
+  TrendingDown, Activity, Sparkles, Award, Crown, CheckCircle2,
+  Calendar, Layers, ArrowUpRight, ChevronRight, PieChart, Store, UserCheck, Clock
 } from 'lucide-react';
-
-interface Analytics {
-  totalOrders: number;
-  paidOrders: number;
-  pendingOrders: number;
-  totalCashbackPaid: number;
-  totalWithdrawals: number;
-  activeBuyers: number;
-  activeDeals: number;
-  openTickets: number;
-}
 
 function formatINR(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
@@ -27,13 +17,12 @@ function formatINR(n: number) {
 
 export default function AdminAnalytics() {
   const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [revenueData, setRevenueData] = useState<any>(null);
-  const [dealsData, setDealsData] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'fraud' | 'predictions' | 'merchants' | 'ltv'>('fraud');
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
@@ -44,22 +33,17 @@ export default function AdminAnalytics() {
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
   };
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAiAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      const [resSummary, resRevenue, resDeals] = await Promise.all([
-        fetch('/api/analytics/summary'),
-        fetch('/api/analytics/revenue?days=14'),
-        fetch('/api/analytics/deals')
-      ]);
-
-      if (resSummary.ok) setAnalytics(await resSummary.json());
-      if (resRevenue.ok) setRevenueData(await resRevenue.json());
-      if (resDeals.ok) setDealsData(await resDeals.json());
-
-      setLastUpdated(new Date().toLocaleTimeString());
+      const res = await fetch('/api/admin/analytics/ai');
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        setLastUpdated(new Date().toLocaleTimeString());
+      }
     } catch (e) {
-      console.error('Failed to fetch analytics', e);
+      console.error('Failed to fetch AI analytics', e);
     } finally {
       setLoading(false);
     }
@@ -68,13 +52,13 @@ export default function AdminAnalytics() {
   useEffect(() => {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
-    if (isAuthenticated) fetchAnalytics();
-  }, [isAuthenticated, fetchAnalytics]);
+    if (isAuthenticated) fetchAiAnalytics();
+  }, [isAuthenticated, fetchAiAnalytics]);
 
   return (
     <>
       <Head>
-        <title>Intelligence & Analytics — Admin Portal</title>
+        <title>AI & Intelligence Analytics — Admin Portal</title>
       </Head>
 
       <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
@@ -82,136 +66,386 @@ export default function AdminAnalytics() {
 
         <div className="flex-1 flex flex-col min-h-screen transition-all duration-300"
           style={{ marginLeft: sidebarCollapsed ? 72 : 260 }}>
-          <Header title="Intelligence" darkMode={darkMode} onToggleDark={toggleDark} sidebarCollapsed={sidebarCollapsed} />
+          <Header title="AI Intelligence" darkMode={darkMode} onToggleDark={toggleDark} sidebarCollapsed={sidebarCollapsed} />
 
           <main className="flex-1 p-6 pt-[88px] space-y-6 animate-fade-up">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="page-title flex items-center gap-2">
-                  <BarChart3 className="w-6 h-6 text-brand-600 dark:text-violet-400" />
-                  Analytics Hub
+                  <Sparkles className="w-6 h-6 text-brand-600 dark:text-violet-400 animate-pulse" />
+                  AI & Intelligence Hub
                 </h1>
-                <p className="page-subtitle">Live platform KPIs and business metrics</p>
+                <p className="page-subtitle">Fraud detection, cashback prediction, brand performance & user retention analytics</p>
               </div>
               <div className="flex items-center gap-3">
-                {lastUpdated && <span className="text-xs text-slate-400">Updated {lastUpdated}</span>}
-                <button onClick={fetchAnalytics} className="btn btn-primary btn-sm">
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Refresh
+                {lastUpdated && <span className="text-xs text-slate-400 font-mono">Synced {lastUpdated}</span>}
+                <button onClick={fetchAiAnalytics} className="btn btn-primary btn-sm">
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh AI Insights
                 </button>
               </div>
             </div>
 
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-28 rounded-2xl" />)}
+            {/* Quick Summary Cards */}
+            {data && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="premium-card p-4 card-accent-violet flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Fraud & Risk Alerts</p>
+                    <p className="text-xl font-extrabold text-rose-500">{data.summary?.fraudAlertsCount || 0}</p>
+                  </div>
+                </div>
+
+                <div className="premium-card p-4 card-accent-emerald flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">7-Day Payout AI Forecast</p>
+                    <p className="text-xl font-extrabold text-emerald-600">{formatINR(data.predictions?.forecast7Days || 0)}</p>
+                  </div>
+                </div>
+
+                <div className="premium-card p-4 card-accent-blue flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Avg Buyer LTV</p>
+                    <p className="text-xl font-extrabold text-brand-600 dark:text-violet-400">{formatINR(data.summary?.avgLTV || 0)}</p>
+                  </div>
+                </div>
+
+                <div className="premium-card p-4 card-accent-amber flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Repeat Purchase Rate</p>
+                    <p className="text-xl font-extrabold text-amber-500">{data.summary?.repeatPurchaseRate || 0}%</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <>
-                {/* Stats Grid */}
-                {analytics && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { icon: ShoppingBag, label: "Total Orders", value: analytics.totalOrders.toLocaleString(), color: "bg-indigo-500", bg: "card-accent-navy" },
-                      { icon: TrendingUp, label: "Paid Orders", value: analytics.paidOrders.toLocaleString(), color: "bg-emerald-500", bg: "card-accent-emerald", sub: `${analytics.pendingOrders} pending` },
-                      { icon: DollarSign, label: "Cashback Paid", value: formatINR(analytics.totalCashbackPaid), color: "bg-brand-500", bg: "card-accent-violet" },
-                      { icon: DollarSign, label: "Withdrawals", value: formatINR(analytics.totalWithdrawals), color: "bg-amber-500", bg: "card-accent-amber" },
-                      { icon: Users, label: "Active Buyers", value: analytics.activeBuyers.toLocaleString(), color: "bg-violet-500", bg: "" },
-                      { icon: Tag, label: "Active Deals", value: analytics.activeDeals.toLocaleString(), color: "bg-cyan-500", bg: "" },
-                      { icon: Ticket, label: "Open Tickets", value: analytics.openTickets.toLocaleString(), color: analytics.openTickets > 10 ? "bg-rose-500" : "bg-slate-500", bg: analytics.openTickets > 10 ? "card-accent-rose animate-pulse" : "" },
-                      {
-                        icon: BarChart3,
-                        label: "Order Fill Rate",
-                        value: analytics.totalOrders > 0 ? `${Math.round((analytics.paidOrders / analytics.totalOrders) * 100)}%` : 'N/A',
-                        color: "bg-pink-500",
-                        bg: "",
-                        sub: "Paid / Total Orders"
-                      }
-                    ].map(card => {
-                      const Icon = card.icon;
-                      return (
-                        <div key={card.label} className={`premium-card p-5 ${card.bg}`}>
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${card.color} mb-3`}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <p className="text-2xl font-extrabold font-mono">{card.value}</p>
-                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">{card.label}</p>
-                          {card.sub && <p className="text-[10px] text-slate-400 mt-0.5">{card.sub}</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+            )}
 
-                {/* Open Ticket Alert */}
-                {analytics && analytics.openTickets > 5 && (
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl text-sm text-amber-700 dark:text-amber-400 animate-slide-in">
-                    <AlertTriangle className="w-5 h-5 shrink-0" />
-                    <span><strong>{analytics.openTickets} open support tickets</strong> need attention. Visit the <button onClick={() => router.push('/admin/tickets')} className="underline font-bold">Tickets desk</button>.</span>
-                  </div>
-                )}
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+              {[
+                { id: 'fraud', label: '🛡️ Fraud & Suspicious Alerts', count: (data?.summary?.fraudAlertsCount || 0) + (data?.summary?.suspiciousUsersCount || 0) },
+                { id: 'predictions', label: '🔮 AI Cashback Prediction' },
+                { id: 'merchants', label: '🏬 Merchant Performance' },
+                { id: 'ltv', label: '💎 User LTV & Retention' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id as any)}
+                  className={`pb-3 text-sm font-extrabold flex items-center gap-2 transition-all relative ${
+                    activeTab === t.id ? 'text-brand-600 dark:text-violet-400 border-b-2 border-brand-600 dark:border-violet-400' : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {t.label}
+                  {t.count !== undefined && t.count > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500 text-white font-mono">
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Revenue Trend Chart */}
-                  <div className="lg:col-span-2 premium-card p-5">
-                    <h3 className="font-extrabold text-base mb-4">Daily Revenue (Last 14 Days)</h3>
-                    {revenueData ? (
-                      <>
-                        <div className="flex items-end gap-1.5 h-48 mb-2">
-                          {(revenueData.data || []).map((d: any, i: number) => {
-                            const max = Math.max(...(revenueData.data || []).map((x: any) => x.revenue)) || 1;
-                            const pct = (d.revenue / max) * 100;
-                            return (
-                              <div key={i} className="flex-1 flex flex-col justify-end group relative" title={`${d.date}: ${formatINR(d.revenue)}`}>
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 bg-slate-800 text-white text-[10px] font-bold py-1 px-2 rounded whitespace-nowrap shadow-md">
-                                  {formatINR(d.revenue)}
+            {/* ─── TAB 1: FRAUD & SUSPICIOUS ALERTS ─── */}
+            {activeTab === 'fraud' && (
+              <div className="space-y-6 animate-fade-in">
+                {/* Section: Cashback Fraud Detection */}
+                <div className="premium-card p-5 space-y-4 border-l-4 border-l-rose-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-extrabold text-base flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                        <ShieldAlert className="w-5 h-5" /> Cashback Fraud Detection Engine
+                      </h3>
+                      <p className="text-xs text-slate-400">Flagged orders requiring administrator audit based on risk scores</p>
+                    </div>
+                    <span className="badge badge-rose text-xs font-mono">{data?.fraudDetection?.length || 0} Flagged Orders</span>
+                  </div>
+
+                  {!data?.fraudDetection?.length ? (
+                    <div className="p-8 text-center bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-900/40">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                      <p className="font-extrabold text-emerald-700 dark:text-emerald-400">All Clear! No Fraud Alerts Detected</p>
+                      <p className="text-xs text-slate-400 mt-1">AI algorithm scanned order velocity, deduction ratios, and duplicate IDs.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="data-table text-xs">
+                        <thead>
+                          <tr>
+                            <th>Order No</th>
+                            <th>Code</th>
+                            <th>Buyer ID</th>
+                            <th>Amount</th>
+                            <th>Risk Score</th>
+                            <th>Detected Risk Flags</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.fraudDetection.map((f: any) => (
+                            <tr key={f.id}>
+                              <td className="font-mono font-extrabold">{f.orderNo}</td>
+                              <td className="font-mono text-brand-600 dark:text-violet-400 font-bold">{f.orderCode}</td>
+                              <td className="font-mono">{f.buyerId}</td>
+                              <td className="font-bold">{formatINR(f.amount)}</td>
+                              <td>
+                                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  f.riskLevel === 'High' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'
+                                }`}>
+                                  {f.riskScore}% {f.riskLevel} Risk
+                                </span>
+                              </td>
+                              <td>
+                                <div className="flex flex-wrap gap-1">
+                                  {f.flags.map((flag: string, idx: number) => (
+                                    <span key={idx} className="bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded text-[10px] font-semibold border border-rose-200 dark:border-rose-900/40">
+                                      ⚠️ {flag}
+                                    </span>
+                                  ))}
                                 </div>
-                                <div
-                                  className="rounded-t-md bg-gradient-to-t from-brand-600 to-indigo-400 dark:from-violet-600 dark:to-brand-400 opacity-80 hover:opacity-100 transition-all duration-200 cursor-pointer"
-                                  style={{ height: `${Math.max(pct, 3)}%` }}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-slate-400 mt-2">
-                          {(revenueData.data || []).map((d: any, i: number) => (
-                            <span key={d.date} className={i % 2 === 0 ? '' : 'hidden sm:inline'}>{d.date.slice(5)}</span>
+                              </td>
+                              <td>
+                                <button onClick={() => router.push(`/admin/orders?q=${f.orderNo}`)} className="btn btn-ghost btn-xs text-brand-600">
+                                  Audit Order
+                                </button>
+                              </td>
+                            </tr>
                           ))}
-                        </div>
-                      </>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section: Duplicate Order Detection & Suspicious Users Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Duplicate Orders */}
+                  <div className="premium-card p-5 space-y-4">
+                    <h3 className="font-extrabold text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <Copy className="w-4 h-4" /> Duplicate Order Detection
+                    </h3>
+                    <p className="text-xs text-slate-400">Clusters of identical order numbers claimed multiple times</p>
+
+                    {!data?.duplicateOrders?.length ? (
+                      <p className="text-xs text-slate-400 italic py-4">No duplicate order numbers found across database.</p>
                     ) : (
-                      <div className="text-center py-12 text-slate-400">No revenue data available</div>
+                      <div className="space-y-3">
+                        {data.duplicateOrders.map((d: any, i: number) => (
+                          <div key={i} className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-xs flex justify-between items-center">
+                            <div>
+                              <span className="font-mono font-extrabold text-amber-700 dark:text-amber-300">{d.orderNo}</span>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Claimed {d.count} times by buyers: {d.buyerIds.join(', ')}</p>
+                            </div>
+                            <button onClick={() => router.push(`/admin/orders?q=${d.orderNo}`)} className="btn btn-primary btn-xs">
+                              Inspect Cluster
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 
-                  {/* Deal performance metrics */}
-                  <div className="premium-card p-5 overflow-hidden">
-                    <h3 className="font-extrabold text-base mb-4">Top Performing Deals</h3>
-                    <div className="space-y-3">
-                      {dealsData.slice(0, 5).map(deal => {
-                        const rate = deal.totalOrders > 0 ? Math.round((deal.paidOrders / deal.totalOrders) * 100) : 0;
-                        return (
-                          <div key={deal.dealId} className="flex items-center justify-between text-xs py-2 border-b dark:border-slate-800 last:border-0">
-                            <div className="min-w-0 flex-1 pr-3">
-                              <p className="font-bold truncate">{deal.productName}</p>
-                              <p className="text-[10px] text-slate-400">{deal.platform} · {deal.totalOrders} claims</p>
+                  {/* Suspicious User Alerts */}
+                  <div className="premium-card p-5 space-y-4">
+                    <h3 className="font-extrabold text-sm flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                      <AlertTriangle className="w-4 h-4" /> Suspicious User Alerts
+                    </h3>
+                    <p className="text-xs text-slate-400">Buyers flagged for abnormal rejection rates or unverified profiles</p>
+
+                    {!data?.suspiciousUsers?.length ? (
+                      <p className="text-xs text-slate-400 italic py-4">No suspicious user profiles detected.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {data.suspiciousUsers.map((u: any, i: number) => (
+                          <div key={i} className="p-3.5 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 text-xs flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-rose-700 dark:text-rose-300">{u.name} ({u.id})</p>
+                              <p className="text-[10px] text-slate-400">{u.reasons.join(' • ')}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-bold text-emerald-500">{rate}% Fill</p>
-                              <p className="text-[10px] text-slate-400">{deal.slotsRemaining} slots</p>
-                            </div>
+                            <button onClick={() => router.push(`/admin/users?q=${u.id}`)} className="btn btn-ghost btn-xs text-rose-600 font-bold">
+                              Manage User
+                            </button>
                           </div>
-                        );
-                      })}
-                      {dealsData.length === 0 && (
-                        <p className="text-xs text-slate-400 text-center py-8">No live deals to track</p>
-                      )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB 2: AI CASHBACK PREDICTION ─── */}
+            {activeTab === 'predictions' && data?.predictions && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="premium-card p-6 card-accent-emerald space-y-6">
+                  <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
+                    <div>
+                      <h3 className="font-extrabold text-lg flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                        <Sparkles className="w-5 h-5" /> AI Cashback Forecast Engine
+                      </h3>
+                      <p className="text-xs text-slate-400">Predictive liquidity requirements for upcoming buyer payouts</p>
+                    </div>
+                    <span className="badge badge-emerald text-xs font-bold">
+                      {data.predictions.confidenceScore}% AI Confidence Rating
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-1">
+                      <p className="text-xs text-slate-400 uppercase font-bold">7-Day Projected Payout</p>
+                      <p className="text-2xl font-extrabold text-emerald-600">{formatINR(data.predictions.forecast7Days)}</p>
+                      <p className="text-[10px] text-slate-400">Based on ~{data.predictions.dailyOrderVelocity * 7} expected orders</p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-1">
+                      <p className="text-xs text-slate-400 uppercase font-bold">14-Day Projected Payout</p>
+                      <p className="text-2xl font-extrabold text-brand-600 dark:text-violet-400">{formatINR(data.predictions.forecast14Days)}</p>
+                      <p className="text-[10px] text-slate-400">Based on ~{data.predictions.dailyOrderVelocity * 14} expected orders</p>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center space-y-1">
+                      <p className="text-xs text-slate-400 uppercase font-bold">30-Day Projected Payout</p>
+                      <p className="text-2xl font-extrabold text-purple-600">{formatINR(data.predictions.forecast30Days)}</p>
+                      <p className="text-[10px] text-slate-400">Based on ~{data.predictions.dailyOrderVelocity * 30} expected orders</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/20 border border-brand-200 dark:border-brand-900/40 text-xs flex justify-between items-center">
+                    <div>
+                      <p className="font-extrabold text-brand-700 dark:text-violet-300">Active Deals Liquidity Potential</p>
+                      <p className="text-slate-500 dark:text-slate-400 mt-0.5">Maximum potential cashback liability if all remaining slots are claimed</p>
+                    </div>
+                    <span className="font-mono text-base font-extrabold text-brand-600 dark:text-violet-400">
+                      {formatINR(data.predictions.activeDealsVolumePotential)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB 3: MERCHANT PERFORMANCE ─── */}
+            {activeTab === 'merchants' && data?.merchantPerformance && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="premium-card p-6 space-y-6">
+                  <div>
+                    <h3 className="font-extrabold text-lg flex items-center gap-2">
+                      <Store className="w-5 h-5 text-brand-600 dark:text-violet-400" /> Platform & Brand Performance Breakdown
+                    </h3>
+                    <p className="text-xs text-slate-400">Order volume, gross merchandise value (GMV), and conversion efficiency per brand</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {data.merchantPerformance.map((m: any, idx: number) => (
+                      <div key={idx} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--color-border)' }}>
+                          <span className="font-extrabold text-sm">{m.brand}</span>
+                          <span className="badge badge-brand text-[10px]">{m.conversionRate}% Approved</span>
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Total Orders:</span>
+                            <span className="font-bold">{m.totalOrders}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Gross Value:</span>
+                            <span className="font-bold">{formatINR(m.totalVolume)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Cashback Paid:</span>
+                            <span className="font-bold text-emerald-600">{formatINR(m.totalCashback)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Avg Order Value:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{formatINR(m.avgOrderValue)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── TAB 4: USER LTV & RETENTION ─── */}
+            {activeTab === 'ltv' && data?.ltvAnalytics && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Tier Distribution */}
+                  <div className="premium-card p-5 space-y-4">
+                    <h3 className="font-extrabold text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                      <Crown className="w-4 h-4" /> VIP Tier Distribution
+                    </h3>
+                    <div className="space-y-3 text-xs">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 text-purple-600 font-bold">
+                        <span>💎 Platinum VIP (₹5k+ / 5+ orders)</span>
+                        <span>{data.ltvAnalytics.tierBreakdown.platinum}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 text-amber-600 font-bold">
+                        <span>🥇 Gold (₹2.5k+ / 3+ orders)</span>
+                        <span>{data.ltvAnalytics.tierBreakdown.gold}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-500/10 text-slate-600 font-bold">
+                        <span>🥈 Silver (₹1k+ / 2+ orders)</span>
+                        <span>{data.ltvAnalytics.tierBreakdown.silver}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-amber-700/10 text-amber-800 dark:text-amber-400 font-bold">
+                        <span>🥉 Bronze (New Buyers)</span>
+                        <span>{data.ltvAnalytics.tierBreakdown.bronze}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top VIP Buyers Table */}
+                  <div className="premium-card p-5 space-y-4 lg:col-span-2">
+                    <h3 className="font-extrabold text-sm flex items-center gap-2 text-brand-600 dark:text-violet-400">
+                      <UserCheck className="w-4 h-4" /> Top High-LTV Buyers
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="data-table text-xs">
+                        <thead>
+                          <tr>
+                            <th>Buyer</th>
+                            <th>Tier</th>
+                            <th>Total Spent</th>
+                            <th>Total Cashback</th>
+                            <th>Orders</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.ltvAnalytics.topBuyers.map((b: any, i: number) => (
+                            <tr key={i}>
+                              <div>
+                                <p className="font-extrabold">{b.name}</p>
+                                <p className="text-[10px] text-slate-400">{b.email}</p>
+                              </div>
+                              <td>
+                                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  b.tier === 'Platinum VIP' ? 'bg-purple-500 text-white' : b.tier === 'Gold' ? 'bg-amber-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                                }`}>
+                                  {b.tier}
+                                </span>
+                              </td>
+                              <td className="font-bold">{formatINR(b.totalSpent)}</td>
+                              <td className="font-bold text-emerald-600">{formatINR(b.totalEarnings)}</td>
+                              <td className="font-bold font-mono">{b.orderCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </main>
         </div>
