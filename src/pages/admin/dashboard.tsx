@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { KPICardSkeleton, ChartSkeleton, TableSkeleton } from '@/components/SkeletonLoaders';
 import {
   ShoppingBag, Users, ArrowDownToLine, BarChart3, TrendingUp,
   TrendingDown, Tag, Ticket, Wallet, RefreshCw, Clock,
@@ -142,22 +143,33 @@ export default function AdminDashboard() {
   };
 
   const fetchAll = async () => {
+    // Priority 1: KPI Cards (<500ms)
     setStatsLoading(true);
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => { setStats(d); setStatsLoading(false); })
+      .catch(() => setStatsLoading(false));
+
+    // Priority 2: Revenue Chart
     setRevenueLoading(true);
-    await Promise.all([
-      fetch('/api/stats').then(r => r.json()).then(d => setStats(d)).catch(() => {}),
-      fetch('/api/analytics/summary').then(r => r.json()).then(d => setAnalytics(d)).catch(() => {}),
-      fetch('/api/analytics/revenue?days=14').then(r => r.json()).then(d => setRevenueData(d)).catch(() => {}),
-      fetch('/api/orders?q=').then(r => r.json()).then(d => setRecentOrders(Array.isArray(d) ? d.slice(0, 8) : [])).catch(() => {}),
-      fetch('/api/analytics/deals').then(r => r.json()).then(d => setDealPerf(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {}),
-      fetch('/api/users/all').then(r => r.json()).then(d => setRecentUsers(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {}),
-      fetch('/api/tickets').then(r => r.json()).then(d => setRecentTickets(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {}),
-      fetch('/api/health/full').then(r => r.json()).then(d => setHealth(d)).catch(() => {}),
-      fetch('/api/announcements?active_only=true').then(r => r.json()).then(d => setAnnouncements(Array.isArray(d) ? d : [])).catch(() => {}),
-      fetch('/api/refunds').then(r => r.json()).then(d => setRecentRefunds(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {}),
-    ]);
-    setStatsLoading(false);
-    setRevenueLoading(false);
+    fetch('/api/analytics/revenue?days=14')
+      .then(r => r.json())
+      .then(d => { setRevenueData(d); setRevenueLoading(false); })
+      .catch(() => setRevenueLoading(false));
+
+    // Priority 3: System Health & Summary
+    fetch('/api/analytics/summary').then(r => r.json()).then(d => setAnalytics(d)).catch(() => {});
+    fetch('/api/health/full').then(r => r.json()).then(d => setHealth(d)).catch(() => {});
+
+    // Priority 4: Staggered Secondary Data Tables
+    setTimeout(() => {
+      fetch('/api/orders?q=').then(r => r.json()).then(d => setRecentOrders(Array.isArray(d) ? d.slice(0, 8) : [])).catch(() => {});
+      fetch('/api/analytics/deals').then(r => r.json()).then(d => setDealPerf(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {});
+      fetch('/api/users/all').then(r => r.json()).then(d => setRecentUsers(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {});
+      fetch('/api/tickets').then(r => r.json()).then(d => setRecentTickets(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {});
+      fetch('/api/announcements?active_only=true').then(r => r.json()).then(d => setAnnouncements(Array.isArray(d) ? d : [])).catch(() => {});
+      fetch('/api/refunds').then(r => r.json()).then(d => setRecentRefunds(Array.isArray(d) ? d.slice(0, 5) : [])).catch(() => {});
+    }, 120);
   };
 
   useEffect(() => {
@@ -240,7 +252,7 @@ export default function AdminDashboard() {
             {/* ── Feature 11: Stats Grid ── */}
             {statsLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton rounded-2xl h-28" />)}
+                {Array.from({ length: 8 }).map((_, i) => <KPICardSkeleton key={i} />)}
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

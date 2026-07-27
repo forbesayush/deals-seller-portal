@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { ExportProgressModal, ExportStage } from '@/components/ExportProgressModal';
 import {
   Search, RefreshCw, Download, CheckCircle2, XCircle, DollarSign,
   AlertTriangle, Filter, Edit3, Eye, BarChart3, Loader2,
@@ -70,6 +71,12 @@ export default function AdminOrders() {
   const [importText, setImportText] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<any | null>(null);
+
+  // Netflix-Style Export Modal State
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportStage, setExportStage] = useState<ExportStage>('idle');
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportAbortController, setExportAbortController] = useState<AbortController | null>(null);
 
   const handleLoadBatchOrders = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -163,6 +170,41 @@ export default function AdminOrders() {
     } finally {
       setImportLoading(false);
     }
+  };
+
+  const startNetflixExport = async (format: 'csv' | 'excel' = 'csv') => {
+    const controller = new AbortController();
+    setExportAbortController(controller);
+    setExportModalOpen(true);
+    setExportStage('fetching');
+    setExportProgress(15);
+
+    try {
+      await new Promise(r => setTimeout(r, 300));
+      if (controller.signal.aborted) return;
+      setExportStage('processing');
+      setExportProgress(45);
+
+      await new Promise(r => setTimeout(r, 400));
+      if (controller.signal.aborted) return;
+      setExportStage('generating');
+      setExportProgress(80);
+
+      await new Promise(r => setTimeout(r, 400));
+      if (controller.signal.aborted) return;
+      setExportStage('downloading');
+      setExportProgress(100);
+
+      window.open(`/api/reports/export?type=orders&format=${format}`);
+      setTimeout(() => setExportStage('complete'), 500);
+    } catch {
+      setExportStage('error');
+    }
+  };
+
+  const handleCancelExport = () => {
+    if (exportAbortController) exportAbortController.abort();
+    setExportStage('cancelled');
   };
 
   const handleExportBatchOrders = () => {
@@ -305,10 +347,10 @@ export default function AdminOrders() {
                 <button onClick={handleDeleteAll} className="btn btn-rose btn-sm flex items-center gap-1.5" style={{ backgroundColor: '#f43f5e', color: '#fff' }} title="Delete All Orders">
                   <XCircle className="w-4 h-4" /> Delete All
                 </button>
-                <button onClick={() => window.open('/api/reports/export?type=orders&format=csv')} className="btn btn-ghost btn-sm">
-                  <Download className="w-4 h-4" /> Export
+                <button onClick={() => startNetflixExport('csv')} className="btn btn-ghost btn-sm">
+                  <Download className="w-4 h-4" /> Export CSV
                 </button>
-                <button onClick={() => window.open('/api/reports/export?type=orders&format=excel')} className="btn btn-secondary btn-sm">
+                <button onClick={() => startNetflixExport('excel')} className="btn btn-secondary btn-sm">
                   <Download className="w-4 h-4" /> Excel
                 </button>
                 <button onClick={() => setShowImport(true)} className="btn btn-primary btn-sm">
@@ -683,6 +725,15 @@ export default function AdminOrders() {
           </div>
         </div>
       )}
+      {/* Netflix Export Pipeline Modal */}
+      <ExportProgressModal
+        isOpen={exportModalOpen}
+        stage={exportStage}
+        progress={exportProgress}
+        title="Exporting Orders MIS Report"
+        onCancel={handleCancelExport}
+        onClose={() => setExportModalOpen(false)}
+      />
     </>
   );
 }
