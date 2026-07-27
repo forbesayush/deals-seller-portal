@@ -397,14 +397,17 @@ export default function BuyerDashboard() {
     if (!orderNo || !orderAmount) { setOrderMsg({ type: 'error', text: 'Please fill in Order Number and Amount Paid.' }); return; }
     setOrderLoading(true);
     try {
-      const prodCode = orderCodeInput.trim() || selectedDeal?.productCode || ('DEA' + Math.floor(Math.random() * 900 + 100));
+      const passedOrderCode = orderCodeInput.trim() || selectedDeal?.productCode || selectedDeal?.orderCode || selectedDeal?.code || '1200';
       const prodName = orderName.trim() || selectedDeal?.productName || 'Order Submission';
       const prodPlat = orderBrand || selectedDeal?.platform || 'Amazon';
 
       const res = await fetch('/api/orders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderNo, productCode: prodCode,
+          orderNo,
+          orderCode: passedOrderCode,
+          code: passedOrderCode,
+          productCode: passedOrderCode,
           orderName: prodName,
           platform: prodPlat, mediator: 'Self',
           dealType: orderDealType || selectedDeal?.dealType || 'Original',
@@ -725,8 +728,17 @@ export default function BuyerDashboard() {
                         <input value={orderName} onChange={e => setOrderName(e.target.value)} placeholder="Enter product/order name" className="input liquid-glass-input rounded-xl" />
                       </div>
                       <div>
-                        <label className="section-label">CODE *</label>
-                        <input value={orderCodeInput} onChange={e => setOrderCodeInput(e.target.value)} placeholder="e.g. ORD-123456 or DEA101" className="input liquid-glass-input rounded-xl" required />
+                        <label className="section-label">ORDER CODE * (e.g. 1200 - 3000)</label>
+                        <input
+                          value={orderCodeInput}
+                          onChange={e => setOrderCodeInput(e.target.value)}
+                          placeholder="e.g. 1200 (enter Order Code provided by admin)"
+                          className="input liquid-glass-input rounded-xl"
+                          required
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1 font-semibold">
+                          Custom Order Code ranging from 1200 to 3000 (used for batch exports)
+                        </p>
                       </div>
                       <div>
                         <label className="section-label">AMOUNT PAID (₹) *</label>

@@ -425,8 +425,8 @@ export default function AdminDeals() {
 
               <form onSubmit={handleSubmitDeal} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="section-label">Product Code *</label>
-                  <input required value={formData.productCode} onChange={e => setFormData(p => ({ ...p, productCode: e.target.value }))} className="input" placeholder="AMZ001" />
+                  <label className="section-label">Order Code * (e.g. 1200 - 3000)</label>
+                  <input required value={formData.productCode} onChange={e => setFormData(p => ({ ...p, productCode: e.target.value }))} className="input" placeholder="e.g. 1200" />
                 </div>
                 <div>
                   <label className="section-label">Platform *</label>

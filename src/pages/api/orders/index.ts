@@ -59,12 +59,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const finalDeduction = parseFloat(deduction) || 0;
       const netAmount = Math.max(0, Math.round((cashbackAmount - finalDeduction) * 100) / 100);
 
+      const passedCode = (req.body.orderCode || req.body.code || req.body.productCode || code || '').toString().trim();
+      const finalOrderCode = passedCode || (deal?.orderCode || deal?.productCode || deal?.code || '1200');
+
       const id = genId('ORD');
       const newOrder = {
         id, orderNo,
-        orderCode: 'ORD-' + Math.floor(Math.random() * 900000 + 100000),
+        orderCode: finalOrderCode,
+        code: finalOrderCode,
         trackingNumber: 'TRK-' + Math.floor(Math.random() * 900000 + 100000),
-        productName, productCode: productCode || '',
+        productName, productCode: productCode || finalOrderCode,
         productPrice: amount, quantity: 1,
         buyerId: session.userId,
         cashbackPct, cashbackAmount,
@@ -73,7 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderDate, submittedDate: todayDate(), paidDate: null,
         platform: plat, priority: 'normal', screenshot: true,
         mediator: mediator || null, dealType: dealType || null,
-        code: code || null,
       };
 
       await orders.insertOne(newOrder);
