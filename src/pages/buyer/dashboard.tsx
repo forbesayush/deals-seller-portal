@@ -380,9 +380,8 @@ export default function BuyerDashboard() {
   };
 
   const getExpectedRefundInfo = () => {
-    if (!selectedDeal) return null;
-    const cashback = selectedDeal.cashback || 0;
-    const deductionToApply = orderDeduction ? parseFloat(orderDeduction) || 0 : 0;
+    const cashback = selectedDeal ? (selectedDeal.cashback || 0) : (orderAmount ? (parseFloat(orderAmount) || 0) : 0);
+    const deductionToApply = orderDeduction ? Math.max(0, parseFloat(orderDeduction) || 0) : 0;
     const expectedNet = Math.max(0, Math.round((cashback - deductionToApply) * 100) / 100);
     return {
       cashback,
@@ -734,8 +733,19 @@ export default function BuyerDashboard() {
                         <input type="number" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} placeholder="1299" className="input liquid-glass-input rounded-xl" required />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="section-label">DEDUCTION AMOUNT (e.g. -50 deduction amt)</label>
-                        <input type="number" value={orderDeduction} onChange={e => setOrderDeduction(e.target.value)} placeholder="50 (-50 deduction amt will be shown)" className="input liquid-glass-input rounded-xl" />
+                        <label className="section-label">DEDUCTION AMOUNT (FROM ₹0 TO ANY AMT)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={orderDeduction}
+                          onChange={e => setOrderDeduction(e.target.value)}
+                          placeholder="0 (e.g. enter 0, 50, 100 or any deduction amount)"
+                          className="input liquid-glass-input rounded-xl"
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1 font-semibold">
+                          Range: ₹0 to any amount (e.g. -50 deduction amt will be shown)
+                        </p>
                       </div>
                       {refundInfo && (
                         <div className="sm:col-span-2 p-4 rounded-2xl bg-brand-50/50 dark:bg-brand-950/10 border border-brand-100 dark:border-brand-900/30 text-xs space-y-2 animate-fade-up">
