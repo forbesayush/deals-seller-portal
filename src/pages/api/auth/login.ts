@@ -1,4 +1,4 @@
-// pages/api/auth/login.ts — Enhanced Authentication Route (Supports email, mobile, username, and admin alias)
+// pages/api/auth/login.ts — Single Admin Login Route
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import { seedDatabase } from '@/lib/seed';
@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const db = await connectDB();
-    await seedDatabase(db);
+    await seedDatabase(db); // Guarantees legacy admins are deleted & single admin exists
 
     const { identifier, password } = req.body;
     const cleanId = (typeof identifier === 'string' ? identifier : '').trim().toLowerCase();
@@ -18,16 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const users = db.collection('users');
     let user: any = null;
 
-    // 1. Direct username alias matches FIRST (high priority)
-    if (cleanId === 'admin' || cleanId === 'administrator') {
-      user = await users.findOne({ $or: [{ email: 'admin@deals.seller.com' }, { email: 'admin' }, { id: 'ADM001' }] });
-    } else if (cleanId === 'owner') {
-      user = await users.findOne({ $or: [{ email: 'owner@deals.seller.com' }, { email: 'owner' }, { id: 'ADM002' }] });
-    } else if (cleanId === 'ekta') {
-      user = await users.findOne({ $or: [{ email: 'ekta@deals.seller.com' }, { email: 'ekta' }, { id: 'ADM003' }] });
+    // 1. Single Admin Alias Match
+    if (cleanId === 'admin' || cleanId === 'administrator' || cleanId === 'admin@deals.seller.com') {
+      user = await users.findOne({ email: 'admin@deals.seller.com' });
     }
 
-    // 2. Exact email / mobile / id / referral matches
+    // 2. Exact Buyer Login Matches (email, mobile, id, referral)
     if (!user) {
       const digits = cleanId.replace(/\D/g, '');
       const exactRegex = new RegExp(`^${cleanId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
