@@ -25,20 +25,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let rawOrders: any[] = [];
 
     if (cleanCode) {
-      // Dynamic Order Code Query (Supports 1200, ORD-45891, INV20260727, ABC001, etc.)
+      // Dynamic Order Code Query (Supports numeric 1258, string "1258", 1200, ORD-45891, etc.)
+      const numCode = !isNaN(Number(cleanCode)) ? Number(cleanCode) : null;
       const escapedCode = cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const exactRegex = new RegExp(`^${escapedCode}$`, 'i');
       const partialRegex = new RegExp(escapedCode, 'i');
 
+      const exactConditions: any[] = [
+        { orderCode: cleanCode },
+        { code: cleanCode },
+        { productCode: cleanCode },
+        { orderNo: cleanCode },
+        { orderCode: exactRegex },
+        { code: exactRegex },
+        { productCode: exactRegex },
+        { orderNo: exactRegex },
+      ];
+      if (numCode !== null) {
+        exactConditions.push({ orderCode: numCode });
+        exactConditions.push({ code: numCode });
+        exactConditions.push({ productCode: numCode });
+      }
+
       // 1. Try exact match
-      rawOrders = await ordersCollection.find({
-        $or: [
-          { orderCode: exactRegex },
-          { code: exactRegex },
-          { productCode: exactRegex },
-          { orderNo: exactRegex },
-        ]
-      }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+      rawOrders = await ordersCollection.find({ $or: exactConditions }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
 
       // 2. Fallback to partial match if no exact match found
       if (rawOrders.length === 0) {

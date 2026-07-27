@@ -27,20 +27,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
 
-    // Escaped string for regex safety
+    // Support numeric codes (e.g. 1258 as number or string "1258")
+    const numCode = !isNaN(Number(cleanCode)) ? Number(cleanCode) : null;
     const escapedCode = cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const exactRegex = new RegExp(`^${escapedCode}$`, 'i');
     const partialRegex = new RegExp(escapedCode, 'i');
 
-    // 1. Try exact or case-insensitive exact match
-    let matchingOrders = await ordersCollection.find({
-      $or: [
-        { orderCode: exactRegex },
-        { code: exactRegex },
-        { productCode: exactRegex },
-        { orderNo: exactRegex },
-      ]
-    }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+    const exactConditions: any[] = [
+      { orderCode: cleanCode },
+      { code: cleanCode },
+      { productCode: cleanCode },
+      { orderNo: cleanCode },
+      { orderCode: exactRegex },
+      { code: exactRegex },
+      { productCode: exactRegex },
+      { orderNo: exactRegex },
+    ];
+    if (numCode !== null) {
+      exactConditions.push({ orderCode: numCode });
+      exactConditions.push({ code: numCode });
+      exactConditions.push({ productCode: numCode });
+    }
+
+    // 1. Try exact match (string, number, or exact regex)
+    let matchingOrders = await ordersCollection.find({ $or: exactConditions }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
 
     // 2. Fallback to flexible partial match if no exact match found
     if (matchingOrders.length === 0) {

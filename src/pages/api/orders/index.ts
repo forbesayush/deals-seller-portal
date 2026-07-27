@@ -21,11 +21,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const q = (req.query.q as string || '').toLowerCase();
       const query: any = session.role === 'buyer' ? { buyerId: session.userId } : {};
       if (q) {
-        query.$or = [
+        const num = !isNaN(Number(q)) ? Number(q) : null;
+        const conditions: any[] = [
           { orderNo: { $regex: q, $options: 'i' } },
           { productName: { $regex: q, $options: 'i' } },
           { id: { $regex: q, $options: 'i' } },
+          { orderCode: { $regex: q, $options: 'i' } },
+          { code: { $regex: q, $options: 'i' } },
+          { productCode: { $regex: q, $options: 'i' } },
+          { buyerId: { $regex: q, $options: 'i' } },
+          { orderCode: q },
+          { code: q },
+          { productCode: q },
         ];
+        if (num !== null) {
+          conditions.push({ orderCode: num });
+          conditions.push({ code: num });
+          conditions.push({ productCode: num });
+        }
+        if (session.role === 'buyer') {
+          query.$and = [{ buyerId: session.userId }, { $or: conditions }];
+        } else {
+          query.$or = conditions;
+        }
       }
       const list = await orders.find(query).sort({ submittedDate: -1 }).toArray();
       return res.status(200).json(list.map(({ _id, ...o }) => o));
