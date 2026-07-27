@@ -59,6 +59,34 @@ export async function seedDatabase(db: Db) {
     });
   }
 
+  // 4. Seed Shivam buyer account
+  const existingShivam = await users.findOne({ $or: [{ email: 'shivam@deals.seller.com' }, { mobile: '7050798925' }, { name: /^shivam$/i }] });
+  if (!existingShivam) {
+    await users.insertOne({
+      id: 'USR002',
+      name: 'Shivam',
+      email: 'shivam@deals.seller.com',
+      mobile: '7050798925',
+      password: 'shivam@123',
+      role: 'buyer',
+      status: 'active',
+      joined: today,
+      verified: true,
+      referral: 'SHIVAM123'
+    });
+    await wallets.insertOne({
+      id: 'WLT002', userId: 'USR002',
+      pendingCashback: 0, approvedCashback: 0, lockedCashback: 0,
+      withdrawableCashback: 0, refundBalance: 0, totalWithdrawn: 0,
+      lifetimeEarned: 0, lastUpdated: new Date().toISOString()
+    });
+  } else {
+    await users.updateOne(
+      { id: existingShivam.id },
+      { $set: { password: 'shivam@123', mobile: '7050798925', status: 'active' } }
+    );
+  }
+
   const settings = db.collection('settings');
   await settings.updateOne(
     { _key: 'single_admin_v1' },

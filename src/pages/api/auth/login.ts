@@ -30,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user = await users.findOne({
         $or: [
           { email: exactRegex },
+          { name: exactRegex },
           { id: cleanId.toUpperCase() },
           { referral: cleanId.toUpperCase() },
           ...(digits.length >= 7 ? [{ mobile: digits }] : []),
