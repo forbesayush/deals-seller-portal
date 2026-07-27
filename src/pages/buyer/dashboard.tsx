@@ -57,6 +57,17 @@ function WalletCard({ wallet }: { wallet: any }) {
   );
 }
 
+const BRAND_OPTIONS = [
+  { id: 'Amazon', name: '🛒 Amazon', placeholder: 'e.g. 408-1234567-8901234', hint: 'Amazon format: 408-XXXXXXX-XXXXXXX' },
+  { id: 'Flipkart', name: '🛍️ Flipkart', placeholder: 'e.g. OD123456789012345', hint: 'Flipkart format: ODXXXXXXXXXXXXXXXX' },
+  { id: 'Myntra', name: '👗 Myntra', placeholder: 'e.g. 1234567-8901234-1', hint: 'Myntra format: XXXXXXX-XXXXXXX-X' },
+  { id: 'Nykaa', name: '💄 Nykaa', placeholder: 'e.g. NYK-12345678-901', hint: 'Nykaa format: NYK-XXXXXXXX-XXX' },
+  { id: 'Tata CLiQ', name: '📦 Tata CLiQ', placeholder: 'e.g. TC-987654321', hint: 'Tata CLiQ format: TC-XXXXXXXXX' },
+  { id: 'AJIO', name: '⚡ AJIO', placeholder: 'e.g. FN123456789', hint: 'AJIO format: FNXXXXXXXXX' },
+  { id: 'Reliance Digital', name: '📱 Reliance Digital', placeholder: 'e.g. RD-456789123', hint: 'Reliance Digital format: RD-XXXXXXXXX' },
+  { id: 'Other', name: '🌐 Other / Custom Brand', placeholder: 'e.g. ORD123456789', hint: 'Custom Brand Order ID' },
+];
+
 export default function BuyerDashboard() {
   const { user, logout } = useAuth();
   const { wallet, fetchWallet } = useWallet();
@@ -65,6 +76,7 @@ export default function BuyerDashboard() {
   );
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState<BuyerTab>('deals');
+  const [orderBrand, setOrderBrand] = useState('Amazon');
 
   // Deals state (Feature 1)
   const [deals, setDeals] = useState<any[]>([]);
@@ -244,6 +256,7 @@ export default function BuyerDashboard() {
       if (res.ok) {
         setClaimedToken(data.claim);
         setSelectedDeal(deal);
+        if (deal.platform) setOrderBrand(deal.platform);
         setOrderName(deal.productName || '');
         setOrderAmount(deal.price ? String(deal.price) : '');
         setShowOrderForm(true);
@@ -391,7 +404,7 @@ export default function BuyerDashboard() {
     try {
       const prodCode = orderCodeInput.trim() || selectedDeal?.productCode || ('DEA' + Math.floor(Math.random() * 900 + 100));
       const prodName = orderName.trim() || selectedDeal?.productName || 'Order Submission';
-      const prodPlat = selectedDeal?.platform || 'Amazon';
+      const prodPlat = orderBrand || selectedDeal?.platform || 'Amazon';
 
       const res = await fetch('/api/orders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -685,9 +698,32 @@ export default function BuyerDashboard() {
                       </div>
                     )}
                     <form onSubmit={handleOrderSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Select Brand / Platform */}
+                      <div className="sm:col-span-2">
+                        <label className="section-label">SELECT BRAND / PLATFORM *</label>
+                        <select
+                          value={orderBrand}
+                          onChange={e => setOrderBrand(e.target.value)}
+                          className="select liquid-glass-input rounded-xl"
+                        >
+                          {BRAND_OPTIONS.map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div>
-                        <label className="section-label">ORDER NUMBER *</label>
-                        <input value={orderNo} onChange={e => setOrderNo(e.target.value)} placeholder="e.g. 402-1234567-8901234" className="input liquid-glass-input rounded-xl" required />
+                        <label className="section-label">{orderBrand.toUpperCase()} ORDER ID *</label>
+                        <input
+                          value={orderNo}
+                          onChange={e => setOrderNo(e.target.value)}
+                          placeholder={BRAND_OPTIONS.find(b => b.id === orderBrand)?.placeholder || 'e.g. 408-1234567-8901234'}
+                          className="input liquid-glass-input rounded-xl"
+                          required
+                        />
+                        <p className="text-[11px] text-slate-400 mt-1 font-semibold">
+                          {BRAND_OPTIONS.find(b => b.id === orderBrand)?.hint}
+                        </p>
                       </div>
                       <div>
                         <label className="section-label">ORDER NAME</label>
