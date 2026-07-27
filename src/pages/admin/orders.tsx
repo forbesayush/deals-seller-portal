@@ -59,6 +59,63 @@ export default function AdminOrders() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMsg, setBulkMsg] = useState('');
 
+  // Batch Export by Order Code State
+  const [batchCode, setBatchCode] = useState('');
+  const [batchOrders, setBatchOrders] = useState<any[] | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchMsg, setBatchMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+  const handleLoadBatchOrders = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setBatchMsg(null);
+    const clean = batchCode.trim();
+    if (!clean) {
+      setBatchMsg({ type: 'error', text: 'Please enter an Order Code.' });
+      setBatchOrders(null);
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/admin/orders/by-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderCode: clean }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.count === 0) {
+          setBatchMsg({ type: 'error', text: data.message || `No orders found for Order Code "${clean}".` });
+          setBatchOrders([]);
+        } else {
+          setBatchOrders(data.orders);
+          setBatchMsg({ type: 'success', text: `Found ${data.count} order(s) for Order Code "${clean}".` });
+        }
+      } else {
+        setBatchMsg({ type: 'error', text: data.detail || 'Failed to load batch orders.' });
+        setBatchOrders(null);
+      }
+    } catch {
+      setBatchMsg({ type: 'error', text: 'Network connection error.' });
+      setBatchOrders(null);
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleExportBatchOrders = () => {
+    const clean = batchCode.trim();
+    if (!clean) {
+      setBatchMsg({ type: 'error', text: 'Please enter an Order Code.' });
+      return;
+    }
+    if (!batchOrders || batchOrders.length === 0) {
+      setBatchMsg({ type: 'error', text: 'No orders available to export. Load valid orders first.' });
+      return;
+    }
+    window.open(`/api/reports/export?type=orders&format=csv&orderCode=${encodeURIComponent(clean)}`);
+  };
+
   const toggleDark = () => {
     const isDark = !darkMode;
     setDarkMode(isDark);
@@ -193,6 +250,127 @@ export default function AdminOrders() {
                   <Download className="w-4 h-4" /> Excel
                 </button>
               </div>
+            </div>
+
+            {/* Export Orders by Order Code Card */}
+            <div className="premium-card p-5 mb-6 border-l-4 border-brand-500 animate-fade-up">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="font-extrabold text-base flex items-center gap-2">
+                    <Download className="w-5 h-5 text-brand-600 dark:text-violet-400" />
+                    Export Orders by Order Code
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Enter an Order Code (e.g. 1200) to batch load and export only the associated orders to Excel
+                  </p>
+                </div>
+                {batchOrders && batchOrders.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportBatchOrders}
+                      className="btn btn-emerald btn-sm flex items-center gap-1.5 text-white"
+                      style={{ backgroundColor: '#10b981' }}
+                    >
+                      <Download className="w-4 h-4" /> Export Loaded Orders ({batchOrders.length})
+                    </button>
+                    <button
+                      onClick={() => { setBatchOrders(null); setBatchMsg(null); setBatchCode(''); }}
+                      className="btn btn-ghost btn-sm"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleLoadBatchOrders} className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[240px]">
+                  <input
+                    type="text"
+                    value={batchCode}
+                    onChange={e => setBatchCode(e.target.value)}
+                    placeholder="Enter Order Code (e.g. 1200 or ORD-123456)"
+                    className="input liquid-glass-input rounded-xl pr-9 text-sm"
+                  />
+                  {batchCode && (
+                    <button
+                      type="button"
+                      onClick={() => setBatchCode('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={batchLoading}
+                  className="btn btn-primary btn-sm flex items-center gap-1.5"
+                >
+                  {batchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Load Orders
+                </button>
+              </form>
+
+              {batchMsg && (
+                <div className={`mt-3 p-3 rounded-xl text-xs font-semibold ${
+                  batchMsg.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40'
+                    : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40'
+                }`}>
+                  {batchMsg.text}
+                </div>
+              )}
+
+              {/* Batch Orders Preview Table */}
+              {batchOrders && batchOrders.length > 0 && (
+                <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                      Matching Orders ({batchOrders.length})
+                    </span>
+                    <span className="text-xs text-brand-600 dark:text-violet-400 font-bold">
+                      Order Code: {batchCode}
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--color-border)' }}>
+                    <table className="data-table text-xs">
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Order Code</th>
+                          <th>Customer</th>
+                          <th>Phone / Email</th>
+                          <th>Product Name</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batchOrders.slice(0, 15).map(o => (
+                          <tr key={o.id}>
+                            <td className="font-mono font-bold">{o.orderNo}</td>
+                            <td className="font-mono text-brand-600 dark:text-violet-400">{o.orderCode || o.code}</td>
+                            <td className="font-bold">{o.customerName}</td>
+                            <td className="text-slate-400">{o.customerPhone} / {o.customerEmail}</td>
+                            <td>{o.productName}</td>
+                            <td className="font-bold">{formatINR(o.productPrice || o.amount || 0)}</td>
+                            <td><StatusBadge status={o.currentStatus} /></td>
+                            <td>{o.orderDate || o.submittedDate}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {batchOrders.length > 15 && (
+                    <p className="text-[11px] text-slate-400 mt-2 text-center">
+                      Showing first 15 of {batchOrders.length} matching records. Click <strong>Export Loaded Orders</strong> to download all {batchOrders.length} records.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Status Filter Chips */}
