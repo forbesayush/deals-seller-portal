@@ -83,12 +83,9 @@ export default function AdminOrders() {
     if (saved === 'dark') { setDarkMode(true); document.documentElement.classList.add('dark'); }
     fetchOrders();
 
-    const handleSync = () => { fetchOrders(); };
-    window.addEventListener('ds_storage_update', handleSync);
-    window.addEventListener('storage', handleSync);
+    const interval = setInterval(fetchOrders, 10000);
     return () => {
-      window.removeEventListener('ds_storage_update', handleSync);
-      window.removeEventListener('storage', handleSync);
+      clearInterval(interval);
     };
   }, [fetchOrders]);
 

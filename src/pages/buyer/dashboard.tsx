@@ -164,14 +164,11 @@ export default function BuyerDashboard() {
 
     loadAllData();
 
-    // Live Sync Storage Listener across tabs & window updates
-    const handleSync = () => { loadAllData(); };
-    window.addEventListener('ds_storage_update', handleSync);
-    window.addEventListener('storage', handleSync);
+    // Live Cloud MongoDB Sync — auto refresh every 10s across devices
+    const interval = setInterval(loadAllData, 10000);
 
     return () => {
-      window.removeEventListener('ds_storage_update', handleSync);
-      window.removeEventListener('storage', handleSync);
+      clearInterval(interval);
     };
   }, []);
 
