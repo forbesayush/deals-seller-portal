@@ -1,4 +1,4 @@
-// pages/api/admin/orders/by-code.ts — Batch search orders by Order Code for Admin Panel
+// pages/api/admin/orders/by-code.ts — Dynamic Batch Order Lookup by Order Code
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import { getCurrentUserFromRequest, nowISO } from '@/lib/auth';
@@ -27,18 +27,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
 
-    // Case-insensitive flexible query matching orderCode, code, or productCode
+    // Escaped string for regex safety
     const escapedCode = cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const codeRegex = new RegExp(`^${escapedCode}$`, 'i');
+    const exactRegex = new RegExp(`^${escapedCode}$`, 'i');
+    const partialRegex = new RegExp(escapedCode, 'i');
 
-    const matchingOrders = await ordersCollection.find({
+    // 1. Try exact or case-insensitive exact match
+    let matchingOrders = await ordersCollection.find({
       $or: [
-        { orderCode: codeRegex },
-        { code: codeRegex },
-        { productCode: codeRegex },
-        { orderNo: codeRegex },
+        { orderCode: exactRegex },
+        { code: exactRegex },
+        { productCode: exactRegex },
+        { orderNo: exactRegex },
       ]
     }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+
+    // 2. Fallback to flexible partial match if no exact match found
+    if (matchingOrders.length === 0) {
+      matchingOrders = await ordersCollection.find({
+        $or: [
+          { orderCode: partialRegex },
+          { code: partialRegex },
+          { productCode: partialRegex },
+          { orderNo: partialRegex },
+        ]
+      }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+    }
 
     if (matchingOrders.length === 0) {
       return res.status(200).json({
@@ -70,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userEmail: session.email,
       action: 'Batch Order Lookup',
       targetType: 'orders',
-      details: `Loaded ${enrichedOrders.length} orders for Order Code "${cleanCode}"`,
+      details: `Loaded ${enrichedOrders.length} orders for dynamic Order Code "${cleanCode}"`,
       timestamp: nowISO()
     });
 

@@ -1,4 +1,4 @@
-// pages/api/reports/export.ts — Orders Report Export (Supports Export All + Batch Export by Order Code)
+// pages/api/reports/export.ts — Orders Report Export (Supports Dynamic Order Code Filtering + Export All)
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import { getCurrentUserFromRequest, todayDate, nowISO } from '@/lib/auth';
@@ -22,20 +22,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ordersCollection = db.collection('orders');
     const usersCollection = db.collection('users');
 
-    // Build database query
-    const query: any = {};
-    if (cleanCode) {
-      const escapedCode = cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const codeRegex = new RegExp(`^${escapedCode}$`, 'i');
-      query.$or = [
-        { orderCode: codeRegex },
-        { code: codeRegex },
-        { productCode: codeRegex },
-        { orderNo: codeRegex },
-      ];
-    }
+    let rawOrders: any[] = [];
 
-    const rawOrders = await ordersCollection.find(query).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+    if (cleanCode) {
+      // Dynamic Order Code Query (Supports 1200, ORD-45891, INV20260727, ABC001, etc.)
+      const escapedCode = cleanCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const exactRegex = new RegExp(`^${escapedCode}$`, 'i');
+      const partialRegex = new RegExp(escapedCode, 'i');
+
+      // 1. Try exact match
+      rawOrders = await ordersCollection.find({
+        $or: [
+          { orderCode: exactRegex },
+          { code: exactRegex },
+          { productCode: exactRegex },
+          { orderNo: exactRegex },
+        ]
+      }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+
+      // 2. Fallback to partial match if no exact match found
+      if (rawOrders.length === 0) {
+        rawOrders = await ordersCollection.find({
+          $or: [
+            { orderCode: partialRegex },
+            { code: partialRegex },
+            { productCode: partialRegex },
+            { orderNo: partialRegex },
+          ]
+        }).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+      }
+    } else {
+      // Export All Orders (Preserves existing functionality)
+      rawOrders = await ordersCollection.find({}).sort({ submittedDate: -1, orderDate: -1 }).toArray();
+    }
 
     if (cleanCode && rawOrders.length === 0) {
       return res.status(400).json({ detail: `No orders found for Order Code "${cleanCode}". Cannot generate empty export file.` });
@@ -113,8 +132,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const today = todayDate();
+    const safeCode = cleanCode.replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = cleanCode
-      ? `Orders_${cleanCode.replace(/[^a-zA-Z0-9_-]/g, '_')}_${today}.csv`
+      ? `Orders_${safeCode}_${today}.csv`
       : `Orders_Export_All_${today}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
