@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Sun, Moon, ChevronDown, X, LogOut, User, Settings, Menu } from 'lucide-react';
+import {
+  Bell, Search, Sun, Moon, ChevronDown, X, LogOut, User, Settings, Menu,
+  LayoutGrid, Sparkles, ShoppingBag, Users as UsersIcon, History, Tag, Ticket,
+  Megaphone, ExternalLink, ShieldAlert, DollarSign
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
@@ -15,6 +19,7 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [appsOpen, setAppsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -58,7 +63,6 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
     rose:    'from-rose-500 to-pink-600',
     blue:    'from-blue-500 to-cyan-600',
   };
-  // Derive avatar colour from role — no extra field needed on UserState
   const roleColorMap: Record<string, string> = {
     super_admin: 'violet',
     admin:       'violet',
@@ -67,6 +71,17 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
     buyer:       'amber',
   };
   const avatarGradient = avatarColors[roleColorMap[user?.role ?? ''] ?? 'rose'] ?? avatarColors.rose;
+
+  const quickApps = [
+    { label: 'AI Analytics', href: '/admin/analytics', icon: Sparkles, color: 'text-purple-600 bg-purple-500/10' },
+    { label: 'Orders & Import', href: '/admin/orders', icon: ShoppingBag, color: 'text-blue-600 bg-blue-500/10' },
+    { label: 'Users & Wallet', href: '/admin/users', icon: UsersIcon, color: 'text-emerald-600 bg-emerald-500/10' },
+    { label: 'Audit Logs', href: '/admin/audit-logs', icon: History, color: 'text-amber-600 bg-amber-500/10' },
+    { label: 'Live Deals', href: '/admin/deals', icon: Tag, color: 'text-rose-600 bg-rose-500/10' },
+    { label: 'Support Tickets', href: '/admin/tickets', icon: Ticket, color: 'text-indigo-600 bg-indigo-500/10' },
+    { label: 'Announcements', href: '/admin/announcements', icon: Megaphone, color: 'text-cyan-600 bg-cyan-500/10' },
+    { label: 'System Settings', href: '/admin/settings', icon: Settings, color: 'text-slate-600 bg-slate-500/10' },
+  ];
 
   return (
     <header
@@ -98,35 +113,25 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search users, orders, deals..."
+              placeholder="Quick search orders, users, deals..."
               value={searchQuery}
               onChange={e => handleSearch(e.target.value)}
-              className="input liquid-glass-input rounded-xl pl-9 py-2 text-sm"
+              className="input pl-9 text-xs h-9 py-1 rounded-xl"
             />
-            {searchQuery && (
-              <button
-                onClick={() => { setSearchQuery(''); setSearchResults(null); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            )}
           </div>
 
-          {/* Search Results Dropdown */}
           {searchResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 premium-card p-3 max-h-80 overflow-y-auto animate-fade-up z-50">
-              {searchLoading && <p className="text-xs text-slate-400 text-center py-2">Searching...</p>}
+            <div className="absolute left-0 right-0 top-full mt-2 premium-card p-3 animate-scale-in z-50 max-h-80 overflow-y-auto">
               {['users', 'orders', 'deals', 'tickets'].map(type => {
                 const items = searchResults[type] || [];
                 if (items.length === 0) return null;
                 return (
                   <div key={type} className="mb-3">
-                    <p className="section-label mb-1">{type}</p>
+                    <p className="section-label mb-1 uppercase text-[10px]">{type}</p>
                     {items.map((item: any) => (
-                      <div key={item.id} className="px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-xs">
+                      <div key={item.id} className="px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-xs flex justify-between items-center">
                         <span className="font-semibold">{item.name || item.orderNo || item.productName || item.title}</span>
-                        <span className="ml-2 text-slate-400">{item.id}</span>
+                        <span className="ml-2 text-[10px] text-slate-400 font-mono">{item.id}</span>
                       </div>
                     ))}
                   </div>
@@ -141,6 +146,52 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
       )}
 
       <div className="flex items-center gap-2 ml-auto">
+        {/* Quick Launch Apps Button (Admin Easy Open) */}
+        {user?.role !== 'buyer' && (
+          <div className="relative">
+            <button
+              onClick={() => { setAppsOpen(!appsOpen); setNotifOpen(false); setProfileOpen(false); }}
+              className="px-2.5 py-1.5 rounded-xl border border-brand-500/20 bg-brand-500/5 hover:bg-brand-500/10 transition-all flex items-center gap-1.5 text-xs font-bold text-brand-600 dark:text-violet-400"
+              title="Easy Open Admin Tools"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline">Admin Tools</span>
+            </button>
+
+            {appsOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 premium-card p-3 animate-scale-in z-50 border border-brand-500/30">
+                <div className="flex items-center justify-between border-b pb-2 mb-2" style={{ borderColor: 'var(--color-border)' }}>
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Easy Open Quick Launcher</p>
+                  <span className="badge badge-brand text-[10px]">Admin Suite</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {quickApps.map(app => {
+                    const AppIcon = app.icon;
+                    return (
+                      <a
+                        key={app.href}
+                        href={app.href}
+                        onClick={() => setAppsOpen(false)}
+                        className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex flex-col items-center justify-center text-center gap-1.5 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${app.color}`}>
+                          <AppIcon className="w-4 h-4" />
+                        </div>
+                        <span className="font-semibold text-[11px] text-slate-700 dark:text-slate-200">{app.label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+                <div className="border-t mt-2 pt-2 text-center" style={{ borderColor: 'var(--color-border)' }}>
+                  <a href="/buyer/dashboard" target="_blank" rel="noopener noreferrer" className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline flex items-center justify-center gap-1">
+                    Open Live Buyer Portal <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Dark Mode Toggle */}
         <button
           onClick={onToggleDark}
@@ -153,7 +204,7 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
         {/* Notifications */}
         <div className="relative">
           <button
-            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
+            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); setAppsOpen(false); }}
             className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
           >
             <Bell className="w-4 h-4 text-slate-500" />
@@ -203,7 +254,7 @@ export function Header({ title, darkMode, onToggleDark, sidebarCollapsed, onTogg
         {/* User Avatar + Dropdown */}
         <div className="relative">
           <button
-            onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+            onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); setAppsOpen(false); }}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <div className={`w-7 h-7 rounded-lg bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-white text-xs font-bold`}>

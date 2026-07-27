@@ -8,7 +8,7 @@ import {
   TrendingDown, Tag, Ticket, Wallet, RefreshCw, Clock,
   CheckCircle2, XCircle, AlertTriangle, Zap, Activity,
   FileText, Megaphone, Settings, ChevronRight, Plus,
-  DollarSign, Star, Shield, Eye, Download
+  DollarSign, Star, Shield, Eye, Download, Sparkles, ExternalLink, History
 } from 'lucide-react';
 
 function formatINR(n: number) {
@@ -213,18 +213,27 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <button onClick={fetchAll} className="btn btn-ghost btn-sm">
+                <button onClick={fetchAll} className="btn btn-ghost btn-sm" title="Refresh">
                   <RefreshCw className="w-4 h-4" /> Refresh
                 </button>
+                <a href="/admin/analytics" className="btn btn-secondary btn-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold border-purple-200">
+                  <Sparkles className="w-4 h-4" /> AI Analytics
+                </a>
                 <a href="/admin/orders" className="btn btn-secondary btn-sm">
                   <ShoppingBag className="w-4 h-4" /> Orders
+                </a>
+                <a href="/admin/users" className="btn btn-secondary btn-sm">
+                  <Users className="w-4 h-4" /> Users
+                </a>
+                <a href="/admin/audit-logs" className="btn btn-secondary btn-sm">
+                  <History className="w-4 h-4" /> Audit Logs
                 </a>
                 <a href="/admin/deals" className="btn btn-primary btn-sm">
                   <Plus className="w-4 h-4" /> New Deal
                 </a>
-                <button onClick={() => window.open('/api/reports/export?type=orders&format=csv')} className="btn btn-ghost btn-sm">
-                  <Download className="w-4 h-4" /> Export
-                </button>
+                <a href="/buyer/dashboard" target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm text-emerald-600 dark:text-emerald-400 font-bold">
+                  <ExternalLink className="w-4 h-4" /> Live Buyer View ↗
+                </a>
               </div>
             </div>
 
