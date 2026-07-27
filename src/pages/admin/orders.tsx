@@ -65,6 +65,12 @@ export default function AdminOrders() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchMsg, setBatchMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
+  // Bulk Order Import State
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<any | null>(null);
+
   const handleLoadBatchOrders = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setBatchMsg(null);
@@ -92,14 +98,70 @@ export default function AdminOrders() {
           setBatchMsg({ type: 'success', text: `Found ${data.count} order(s) for Order Code "${clean}".` });
         }
       } else {
-        setBatchMsg({ type: 'error', text: data.detail || 'Failed to load batch orders.' });
-        setBatchOrders(null);
+        setBatchMsg({ type: 'error', text: data.detail || 'Failed to search' });
+        setBatchOrders([]);
       }
     } catch {
-      setBatchMsg({ type: 'error', text: 'Network connection error.' });
-      setBatchOrders(null);
+      setBatchMsg({ type: 'error', text: 'Network error occurred.' });
+      setBatchOrders([]);
+    } finally { setBatchLoading(false); }
+  };
+
+  const handleBulkImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importText.trim()) return;
+    setImportLoading(true);
+    setImportResult(null);
+
+    let parsedOrders: any[] = [];
+    try {
+      const trimmed = importText.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        const raw = JSON.parse(trimmed);
+        parsedOrders = Array.isArray(raw) ? raw : [raw];
+      } else {
+        const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const isHeader = headers.includes('orderno') || headers.includes('order_no') || headers.includes('code');
+        const startIdx = isHeader ? 1 : 0;
+
+        for (let i = startIdx; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+          if (cols.length >= 2) {
+            parsedOrders.push({
+              orderNo: cols[0],
+              orderCode: cols[1] || '1200',
+              platform: cols[2] || 'Amazon',
+              productPrice: parseFloat(cols[3] || '1299') || 1299,
+              deductionAmount: parseFloat(cols[4] || '0') || 0,
+              status: cols[5] || 'order_filled',
+            });
+          }
+        }
+      }
+
+      if (parsedOrders.length === 0) {
+        setImportResult({ success: false, detail: 'No valid order rows parsed. Check your CSV or JSON syntax.' });
+        setImportLoading(false);
+        return;
+      }
+
+      const res = await fetch('/api/admin/orders/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders: parsedOrders }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setImportResult({ success: true, message: data.message, errors: data.errors });
+        fetchOrders();
+      } else {
+        setImportResult({ success: false, detail: data.detail || 'Import failed.' });
+      }
+    } catch (err: any) {
+      setImportResult({ success: false, detail: `Parsing Error: ${err.message}` });
     } finally {
-      setBatchLoading(false);
+      setImportLoading(false);
     }
   };
 
@@ -248,6 +310,9 @@ export default function AdminOrders() {
                 </button>
                 <button onClick={() => window.open('/api/reports/export?type=orders&format=excel')} className="btn btn-secondary btn-sm">
                   <Download className="w-4 h-4" /> Excel
+                </button>
+                <button onClick={() => setShowImport(true)} className="btn btn-primary btn-sm">
+                  <Plus className="w-4 h-4" /> Bulk Import Orders
                 </button>
               </div>
             </div>
@@ -563,6 +628,58 @@ export default function AdminOrders() {
                 </div>
               ) : null}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Bulk Import Orders Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="premium-card max-w-xl w-full p-6 animate-scale-up border border-brand-500/30">
+            <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--color-border)' }}>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-brand-600 dark:text-violet-400">Batch Order Import</span>
+                <h3 className="font-extrabold text-base">Bulk Import Orders (CSV / JSON)</h3>
+              </div>
+              <button onClick={() => { setShowImport(false); setImportResult(null); }} className="btn btn-ghost btn-sm"><X className="w-4 h-4" /></button>
+            </div>
+
+            {importResult && (
+              <div className={`p-3 rounded-xl text-xs mb-3 font-semibold ${importResult.success ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                <p>{importResult.message || importResult.detail}</p>
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <ul className="mt-1.5 list-disc pl-4 text-[11px] space-y-0.5 opacity-90">
+                    {importResult.errors.slice(0, 5).map((err: string, i: number) => <li key={i}>{err}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleBulkImport} className="space-y-4 text-xs">
+              <div>
+                <label className="section-label">Paste CSV data or JSON Array *</label>
+                <textarea
+                  required
+                  rows={8}
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                  placeholder={`OrderNo, OrderCode, Brand, Price, Deduction, Status\n407-111111-22222, 1200, Amazon, 1299, 50, order_filled\n407-333333-44444, 1250, Flipkart, 899, 0, paid`}
+                  className="input rounded-xl text-xs font-mono resize-none leading-relaxed"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-[11px] text-slate-400 space-y-1">
+                <p className="font-bold text-slate-600 dark:text-slate-300">Format Guide:</p>
+                <p>• <strong>CSV Format:</strong> <code>OrderNo, OrderCode, Platform, Price, Deduction, Status</code></p>
+                <p>• <strong>JSON Format:</strong> <code>[{`{"orderNo": "407-123", "orderCode": "1200", "productPrice": 1299}`}]</code></p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button type="submit" disabled={importLoading} className="btn btn-primary flex-1">
+                  {importLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</> : <><Plus className="w-4 h-4" /> Run Bulk Import</>}
+                </button>
+                <button type="button" onClick={() => { setShowImport(false); setImportResult(null); }} className="btn btn-ghost">Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
