@@ -24,16 +24,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       for (const id of orderIds) {
         const o = await orders.findOne({ id });
         if (!o) continue;
+
         if (action === 'mark_paid' && o.currentStatus !== 'paid') {
-          await orders.updateOne({ id }, { $set: { currentStatus: 'paid', approvalStatus: 'approved', paidDate: todayDate() } });
+          await orders.updateOne({ id }, { $set: { currentStatus: 'paid', approvalStatus: 'approved', paidDate: todayDate(), notes: o.notes || 'Marked as Paid by Admin' } });
           await wallets.updateOne({ userId: o.buyerId }, {
             $inc: { pendingCashback: -o.netAmount, withdrawableCashback: o.netAmount, approvedCashback: o.netAmount, lifetimeEarned: o.netAmount },
             $set: { lastUpdated: nowISO() }
           });
           await transactions.insertOne({ id: genId('TX'), walletId: 'WLT' + o.buyerId.replace('USR', ''), orderId: id, amount: o.netAmount, type: 'credit', category: 'cashback_approved', status: 'completed', description: `Cashback approved for ${o.orderNo}`, timestamp: nowISO() });
           updatedCount++;
+        } else if (action === 'approve' && o.currentStatus !== 'approved') {
+          await orders.updateOne({ id }, { $set: { currentStatus: 'approved', approvalStatus: 'approved', notes: o.notes || 'Approved by Admin' } });
+          updatedCount++;
+        } else if (action === 'reject' && o.currentStatus !== 'rejected') {
+          await orders.updateOne({ id }, { $set: { currentStatus: 'rejected', approvalStatus: 'rejected', notes: o.notes || 'Rejected by Admin' } });
+          await wallets.updateOne({ userId: o.buyerId }, { $inc: { pendingCashback: -o.netAmount }, $set: { lastUpdated: nowISO() } });
+          updatedCount++;
         } else if (action === 'cancel' && o.currentStatus !== 'cancelled') {
-          await orders.updateOne({ id }, { $set: { currentStatus: 'cancelled' } });
+          await orders.updateOne({ id }, { $set: { currentStatus: 'cancelled', notes: o.notes || 'Cancelled by Admin' } });
           await wallets.updateOne({ userId: o.buyerId }, { $inc: { pendingCashback: -o.netAmount }, $set: { lastUpdated: nowISO() } });
           updatedCount++;
         }
@@ -51,9 +59,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'GET' && subRoute === 'timeline') {
-      const logs = [{ id: 'OSL001', orderId: firstPart, fromStatus: 'submitted', toStatus: 'pending_review', note: 'Order submitted', timestamp: order.submittedDate || order.orderDate }];
-      if (order.currentStatus === 'paid') logs.push({ id: 'OSL002', orderId: firstPart, fromStatus: 'pending_review', toStatus: 'paid', note: 'Marked paid by admin', timestamp: order.paidDate || order.orderDate });
-      if (order.currentStatus === 'cancelled') logs.push({ id: 'OSL002', orderId: firstPart, fromStatus: 'pending_review', toStatus: 'cancelled', note: 'Order cancelled', timestamp: order.orderDate });
+      const logs = [{ id: 'OSL001', orderId: firstPart, fromStatus: 'submitted', toStatus: 'pending_review', note: 'Order submitted by buyer', timestamp: order.submittedDate || order.orderDate }];
+      if (order.currentStatus === 'approved') logs.push({ id: 'OSL002', orderId: firstPart, fromStatus: 'pending_review', toStatus: 'approved', note: order.notes || 'Approved by Admin', timestamp: order.orderDate });
+      if (order.currentStatus === 'paid') logs.push({ id: 'OSL003', orderId: firstPart, fromStatus: 'approved', toStatus: 'paid', note: order.notes || 'Marked paid by Admin', timestamp: order.paidDate || order.orderDate });
+      if (order.currentStatus === 'rejected') logs.push({ id: 'OSL004', orderId: firstPart, fromStatus: 'pending_review', toStatus: 'rejected', note: order.notes || 'Rejected by Admin', timestamp: order.orderDate });
+      if (order.currentStatus === 'cancelled') logs.push({ id: 'OSL005', orderId: firstPart, fromStatus: 'pending_review', toStatus: 'cancelled', note: order.notes || 'Cancelled by Admin', timestamp: order.orderDate });
       return res.status(200).json(logs);
     }
 
@@ -82,6 +92,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             $set: { lastUpdated: nowISO() }
           });
           await transactions.insertOne({ id: genId('TX'), walletId: 'WLT' + order.buyerId.replace('USR', ''), orderId: firstPart, amount: order.netAmount, type: 'credit', category: 'cashback_approved', status: 'completed', description: `Cashback approved for ${order.orderNo}`, timestamp: nowISO() });
+        } else if (newStatus === 'approved' && oldStatus !== 'approved') {
+          updates.currentStatus = 'approved';
+          updates.approvalStatus = 'approved';
+        } else if (newStatus === 'rejected' && oldStatus !== 'rejected') {
+          updates.currentStatus = 'rejected';
+          updates.approvalStatus = 'rejected';
+          await wallets.updateOne({ userId: order.buyerId }, { $inc: { pendingCashback: -order.netAmount }, $set: { lastUpdated: nowISO() } });
         } else if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
           updates.currentStatus = 'cancelled';
           await wallets.updateOne({ userId: order.buyerId }, { $inc: { pendingCashback: -order.netAmount }, $set: { lastUpdated: nowISO() } });

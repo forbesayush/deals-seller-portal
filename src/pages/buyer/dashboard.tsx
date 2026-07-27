@@ -88,6 +88,7 @@ export default function BuyerDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
+  const [selectedViewOrder, setSelectedViewOrder] = useState<any | null>(null);
 
   // Wallet & Transactions (Feature 4 & 5)
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -860,8 +861,23 @@ export default function BuyerDashboard() {
                                   <p className="text-[10px] text-rose-500 font-semibold">-{formatINR(order.deductionAmount)} deduction amt</p>
                                 )}
                               </td>
-                              <td><StatusBadge status={order.currentStatus} /></td>
-                              <td className="text-xs text-slate-400">{order.orderDate}</td>
+                              <td>
+                                <StatusBadge status={order.currentStatus || order.approvalStatus || 'pending_review'} />
+                                {(order.notes || order.adminNote) && (
+                                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-semibold max-w-[160px] truncate" title={order.notes || order.adminNote}>
+                                    💬 {order.notes || order.adminNote}
+                                  </p>
+                                )}
+                              </td>
+                              <td className="text-xs text-slate-400">
+                                <div>{order.orderDate || order.submittedDate}</div>
+                                <button
+                                  onClick={() => setSelectedViewOrder(order)}
+                                  className="text-[11px] text-brand-600 dark:text-violet-400 font-bold hover:underline mt-0.5"
+                                >
+                                  View Details
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -869,6 +885,92 @@ export default function BuyerDashboard() {
                     </div>
                   )}
                 </div>
+
+                {/* Buyer Order Details Modal */}
+                {selectedViewOrder && (
+                  <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className="premium-card max-w-lg w-full p-6 animate-scale-up border border-brand-500/30">
+                      <div className="flex items-center justify-between mb-4 border-b pb-3" style={{ borderColor: 'var(--color-border)' }}>
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-600 dark:text-violet-400">Order Details</span>
+                          <h3 className="font-mono text-base font-extrabold mt-0.5">{selectedViewOrder.orderNo}</h3>
+                        </div>
+                        <button onClick={() => setSelectedViewOrder(null)} className="btn btn-ghost btn-sm">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-4 text-xs">
+                        {/* Status Banner */}
+                        <div className="p-3.5 rounded-2xl bg-brand-50/50 dark:bg-brand-950/20 border border-brand-200 dark:border-brand-900/40 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] uppercase font-semibold text-slate-400">Admin Status marked in Panel</p>
+                            <p className="font-extrabold text-sm capitalize mt-0.5">{selectedViewOrder.currentStatus?.replace(/_/g, ' ') || 'Submitted'}</p>
+                          </div>
+                          <StatusBadge status={selectedViewOrder.currentStatus || 'pending_review'} />
+                        </div>
+
+                        {/* Admin Remarks / Note */}
+                        {(selectedViewOrder.notes || selectedViewOrder.adminNote) && (
+                          <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
+                            <p className="font-extrabold text-amber-700 dark:text-amber-400 text-[11px] flex items-center gap-1.5">
+                              💬 Admin Remark / Note:
+                            </p>
+                            <p className="text-slate-700 dark:text-slate-300 mt-1 font-semibold text-xs">
+                              "{selectedViewOrder.notes || selectedViewOrder.adminNote}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Brand / Platform:</span>
+                            <span className="font-bold">{selectedViewOrder.platform || 'Amazon'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Order Code:</span>
+                            <span className="font-mono font-bold text-brand-600 dark:text-violet-400">{selectedViewOrder.orderCode || selectedViewOrder.code}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Amount Paid:</span>
+                            <span className="font-bold">{formatINR(selectedViewOrder.productPrice || selectedViewOrder.amount || 0)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Net Refund:</span>
+                            <span className="font-bold text-emerald-600">{formatINR(selectedViewOrder.netAmount)}</span>
+                          </div>
+                          {selectedViewOrder.deductionAmount > 0 && (
+                            <div className="col-span-2">
+                              <span className="text-slate-400 block text-[10px]">Deduction Applied:</span>
+                              <span className="font-bold text-rose-500">-{formatINR(selectedViewOrder.deductionAmount)} deduction amt</span>
+                            </div>
+                          )}
+                          <div className="col-span-2">
+                            <span className="text-slate-400 block text-[10px]">Product Name:</span>
+                            <span className="font-semibold">{selectedViewOrder.productName}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Date Submitted:</span>
+                            <span className="font-semibold">{selectedViewOrder.submittedDate || selectedViewOrder.orderDate}</span>
+                          </div>
+                          {selectedViewOrder.paidDate && (
+                            <div>
+                              <span className="text-slate-400 block text-[10px]">Paid Date:</span>
+                              <span className="font-semibold text-emerald-600">{selectedViewOrder.paidDate}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 text-right">
+                        <button onClick={() => setSelectedViewOrder(null)} className="btn btn-primary btn-sm w-full">
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
