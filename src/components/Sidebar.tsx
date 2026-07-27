@@ -78,19 +78,19 @@ const BUYER_NAV: NavSection[] = [
   {
     label: 'My Portal',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/buyer/dashboard' },
-      { icon: Tag, label: 'Browse Deals', href: '/buyer/dashboard' },
-      { icon: ShoppingBag, label: 'My Orders', href: '/buyer/dashboard' },
-      { icon: Wallet, label: 'Wallet', href: '/buyer/dashboard' },
-      { icon: ArrowDownToLine, label: 'Withdrawals', href: '/buyer/dashboard' },
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/buyer/dashboard?tab=deals' },
+      { icon: Tag, label: 'Browse Deals', href: '/buyer/dashboard?tab=deals' },
+      { icon: ShoppingBag, label: 'My Orders', href: '/buyer/dashboard?tab=orders' },
+      { icon: Wallet, label: 'Wallet', href: '/buyer/dashboard?tab=wallet' },
+      { icon: ArrowDownToLine, label: 'Withdrawals', href: '/buyer/dashboard?tab=wallet' },
     ],
   },
   {
     label: 'More',
     items: [
-      { icon: Ticket, label: 'Support Tickets', href: '/buyer/dashboard' },
-      { icon: Gift, label: 'Referrals', href: '/buyer/dashboard' },
-      { icon: Bell, label: 'Announcements', href: '/buyer/dashboard' },
+      { icon: Ticket, label: 'Support Tickets', href: '/buyer/dashboard?tab=tickets' },
+      { icon: Gift, label: 'Referrals', href: '/buyer/dashboard?tab=referrals' },
+      { icon: Bell, label: 'Announcements', href: '/buyer/dashboard?tab=announcements' },
     ],
   },
 ];
@@ -108,6 +108,7 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
 
   const sections = role === 'buyer' ? BUYER_NAV : NAV_SECTIONS;
   const currentPath = router.pathname;
+  const fullAsPath = router.asPath;
 
   const avatarColors: Record<string, string> = {
     violet:  'from-violet-600 to-indigo-600',
@@ -134,6 +135,7 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
           className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 md:hidden animate-fade-in"
         />
       )}
+
       <aside
         className={`
           fixed top-0 left-0 h-screen z-40 flex flex-col
@@ -142,101 +144,102 @@ export function Sidebar({ collapsed = false, onToggle, darkMode }: SidebarProps)
         `}
         style={{ borderColor: 'var(--color-border)' }}
       >
-      {/* Logo */}
-      <div className={`flex items-center h-16 px-4 border-b flex-shrink-0`}
-        style={{ borderColor: 'var(--color-border)' }}>
-        <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0 shadow-md`}>
-          DS
-        </div>
-        {!collapsed && (
-          <div className="ml-3 overflow-hidden">
-            <p className="font-extrabold text-sm tracking-tight leading-none">deals.seller</p>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              {role === 'super_admin' ? 'Super Admin' : role === 'buyer' ? 'Buyer Portal' : role.charAt(0).toUpperCase() + role.slice(1) + ' Panel'}
-            </p>
-          </div>
-        )}
-        <button
-          onClick={onToggle}
-          className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* Nav Sections */}
-      <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {sections.map((section) => {
-          const visibleItems = section.items.filter(item =>
-            !item.roles || item.roles.includes(role)
-          );
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={section.label}>
-              {!collapsed && (
-                <p className="nav-section-label">{section.label}</p>
-              )}
-              {visibleItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentPath === item.href ||
-                  (item.href !== '/' && currentPath.startsWith(item.href));
-
-                return (
-                  <a
-                    key={item.href + item.label}
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    className={`sidebar-nav-item ${isActive ? 'active' : ''} ${collapsed ? 'justify-center' : ''}`}
-                  >
-                    <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand-600 dark:text-violet-400' : ''}`} />
-                    {!collapsed && <span>{item.label}</span>}
-                    {!collapsed && item.badge !== undefined && (
-                      <span className="ml-auto badge badge-rose py-0.5 px-2">
-                        {item.badge}
-                      </span>
-                    )}
-                  </a>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* User Footer */}
-      <div className={`px-2 py-3 border-t flex-shrink-0`} style={{ borderColor: 'var(--color-border)' }}>
-        <div className={`flex items-center gap-3 px-2 py-2 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+        {/* Logo */}
+        <div className={`flex items-center h-16 px-4 border-b flex-shrink-0`}
+          style={{ borderColor: 'var(--color-border)' }}>
+          <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-white text-xs font-black flex-shrink-0 shadow-md`}>
+            DS
           </div>
           {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate">{user?.name}</p>
-              <p className="text-[10px] capitalize" style={{ color: 'var(--color-text-muted)' }}>{user?.role}</p>
+            <div className="ml-3 overflow-hidden">
+              <p className="font-extrabold text-sm tracking-tight leading-none">deals.seller</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                {role === 'super_admin' ? 'Super Admin' : role === 'buyer' ? 'Buyer Portal' : role.charAt(0).toUpperCase() + role.slice(1) + ' Panel'}
+              </p>
             </div>
           )}
-          {!collapsed && (
+          <button
+            onClick={onToggle}
+            className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Nav Sections */}
+        <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {sections.map((section) => {
+            const visibleItems = section.items.filter(item =>
+              !item.roles || item.roles.includes(role)
+            );
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={section.label}>
+                {!collapsed && (
+                  <p className="nav-section-label">{section.label}</p>
+                )}
+                {visibleItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = role === 'buyer'
+                    ? (fullAsPath === item.href || (item.href === '/buyer/dashboard?tab=deals' && (fullAsPath === '/buyer/dashboard' || !fullAsPath.includes('tab='))))
+                    : (currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href)));
+
+                  return (
+                    <a
+                      key={item.href + item.label}
+                      href={item.href}
+                      title={collapsed ? item.label : undefined}
+                      className={`sidebar-nav-item ${isActive ? 'active' : ''} ${collapsed ? 'justify-center' : ''}`}
+                    >
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand-600 dark:text-violet-400' : ''}`} />
+                      {!collapsed && <span>{item.label}</span>}
+                      {!collapsed && item.badge !== undefined && (
+                        <span className="ml-auto badge badge-rose py-0.5 px-2">
+                          {item.badge}
+                        </span>
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* User Footer */}
+        <div className={`px-2 py-3 border-t flex-shrink-0`} style={{ borderColor: 'var(--color-border)' }}>
+          <div className={`flex items-center gap-3 px-2 py-2 rounded-xl ${collapsed ? 'justify-center' : ''}`}>
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${avatarGradient} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold truncate">{user?.name}</p>
+                <p className="text-[10px] capitalize" style={{ color: 'var(--color-text-muted)' }}>{user?.role}</p>
+              </div>
+            )}
+            {!collapsed && (
+              <button
+                onClick={logout}
+                className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0"
+                title="Log out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {collapsed && (
             <button
               onClick={logout}
-              className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0"
+              className="w-full mt-2 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-400 hover:text-rose-600 transition-colors flex justify-center"
               title="Log out"
             >
               <LogOut className="w-4 h-4" />
             </button>
           )}
         </div>
-        {collapsed && (
-          <button
-            onClick={logout}
-            className="w-full mt-2 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-400 hover:text-rose-600 transition-colors flex justify-center"
-            title="Log out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }

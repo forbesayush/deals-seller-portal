@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/hooks/useAuth';
 import { useWallet } from '@/hooks/useWallet';
 import { Sidebar } from '@/components/Sidebar';
@@ -65,6 +66,7 @@ const BRAND_OPTIONS = [
 ];
 
 export default function BuyerDashboard() {
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { wallet, fetchWallet } = useWallet();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
@@ -172,14 +174,19 @@ export default function BuyerDashboard() {
     };
 
     loadAllData();
-
-    // Live Cloud MongoDB Sync — auto refresh every 10s across devices
     const interval = setInterval(loadAllData, 10000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
+
+  // Sync URL ?tab= query param to activeTab state
+  useEffect(() => {
+    if (router.isReady && router.query.tab) {
+      const tabVal = router.query.tab as string;
+      if (['deals', 'orders', 'wallet', 'tickets', 'referrals', 'announcements'].includes(tabVal)) {
+        setActiveTab(tabVal as BuyerTab);
+      }
+    }
+  }, [router.isReady, router.query.tab]);
 
   const fetchDeals = async () => {
     setDealsLoading(true);
