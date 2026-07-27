@@ -1,8 +1,9 @@
-// pages/api/deals/index.ts — GET all deals, POST new deal
+// pages/api/deals/index.ts — GET all deals, POST new deal (Optimized with MongoDB & In-Memory TTL Cache)
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import { seedDatabase } from '@/lib/seed';
 import { getCurrentUserFromRequest, genId, nowISO } from '@/lib/auth';
+import { getCached, setCached, invalidateCache } from '@/lib/cache';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,17 +14,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET') {
       const activeOnly = req.query.active_only === 'true' || session?.role === 'buyer';
-      const query: any = {};
+      const cacheKey = `deals_list_${activeOnly ? 'active' : 'all'}_${req.query.q || ''}_${req.query.platform || ''}`;
+      
+      const cached = getCached<any[]>(cacheKey);
+      if (cached) {
+        res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=10');
+        return res.status(200).json(cached);
+      }
+
       if (activeOnly) {
-        query.active = true;
-        // Filter to only deals with remaining slots
-        // We can't do computed fields in MongoDB easily, so we pull all active and filter
         const all = await deals.find({ active: true }).toArray();
         const available = all.filter(d => ((d.slots || 0) - (d.claimedCount || 0)) > 0);
-        return res.status(200).json(available.map(({ _id, ...d }) => d));
+        const result = available.map(({ _id, ...d }) => d);
+        setCached(cacheKey, result, 10); // 10s TTL Cache
+        res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=10');
+        return res.status(200).json(result);
       }
+
       const all = await deals.find({}).toArray();
-      return res.status(200).json(all.map(({ _id, ...d }) => d));
+      const result = all.map(({ _id, ...d }) => d);
+      setCached(cacheKey, result, 10);
+      res.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate=10');
+      return res.status(200).json(result);
     }
 
     if (req.method === 'POST') {
@@ -33,6 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const id = genId('DEA');
       const newDeal = { id, active: true, claimedCount: 0, createdAt: nowISO(), ...req.body };
       await deals.insertOne(newDeal);
+
+      invalidateCache('deals_list'); // Invalidate cache on new deal creation
+
       const { _id, ...clean } = newDeal as any;
       return res.status(200).json(clean);
     }
