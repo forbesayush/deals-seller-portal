@@ -1,6 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Synchronous Non-Bypassable Auth Guard: Instantly hides DOM and validates admin session -->
+  <script>
+    (function(){
+      document.documentElement.style.display = 'none';
+      try {
+        const userId = sessionStorage.getItem('ds_session_user_id') || sessionStorage.getItem('ds_user_id');
+        const role = sessionStorage.getItem('ds_user_role') || sessionStorage.getItem('ds_role');
+        const token = localStorage.getItem('ds_jwt_token');
+        const jmSessionStr = sessionStorage.getItem('jm_session');
+        let jmSession = null;
+        if (jmSessionStr) { try { jmSession = JSON.parse(jmSessionStr); } catch(e){} }
+
+        const validRole = (role && ['admin', 'super_admin', 'manager', 'auditor'].includes(role)) || (jmSession && ['admin', 'super_admin', 'manager', 'auditor'].includes(jmSession.role));
+        const hasAuth = (userId || token || (jmSession && Date.now() < jmSession.expiresAt)) && validRole;
+
+        if (!hasAuth) {
+          sessionStorage.clear();
+          window.location.replace('../login.html?reason=unauthorized');
+        } else {
+          document.documentElement.style.display = '';
+        }
+      } catch(e) {
+        window.location.replace('../login.html');
+      }
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel — deals.seller</title>
@@ -728,15 +754,49 @@ function doLogout(e) {
 }
 
 // ══════════════════════════════════════════════
-//  DEALS DATA (in-memory, not saved to localStorage)
+//  DEALS DATA (Persisted with localStorage & API)
 // ══════════════════════════════════════════════
-let DEALS_DATA = [
+const DEALS_KEY = 'ds_deals_data_v2';
+const DELETED_KEY = 'ds_deleted_deal_ids_v2';
+
+function getDeletedDealIds() {
+  try { return JSON.parse(localStorage.getItem(DELETED_KEY)) || []; } catch(e) { return []; }
+}
+
+function addDeletedDealId(id) {
+  const list = getDeletedDealIds();
+  if (id && !list.includes(String(id).toLowerCase())) {
+    list.push(String(id).toLowerCase());
+    localStorage.setItem(DELETED_KEY, JSON.stringify(list));
+  }
+}
+
+const DEFAULT_DEALS = [
   { id: 'DL001', brand: 'DZ', code: 'Blinkit_Floor_TabletStand_360°', platform: 'Blinkit', type: 'Review', price: 1299, slots: 4, active: true },
   { id: 'DL002', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Review', price: 450, slots: 4, active: true },
   { id: 'DL003', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Rating', price: 450, slots: 5, active: true },
   { id: 'DL004', brand: 'Zaylore', code: 'ZY_Adhesive_Glue_Az', platform: 'Amazon', type: 'Review', price: 449, slots: 3, active: true },
   { id: 'DL005', brand: 'Zaylore', code: 'ZY_Epsom_Salt_Az', platform: 'Amazon', type: 'Review', price: 399, slots: 6, active: false },
 ];
+
+let rawLocal = JSON.parse(localStorage.getItem(DEALS_KEY));
+let DEALS_DATA = (Array.isArray(rawLocal) ? rawLocal : DEFAULT_DEALS).filter(d => {
+  const delList = getDeletedDealIds();
+  return !delList.includes(String(d.id).toLowerCase()) &&
+         !delList.includes(String(d.brand).toLowerCase()) &&
+         !delList.includes(String(d.code).toLowerCase());
+});
+
+function saveDealsLocal(dealsArr) {
+  const delList = getDeletedDealIds();
+  const clean = dealsArr.filter(d => 
+    !delList.includes(String(d.id).toLowerCase()) &&
+    !delList.includes(String(d.brand).toLowerCase()) &&
+    !delList.includes(String(d.code).toLowerCase())
+  );
+  DEALS_DATA = clean;
+  localStorage.setItem(DEALS_KEY, JSON.stringify(clean));
+}
 
 // ══════════════════════════════════════════════
 //  INIT — all async-safe
@@ -748,8 +808,25 @@ async function initPanel() {
   try {
     ALL_ORDERS = await getOrders();
     ALL_REFUNDS = await getRefunds();
+    const res = await fetch('/api/deals');
+    if (res.ok) {
+      const remoteDeals = await res.json();
+      if (Array.isArray(remoteDeals) && remoteDeals.length > 0) {
+        DEALS_DATA = remoteDeals.map(d => ({
+          id: d.id,
+          brand: d.productName || d.brand || 'Deal',
+          code: d.productCode || d.code || d.id,
+          platform: d.platform || 'Amazon',
+          type: d.dealType || 'Review',
+          price: d.price || 0,
+          slots: d.slots || 5,
+          active: d.active !== false
+        }));
+        localStorage.setItem(DEALS_KEY, JSON.stringify(DEALS_DATA));
+      }
+    }
   } catch (err) {
-    console.error('Failed to load orders/refunds from API:', err);
+    console.error('Failed to load data from API:', err);
     ALL_ORDERS = JSON.parse(localStorage.getItem(ORDERS_KEY)) || MOCK_ORDERS;
     ALL_REFUNDS = JSON.parse(localStorage.getItem(REFUNDS_KEY)) || MOCK_REFUNDS;
   }
@@ -1309,26 +1386,71 @@ function addDeal() {
   const slots = parseInt(document.getElementById('deal-slots').value) || 0;
   const type  = document.getElementById('deal-type-new').value;
   if (!brand || !code) { showToast('Brand name and product code are required.', 'error'); return; }
-  DEALS_DATA.push({ id: 'DL' + Date.now(), brand, code, platform: plat, type, price, slots, active: true });
+  
+  const newDeal = { id: 'DL' + Date.now(), brand, code, platform: plat, type, price, slots, active: true };
+  DEALS_DATA.push(newDeal);
+  saveDealsLocal(DEALS_DATA);
   renderDeals();
-  ['deal-brand','deal-code','deal-price','deal-slots','deal-url'].forEach(id => document.getElementById(id).value = '');
+
+  fetch('/api/deals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productCode: code, productName: brand, platform: plat, price, cashback: Math.round(price * 0.1), slots, dealType: type })
+  }).catch(() => {});
+
+  ['deal-brand','deal-code','deal-price','deal-slots','deal-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   showToast('Deal added successfully.', 'success');
 }
 
 function toggleDeal(id) {
   const deal = DEALS_DATA.find(d => d.id === id);
-  if (deal) { deal.active = !deal.active; renderDeals(); }
+  if (deal) {
+    deal.active = !deal.active;
+    saveDealsLocal(DEALS_DATA);
+    renderDeals();
+    fetch('/api/deals/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: deal.active })
+    }).catch(() => {});
+  }
 }
 
 function deleteDeal(id) {
+  const targetDeal = DEALS_DATA.find(d => d.id === id || (d.brand && d.brand.toLowerCase() === String(id).toLowerCase()) || (d.code && d.code.toLowerCase() === String(id).toLowerCase()));
+  const dealTitle = targetDeal ? (targetDeal.brand + ' (' + targetDeal.code + ')') : id;
+
   showConfirm({
     title: 'Delete Deal?',
-    msg: 'This deal will be removed from the list.',
+    msg: `Are you sure you want to permanently delete "${dealTitle}"? This cannot be undone.`,
     iconHtml: '<i class="ph-bold ph-trash" style="color:#dc2626;font-size:1.6rem;"></i>',
     iconBg: '#fef2f2',
-    btnText: 'Delete',
+    btnText: 'Delete Permanently',
     btnClass: 'btn-danger',
-    onConfirm: () => { DEALS_DATA = DEALS_DATA.filter(d => d.id !== id); renderDeals(); showToast('Deal deleted.', 'info'); }
+    onConfirm: async () => {
+      if (targetDeal) {
+        addDeletedDealId(targetDeal.id);
+        addDeletedDealId(targetDeal.brand);
+        addDeletedDealId(targetDeal.code);
+      } else {
+        addDeletedDealId(id);
+      }
+
+      const updated = DEALS_DATA.filter(d => d.id !== id && (!d.brand || d.brand.toLowerCase() !== String(id).toLowerCase()) && (!d.code || d.code.toLowerCase() !== String(id).toLowerCase()));
+      saveDealsLocal(updated);
+      renderDeals();
+
+      window.dispatchEvent(new Event('ds_storage_update'));
+
+      try {
+        await fetch('/api/deals/' + encodeURIComponent(id), { method: 'DELETE' });
+      } catch (e) {}
+
+      showToast('Deal deleted permanently.', 'info');
+    }
   });
 }
 

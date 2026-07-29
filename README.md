@@ -2,7 +2,8 @@
 
 A full-featured **cashback deal management portal** clone of [deal.deals.seller.com](https://deal.deals.seller.com/), built as a static HTML/CSS/JavaScript single-page application with a secure authentication system and a full admin panel.
 
-> **Live Demo** → [GitHub Pages Link](https://forbesayush.github.io/deals-seller-portal/)
+> **Live Demo** → [GitHub Pages Link](https://forbesayush.github.io/deals-seller-portal/)  
+> 🗺️ **Comprehensive Feature Map & Serial Release History** → [FEATURE_MAP.md](file:///f:/workspcae/deals-seller-portal/FEATURE_MAP.md)
 
 ---
 

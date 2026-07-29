@@ -22,6 +22,11 @@ export interface Deal {
   maxPerUser?: number;
   claimedCount?: number;
   featured?: boolean;
+  isLightning?: boolean;
+  lightningEndsAt?: string;
+  isPrimeExclusive?: boolean;
+  isReturnLock?: boolean;
+  isAutoVerify?: boolean;
   tags?: string[];
   createdAt?: string;
 }

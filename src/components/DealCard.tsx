@@ -40,6 +40,27 @@ interface DealCardProps {
 
 export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
   const [saved, setSaved] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  React.useEffect(() => {
+    if (!deal.isLightning) return;
+    const target = deal.lightningEndsAt ? new Date(deal.lightningEndsAt).getTime() : Date.now() + 7200000;
+    const updateTimer = () => {
+      const diff = Math.max(0, target - Date.now());
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+      const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+      const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+      const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+      setTimeLeft(`${h}:${m}:${s}`);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [deal.isLightning, deal.lightningEndsAt]);
+
   const cashbackPct = deal.price > 0 ? Math.round((deal.cashback / deal.price) * 100) : 0;
   const netPayable = Math.max(0, deal.price - deal.cashback);
   const expiry = getExpiryStatus(deal.expiresAt);
@@ -48,11 +69,30 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
   const slotsColor = deal.slots <= 2 ? 'text-rose-500' : deal.slots <= 5 ? 'text-amber-500' : 'text-emerald-500';
 
   return (
-    <div className={`deal-card liquid-card-glow group relative ${deal.featured ? 'ring-2 ring-brand-500/30' : ''} ${compact ? '' : ''}`}>
-      {/* Featured Badge */}
-      {deal.featured && (
-        <div className="absolute top-3 right-3 z-10 badge badge-violet gap-1 shadow-sm">
-          <Zap className="w-3 h-3" /> Featured
+    <div className={`deal-card liquid-card-glow group relative ${deal.featured ? 'ring-2 ring-brand-500/30' : ''} ${deal.isPrimeExclusive ? 'border border-amber-400/40 shadow-amber-500/10' : ''} ${compact ? '' : ''}`}>
+      {/* Featured / Prime Badges */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        {deal.isPrimeExclusive && (
+          <div className="badge bg-amber-500 text-slate-950 font-extrabold gap-1 shadow-sm text-[10px] animate-pulse">
+            👑 Prime Deal
+          </div>
+        )}
+        {deal.featured && !deal.isPrimeExclusive && (
+          <div className="badge badge-violet gap-1 shadow-sm">
+            <Zap className="w-3 h-3" /> Featured
+          </div>
+        )}
+      </div>
+
+      {/* Amazon Lightning Deal Top Banner (Active when Admin enables isLightning) */}
+      {deal.isLightning && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white px-3 py-1.5 text-xs font-black flex items-center justify-between rounded-t-2xl shadow-inner">
+          <span className="flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5 fill-white animate-bounce" /> ⚡ LIGHTNING DEAL
+          </span>
+          <span className="font-mono text-[11px] bg-black/30 px-2 py-0.5 rounded-full border border-white/20">
+            {timeLeft || '02:00:00'}
+          </span>
         </div>
       )}
 
@@ -72,6 +112,11 @@ export function DealCard({ deal, onClaim, compact = false }: DealCardProps) {
                  deal.dealType.toLowerCase() === 'review' ? '⭐ Review' :
                  deal.dealType.toLowerCase() === 'cashback' ? '💰 Cashback' :
                  deal.dealType.toLowerCase() === 'rating' ? '🌟 Rating' : deal.dealType}
+              </span>
+            )}
+            {deal.isReturnLock && (
+              <span className="badge bg-slate-800 text-cyan-300 border border-cyan-500/30 text-[9px] font-mono">
+                📦 7D Return Lock
               </span>
             )}
           </div>

@@ -2,6 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectDB } from '@/lib/mongodb';
 import { getCurrentUserFromRequest, genId, nowISO } from '@/lib/auth';
+import { invalidateCache } from '@/lib/cache';
+
+import { syncDeleteDeal } from '@/lib/syncEngine';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -15,7 +18,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const dealId = parts[0];
     const subRoute = parts[1]; // 'claim', 'clone', 'slots'
 
-    const deal = await deals.findOne({ id: dealId });
+    // ── ATOMIC MONGO DELETE SYNC TECHNIQUE ──
+    if (req.method === 'DELETE') {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      const result = await syncDeleteDeal({
+        db,
+        targetId: dealId,
+        userId: session?.userId || 'admin'
+      });
+      return res.status(200).json({
+        success: true,
+        message: 'Deal permanently deleted and tombstoned in MongoDB',
+        ...result
+      });
+    }
+
+    const deal = await deals.findOne({ $or: [{ id: dealId }, { productCode: dealId }] });
     if (!deal) return res.status(404).json({ detail: 'Deal not found' });
 
     // ── CLAIM ──
@@ -58,15 +76,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       const { _id, ...d } = deal as any;
       return res.status(200).json(d);
-    }
-
-    // ── DELETE ──
-    if (req.method === 'DELETE') {
-      if (!session || !['admin', 'super_admin', 'manager'].includes(session.role)) {
-        return res.status(403).json({ detail: 'Admin only' });
-      }
-      await deals.deleteOne({ id: dealId });
-      return res.status(200).json({ success: true });
     }
 
     // ── PUT / PATCH ──

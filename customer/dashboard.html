@@ -1,16 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Auth guard: redirect to login if no session -->
+  <!-- Synchronous Non-Bypassable Auth Guard: Instantly hides DOM and validates buyer session -->
   <script>
     (function(){
-      try{
-        const s=JSON.parse(sessionStorage.getItem('jm_session'));
-        if(!s||Date.now()>s.expiresAt||s.role!=='buyer'){
-          sessionStorage.removeItem('jm_session');
-          window.location.replace('../login.html');
+      document.documentElement.style.display = 'none';
+      try {
+        const userId = sessionStorage.getItem('ds_session_user_id') || sessionStorage.getItem('ds_user_id');
+        const role = sessionStorage.getItem('ds_user_role') || sessionStorage.getItem('ds_role') || 'buyer';
+        const token = localStorage.getItem('ds_jwt_token');
+        const jmSessionStr = sessionStorage.getItem('jm_session');
+        let jmSession = null;
+        if (jmSessionStr) { try { jmSession = JSON.parse(jmSessionStr); } catch(e){} }
+
+        const isExpired = jmSession && Date.now() > jmSession.expiresAt;
+        const validRole = role === 'buyer' || (jmSession && jmSession.role === 'buyer') || ['admin', 'super_admin', 'manager', 'auditor'].includes(role);
+        const hasAuth = (userId || token || (jmSession && !isExpired)) && validRole;
+
+        if (!hasAuth || isExpired) {
+          sessionStorage.clear();
+          window.location.replace('../login.html?reason=unauthorized');
+        } else {
+          document.documentElement.style.display = '';
         }
-      }catch(e){window.location.replace('../login.html');}
+      } catch(e) {
+        window.location.replace('../login.html');
+      }
     })();
   </script>
   <script src="../js/auth.js"></script>
@@ -788,61 +803,8 @@
           <span>#</span><span></span><span>Product</span><span>Deal Details</span><span>Original Price</span><span style="text-align:center;">Available Slots</span><span>Action</span>
         </div>
 
-        <div class="deal-row" id="deal-1">
-          <span class="deal-num">1</span>
-          <div class="deal-img-wrap"><div style="font-size:2rem;">📦</div></div>
-          <div>
-            <div class="deal-name">DZ</div>
-            <div class="deal-code">Blinkit_Floor_TabletStand_360°</div>
-            <span class="platform-badge badge-blinkit">BLINKIT</span>
-            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
-          </div>
-          <div class="deal-type">Review</div>
-          <div class="deal-price">₹1,299</div>
-          <div class="slots-badge slot-red"><span class="slots-dot"></span> 4 left</div>
-          <button class="req-deal-btn">Request Deal</button>
-        </div>
-
-        <div class="deal-row" id="deal-2">
-          <span class="deal-num">2</span>
-          <div class="deal-img-wrap"><div style="font-size:2rem;">🔌</div></div>
-          <div>
-            <div class="deal-name">Philips</div>
-            <div class="deal-code">Philips_Usb2C_Premium_Braided_Cable_1.5M</div>
-            <span class="platform-badge badge-amazon">AMAZON</span>
-            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
-          </div>
-          <div>
-            <div class="deal-type">Review</div>
-            <div class="deal-type" style="margin-top:40px;">Rating</div>
-          </div>
-          <div>
-            <div class="deal-price">₹450</div>
-            <div class="deal-price" style="margin-top:40px;">₹450</div>
-          </div>
-          <div>
-            <div class="slots-badge slot-red"><span class="slots-dot"></span> 4 left</div>
-            <div class="slots-badge slot-orange" style="margin-top:40px;"><span class="slots-dot"></span> 5 left</div>
-          </div>
-          <div>
-            <button class="req-deal-btn">Request Deal</button>
-            <button class="req-deal-btn" style="margin-top:36px;">Request Deal</button>
-          </div>
-        </div>
-
-        <div class="deal-row" id="deal-3">
-          <span class="deal-num">3</span>
-          <div class="deal-img-wrap"><div style="font-size:2rem;">🧴</div></div>
-          <div>
-            <div class="deal-name">Zaylore</div>
-            <div class="deal-code">ZY_Adhesive_Glue_Az</div>
-            <span class="platform-badge badge-amazon">AMAZON</span>
-            <div style="margin-top:6px;"><a href="#" style="font-size:0.75rem;color:#6366f1;font-weight:700;text-decoration:none;">🔗 View Product</a></div>
-          </div>
-          <div class="deal-type">Review</div>
-          <div class="deal-price">₹449</div>
-          <div class="slots-badge slot-orange"><span class="slots-dot"></span> 3 left</div>
-          <button class="req-deal-btn">Request Deal</button>
+        <div id="deals-list-container">
+          <!-- Dynamic deals rendered here -->
         </div>
       </div>
 
@@ -1467,6 +1429,53 @@
         if (el) el.classList.toggle('active', id === tabId);
       });
     }
+
+    function renderActiveDeals() {
+      const container = document.getElementById('deals-list-container');
+      if (!container) return;
+
+      let deletedIds = [];
+      try { deletedIds = JSON.parse(localStorage.getItem('ds_deleted_deal_ids_v2')) || []; } catch(e){}
+
+      const savedDeals = JSON.parse(localStorage.getItem('ds_deals_data_v2')) || [
+        { id: 'DL001', brand: 'DZ', code: 'Blinkit_Floor_TabletStand_360°', platform: 'Blinkit', type: 'Review', price: 1299, slots: 4, active: true },
+        { id: 'DL002', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Review', price: 450, slots: 4, active: true },
+        { id: 'DL003', brand: 'Philips', code: 'Philips_Usb2C_Premium_Braided_Cable_1.5M', platform: 'Amazon', type: 'Rating', price: 450, slots: 5, active: true },
+        { id: 'DL004', brand: 'Zaylore', code: 'ZY_Adhesive_Glue_Az', platform: 'Amazon', type: 'Review', price: 449, slots: 3, active: true },
+      ];
+
+      const activeDeals = savedDeals.filter(d => 
+        d.active !== false &&
+        !deletedIds.includes(String(d.id).toLowerCase()) &&
+        !deletedIds.includes(String(d.brand).toLowerCase()) &&
+        !deletedIds.includes(String(d.code).toLowerCase())
+      );
+
+      if (!activeDeals.length) {
+        container.innerHTML = '<div style="padding:40px;text-align:center;"><i class="ph-bold ph-tag" style="font-size:2rem;color:#9ca3af;"></i><div style="font-weight:700;margin-top:8px;color:#6b7280;">No active deals available right now</div></div>';
+        return;
+      }
+
+      container.innerHTML = activeDeals.map((d, i) => `
+        <div class="deal-row" id="deal-${d.id}">
+          <span class="deal-num">${i + 1}</span>
+          <div class="deal-img-wrap"><div style="font-size:2rem;">📦</div></div>
+          <div>
+            <div class="deal-name">${d.brand}</div>
+            <div class="deal-code">${d.code}</div>
+            <span class="platform-badge ${d.platform==='Amazon'?'badge-amazon':d.platform==='Flipkart'?'badge-flipkart':'badge-blinkit'}">${(d.platform||'AMAZON').toUpperCase()}</span>
+          </div>
+          <div class="deal-type">${d.type}</div>
+          <div class="deal-price">₹${d.price}</div>
+          <div class="slots-badge ${d.slots<=3?'slot-red':'slot-orange'}"><span class="slots-dot"></span> ${d.slots} left</div>
+          <button class="req-deal-btn" onclick="window.location.href='../orderform.html?code=${encodeURIComponent(d.code)}'">Request Deal</button>
+        </div>
+      `).join('');
+    }
+
+    window.addEventListener('ds_storage_update', renderActiveDeals);
+    window.addEventListener('storage', renderActiveDeals);
+    renderActiveDeals();
 
     function handleSavePayment() {
       const btn = event.target.closest('button');

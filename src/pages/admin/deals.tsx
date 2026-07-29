@@ -36,6 +36,11 @@ interface DealFormData {
   minOrderValue: number | '';
   maxPerUser: number | '';
   featured: boolean;
+  isLightning: boolean;
+  lightningHours: number;
+  isPrimeExclusive: boolean;
+  isReturnLock: boolean;
+  isAutoVerify: boolean;
   tags: string;
 }
 
@@ -43,7 +48,8 @@ const DEFAULT_FORM: DealFormData = {
   productCode: '', productName: '', platform: 'Amazon', price: '', cashback: '',
   slots: 5, active: true, category: 'General', expiresAt: '', description: '',
   imageUrl: '', rating: 4.5, dealType: 'Original', minOrderValue: 0, maxPerUser: 1,
-  featured: false, tags: '',
+  featured: false, isLightning: false, lightningHours: 4, isPrimeExclusive: false,
+  isReturnLock: false, isAutoVerify: false, tags: '',
 };
 
 export default function AdminDeals() {
@@ -95,7 +101,13 @@ export default function AdminDeals() {
       if (platformFilter !== 'All') url += `platform=${encodeURIComponent(platformFilter)}&`;
       const res = await fetch(url);
       if (res.ok) {
-        let data = await res.json();
+        let data: Deal[] = await res.json();
+        const blacklist: string[] = JSON.parse(localStorage.getItem('ds_deleted_deal_ids_v2') || '[]');
+        data = data.filter((d: Deal) => 
+          !blacklist.includes(String(d.id).toLowerCase()) &&
+          !blacklist.includes(String(d.productCode).toLowerCase()) &&
+          !blacklist.includes(String(d.productName).toLowerCase())
+        );
         if (statusFilter === 'active') data = data.filter((d: Deal) => d.active);
         if (statusFilter === 'inactive') data = data.filter((d: Deal) => !d.active);
         if (statusFilter === 'featured') data = data.filter((d: Deal) => d.featured);
@@ -135,6 +147,10 @@ export default function AdminDeals() {
       imageUrl: deal.imageUrl || '', rating: deal.rating || 4.5,
       dealType: deal.dealType || 'cashback', minOrderValue: deal.minOrderValue || 0,
       maxPerUser: deal.maxPerUser || 1, featured: deal.featured || false,
+      isLightning: deal.isLightning || false, lightningHours: 4,
+      isPrimeExclusive: deal.isPrimeExclusive || false,
+      isReturnLock: deal.isReturnLock || false,
+      isAutoVerify: deal.isAutoVerify || false,
       tags: Array.isArray(deal.tags) ? deal.tags.join(', ') : (deal.tags || ''),
     });
     setFormMsg(null);
@@ -148,10 +164,18 @@ export default function AdminDeals() {
     try {
       const url = editDeal ? `/api/deals/${editDeal.id}` : '/api/deals';
       const method = editDeal ? 'PATCH' : 'POST';
+
+      const payload = {
+        ...formData,
+        lightningEndsAt: formData.isLightning
+          ? new Date(Date.now() + (formData.lightningHours || 4) * 3600000).toISOString()
+          : undefined,
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
@@ -192,11 +216,40 @@ export default function AdminDeals() {
 
   const handleDelete = async () => {
     if (!deleteDeal) return;
-    setDeleteLoading(true);
+    const targetId = deleteDeal.id;
+    const targetCode = deleteDeal.productCode;
+    const targetName = deleteDeal.productName;
+
+    // 1. Instantly close modal — zero UI spinner hang
+    setShowDeleteConfirm(false);
+    setDeleteLoading(false);
+    setDeleteDeal(null);
+
+    // 2. Immediate optimistic state update
+    setDeals(prev => prev.filter(d => 
+      d.id !== targetId &&
+      d.productCode !== targetCode &&
+      d.productName !== targetName
+    ));
+
+    // 3. Permanent localStorage deletion blacklist
     try {
-      const res = await fetch(`/api/deals/${deleteDeal.id}`, { method: 'DELETE' });
-      if (res.ok) { setShowDeleteConfirm(false); setDeleteDeal(null); fetchDeals(); }
-    } catch { /* silent */ } finally { setDeleteLoading(false); }
+      const blacklist = JSON.parse(localStorage.getItem('ds_deleted_deal_ids_v2') || '[]');
+      [targetId, targetCode, targetName].forEach(val => {
+        if (val && !blacklist.includes(String(val).toLowerCase())) {
+          blacklist.push(String(val).toLowerCase());
+        }
+      });
+      localStorage.setItem('ds_deleted_deal_ids_v2', JSON.stringify(blacklist));
+    } catch { /* silent */ }
+
+    // 4. Broadcast cross-tab sync
+    window.dispatchEvent(new Event('ds_storage_update'));
+
+    // 5. Async background API database purge
+    try {
+      await fetch(`/api/deals/${encodeURIComponent(targetId)}`, { method: 'DELETE' });
+    } catch { /* silent */ }
   };
 
   const handleClone = async () => {
@@ -500,6 +553,59 @@ export default function AdminDeals() {
                   <label className="section-label">Tags (comma-separated)</label>
                   <input value={formData.tags} onChange={e => setFormData(p => ({ ...p, tags: e.target.value }))} className="input" placeholder="sale, new, trending" />
                 </div>
+                {/* Amazon Feature Engine (Activated on Admin Add) */}
+                <div className="sm:col-span-2 p-4 rounded-xl bg-slate-900/60 border border-amber-500/30 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs uppercase tracking-wider">
+                    <Zap className="w-4 h-4 fill-amber-400" /> Amazon Feature Engine (Activated on Admin Creation)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                      <input type="checkbox" checked={formData.isLightning} onChange={e => setFormData(p => ({ ...p, isLightning: e.target.checked }))} className="w-4 h-4 rounded accent-amber-500" />
+                      <div>
+                        <span className="text-xs font-bold block text-amber-300">⚡ Mark as Lightning Deal</span>
+                        <span className="text-[10px] text-slate-400">Activates live ticking countdown on cards</span>
+                      </div>
+                    </label>
+
+                    {formData.isLightning && (
+                      <div className="p-2 rounded-lg bg-slate-800/50">
+                        <label className="text-[10px] font-bold text-amber-400 block mb-1">Lightning Duration (Hours)</label>
+                        <select value={formData.lightningHours} onChange={e => setFormData(p => ({ ...p, lightningHours: parseInt(e.target.value) || 4 }))} className="select text-xs py-1">
+                          <option value={1}>1 Hour Flash Sale</option>
+                          <option value={2}>2 Hours Flash Sale</option>
+                          <option value={4}>4 Hours Standard</option>
+                          <option value={12}>12 Hours Mega Sale</option>
+                          <option value={24}>24 Hours Day Sale</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                      <input type="checkbox" checked={formData.isPrimeExclusive} onChange={e => setFormData(p => ({ ...p, isPrimeExclusive: e.target.checked }))} className="w-4 h-4 rounded accent-amber-400" />
+                      <div>
+                        <span className="text-xs font-bold block text-amber-300">👑 Amazon Prime Exclusive</span>
+                        <span className="text-[10px] text-slate-400">Highlights with Prime Gold badge</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                      <input type="checkbox" checked={formData.isReturnLock} onChange={e => setFormData(p => ({ ...p, isReturnLock: e.target.checked }))} className="w-4 h-4 rounded accent-cyan-400" />
+                      <div>
+                        <span className="text-xs font-bold block text-cyan-300">📦 7-Day Return Lock</span>
+                        <span className="text-[10px] text-slate-400">Holds payout for Amazon return window</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                      <input type="checkbox" checked={formData.isAutoVerify} onChange={e => setFormData(p => ({ ...p, isAutoVerify: e.target.checked }))} className="w-4 h-4 rounded accent-emerald-400" />
+                      <div>
+                        <span className="text-xs font-bold block text-emerald-300">🛡️ Auto-Verify Amazon Order ID</span>
+                        <span className="text-[10px] text-slate-400">Validates 17-digit format (408-XXXXXXX)</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2 flex items-center gap-6">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={formData.active} onChange={e => setFormData(p => ({ ...p, active: e.target.checked }))} className="w-4 h-4 rounded accent-brand-600" />
