@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { ExportProgressModal, ExportStage } from '@/components/ExportProgressModal';
@@ -36,7 +37,7 @@ const STATUS_OPTIONS = [
   { val: 'cancelled', label: 'Cancelled' },
 ];
 
-export default function AdminOrders() {
+function AdminOrdersContent() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -737,3 +738,18 @@ export default function AdminOrders() {
     </>
   );
 }
+
+export default function AdminOrders() {
+  return (
+    <ProtectedRoute allowedRoles={['admin', 'super_admin', 'manager', 'auditor']}>
+      <AdminOrdersContent />
+    </ProtectedRoute>
+  );
+}
+
+export const getServerSideProps = async (context: any) => {
+  const { requireServerAdmin } = await import('@/lib/serverAuth');
+  return requireServerAdmin(context);
+};
+
+

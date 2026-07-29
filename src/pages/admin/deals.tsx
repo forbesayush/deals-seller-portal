@@ -8,7 +8,7 @@ import type { Deal } from '@/types';
 import {
   Plus, Search, Filter, RefreshCw, Tag, Edit3, Trash2, Copy,
   ToggleLeft, ToggleRight, Star, ChevronRight, X, Loader2,
-  Grid3X3, List, AlertTriangle, Check, Sliders
+  Grid3X3, List, AlertTriangle, Check, Sliders, Zap
 } from 'lucide-react';
 
 function formatINR(n: number) {

@@ -11,12 +11,15 @@ load_dotenv()
 from collections import defaultdict
 from fastapi import FastAPI, Depends, HTTPException, status, Response, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from src.database.db import get_db, Base, engine
+from src.utils.cache import backend_cache
+from src.middleware.rate_limiter import RateLimiterMiddleware
 from src.models.models import (
     User, Order, Refund, Wallet, Transaction, AuditLog, Deal, Withdrawal, Ticket,
     SystemSetting, Announcement, LoginSession, OrderStatusLog, DealSlotHistory,
@@ -74,6 +77,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Enable Gzip Compression for payloads larger than 500 bytes (reduces JSON network overhead during traffic spikes)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Enable Sliding-Window Rate Limiting Middleware (throttles spikes & protects backend resources)
+app.add_middleware(RateLimiterMiddleware)
+
 
 
 # Security headers middleware
@@ -723,6 +733,7 @@ def get_audit_logs(
 # ─────────────────────────────────────────────
 @app.get("/api/deals", response_model=List[DealResponse], tags=["Deals"])
 def list_deals(
+    response: Response,
     q: Optional[str] = None,
     category: Optional[str] = None,
     platform: Optional[str] = None,
@@ -730,11 +741,19 @@ def list_deals(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """All logged-in users (any role) see ALL active deals. Admins also see inactive ones."""
-    if current_user.role in ('admin', 'super_admin', 'manager', 'auditor'):
+    """All logged-in users (any role) see ALL active deals. Micro-cached for high traffic concurrency."""
+    role = current_user.role
+    cache_key = f"deals_list_{role}_{q or ''}_{category or ''}_{platform or ''}_{featured}"
+
+    cached = backend_cache.get(cache_key)
+    if cached is not None:
+        response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=30"
+        response.headers["X-Cache-Status"] = "HIT"
+        return cached
+
+    if role in ('admin', 'super_admin', 'manager', 'auditor'):
         query = db.query(Deal)
     else:
-        # Buyers see all active deals — no restriction
         query = db.query(Deal).filter(Deal.active == True)
 
     if q:
@@ -751,7 +770,11 @@ def list_deals(
     if featured is not None:
         query = query.filter(Deal.featured == featured)
 
-    return query.order_by(Deal.featured.desc(), Deal.cashback.desc()).all()
+    res = query.order_by(Deal.featured.desc(), Deal.cashback.desc()).all()
+    backend_cache.set(cache_key, res, ttl_seconds=10)
+    response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=30"
+    response.headers["X-Cache-Status"] = "MISS"
+    return res
 
 
 @app.get("/api/deals/{deal_id}", tags=["Deals"])
@@ -778,7 +801,9 @@ def create_deal(
 ):
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "unknown")
-    return biz_logic.create_deal(db, schema, current_user, ip, ua)
+    res = biz_logic.create_deal(db, schema, current_user, ip, ua)
+    backend_cache.invalidate("deals_list_")
+    return res
 
 
 @app.patch("/api/deals/{deal_id}", response_model=DealResponse, tags=["Deals"])
@@ -791,7 +816,9 @@ def update_deal(
 ):
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "unknown")
-    return biz_logic.update_deal(db, deal_id, schema, current_user, ip, ua)
+    res = biz_logic.update_deal(db, deal_id, schema, current_user, ip, ua)
+    backend_cache.invalidate("deals_list_")
+    return res
 
 
 @app.delete("/api/deals/{deal_id}", tags=["Deals"])
@@ -804,6 +831,7 @@ def delete_deal(
     ip = request.client.host if request.client else "unknown"
     ua = request.headers.get("user-agent", "unknown")
     biz_logic.delete_deal(db, deal_id, current_user, ip, ua)
+    backend_cache.invalidate("deals_list_")
     return {"success": True, "message": "Deal permanently removed"}
 
 

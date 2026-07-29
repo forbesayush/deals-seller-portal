@@ -25,6 +25,12 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgrespassword}@db:5432/${POSTGRES_DB:-portal}
       - SECRET_KEY=${SECRET_KEY:-super-secret-deals-portal-key-for-auth-2026}
+      - WEB_CONCURRENCY=${WEB_CONCURRENCY:-4}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-30}
+      - RATE_LIMIT_DEFAULT=${RATE_LIMIT_DEFAULT:-300}
+      - RATE_LIMIT_AUTH=${RATE_LIMIT_AUTH:-15}
+
     ports:
       - "5000:5000"
 

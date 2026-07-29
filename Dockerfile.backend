@@ -17,5 +17,8 @@ COPY src/ /app/src/
 # Expose FastAPI port
 EXPOSE 5000
 
-# Run FastAPI via uvicorn
-CMD ["uvicorn", "src.core.controller:app", "--host", "0.0.0.0", "--port", "5000"]
+# Default worker concurrency for high-concurrency request scaling
+ENV WEB_CONCURRENCY=4
+
+# Run FastAPI via uvicorn with multi-worker scaling
+CMD ["sh", "-c", "uvicorn src.core.controller:app --host 0.0.0.0 --port 5000 --workers ${WEB_CONCURRENCY:-4}"]

@@ -89,9 +89,18 @@ export default function Login() {
           if (data.token) setAuthToken(data.token);
           const meRes = await authFetch('/api/auth/me');
           const meData = await meRes.json();
-          if (meData.success) {
+          if (meData.success && meData.user) {
             setUser(meData.user);
             const role = meData.user.role;
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('ds_session_user_id', meData.user.id);
+              sessionStorage.setItem('ds_user_role', role);
+              sessionStorage.setItem('jm_session', JSON.stringify({
+                userId: meData.user.id,
+                role: role,
+                expiresAt: Date.now() + (8 * 60 * 60 * 1000)
+              }));
+            }
             if (['admin', 'super_admin', 'manager', 'auditor'].includes(role)) {
               window.location.href = '/admin/dashboard';
             } else {

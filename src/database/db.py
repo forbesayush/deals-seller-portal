@@ -2,9 +2,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Retrieve database URL from environment or fall back to local sqlite db.
-# For production, PostgreSQL URL would be set, e.g. postgresql://user:pass@db:5432/portal
+# Retrieve database URL and pool configuration from environment with high-concurrency defaults.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///portal.db")
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "20"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "30"))
+DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))  # Recycle connections after 30 mins
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "15"))    # Timeout waiting for pool connection
 
 # Create SQLAlchemy engine. Use connect_args for SQLite to handle multi-threading.
 if DATABASE_URL.startswith("sqlite"):
@@ -15,8 +18,10 @@ if DATABASE_URL.startswith("sqlite"):
 else:
     engine = create_engine(
         DATABASE_URL,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=DB_POOL_SIZE,
+        max_overflow=DB_MAX_OVERFLOW,
+        pool_recycle=DB_POOL_RECYCLE,
+        pool_timeout=DB_POOL_TIMEOUT,
         pool_pre_ping=True
     )
 
@@ -30,3 +35,4 @@ def get_db():
         yield db
     finally:
         db.close()
+

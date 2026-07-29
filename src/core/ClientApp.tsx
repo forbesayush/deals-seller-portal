@@ -1,13 +1,10 @@
-import type { AppProps } from 'next/app';
+// core/ClientApp.tsx — Client-only application shell
+// This file is dynamically imported with ssr:false to prevent SSR prerender failures
+// from browser-only hooks (zustand, React Query, localStorage)
 import React, { useEffect } from 'react';
+import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import '@/styles/globals.css';
-
-// Import client-side API JWT header interceptor for cloud MongoDB backend sync
-if (typeof window !== 'undefined') {
-  require('@/utils/apiClient');
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +18,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function App({ Component, pageProps }: AppProps) {
+function AppInner({ Component, pageProps }: AppProps) {
   const checkAuth = useAuth((state) => state.checkAuth);
 
   useEffect(() => {
@@ -37,9 +34,13 @@ export default function App({ Component, pageProps }: AppProps) {
     }
   }, [checkAuth]);
 
+  return <Component {...pageProps} />;
+}
+
+export function ClientApp(props: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <Component {...pageProps} />
+      <AppInner {...props} />
     </QueryClientProvider>
   );
 }

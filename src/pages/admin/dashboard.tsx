@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from '@/hooks/useAuth';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { KPICardSkeleton, ChartSkeleton, TableSkeleton } from '@/components/SkeletonLoaders';
@@ -96,7 +97,7 @@ function MiniChart({ data }: { data: number[] }) {
   );
 }
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     typeof window !== 'undefined' ? window.innerWidth < 768 : true
@@ -575,3 +576,18 @@ export default function AdminDashboard() {
     </>
   );
 }
+
+export default function AdminDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['admin', 'super_admin', 'manager', 'auditor']}>
+      <AdminDashboardContent />
+    </ProtectedRoute>
+  );
+}
+
+export const getServerSideProps = async (context: any) => {
+  const { requireServerAdmin } = await import('@/lib/serverAuth');
+  return requireServerAdmin(context);
+};
+
+

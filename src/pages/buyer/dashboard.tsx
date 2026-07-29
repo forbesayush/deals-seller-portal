@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/hooks/useAuth';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useWallet } from '@/hooks/useWallet';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
@@ -65,7 +66,7 @@ const BRAND_OPTIONS = [
   { id: 'Myntra', name: '👗 Myntra', placeholder: 'e.g. 1234567-8901234-1', hint: 'Myntra format: XXXXXXX-XXXXXXX-X' },
 ];
 
-export default function BuyerDashboard() {
+function BuyerDashboardContent() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { wallet, fetchWallet } = useWallet();
@@ -1484,3 +1485,18 @@ export default function BuyerDashboard() {
     </>
   );
 }
+
+export default function BuyerDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['buyer', 'admin', 'super_admin', 'manager', 'auditor']}>
+      <BuyerDashboardContent />
+    </ProtectedRoute>
+  );
+}
+
+export const getServerSideProps = async (context: any) => {
+  const { requireServerBuyer } = await import('@/lib/serverAuth');
+  return requireServerBuyer(context);
+};
+
+

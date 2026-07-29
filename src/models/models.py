@@ -1,10 +1,14 @@
 import json
-from sqlalchemy import Column, String, Float, Integer, Boolean, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, Boolean, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 from src.database.db import Base
 
 class User(Base):
     __tablename__ = 'users'
+    __table_args__ = (
+        Index('idx_users_role_status', 'role', 'status'),
+        Index('idx_users_email', 'email'),
+    )
 
     id            = Column(String(16), primary_key=True)   # USR001, ADM001, etc.
     name          = Column(String(100), nullable=False)
@@ -61,6 +65,11 @@ class User(Base):
 
 class Order(Base):
     __tablename__ = 'orders'
+    __table_args__ = (
+        Index('idx_orders_buyer_status', 'buyer_id', 'current_status'),
+        Index('idx_orders_deal_id', 'deal_id'),
+        Index('idx_orders_date', 'order_date'),
+    )
 
     id              = Column(String(16), primary_key=True) # ORD001
     order_no        = Column(String(60), nullable=False, index=True)
@@ -127,6 +136,10 @@ class Order(Base):
 
 class Refund(Base):
     __tablename__ = 'refunds'
+    __table_args__ = (
+        Index('idx_refunds_user_status', 'user_id', 'status'),
+        Index('idx_refunds_order_id', 'order_id'),
+    )
 
     id           = Column(String(16), primary_key=True) # REF001
     order_id     = Column(String(16), ForeignKey('orders.id'), nullable=True)
@@ -199,6 +212,10 @@ class Wallet(Base):
 
 class Transaction(Base):
     __tablename__ = 'transactions'
+    __table_args__ = (
+        Index('idx_transactions_wallet_status', 'wallet_id', 'status'),
+        Index('idx_transactions_timestamp', 'timestamp'),
+    )
 
     id          = Column(String(16), primary_key=True) # TXN001
     wallet_id   = Column(String(16), ForeignKey('wallets.id'), nullable=False)
@@ -228,6 +245,10 @@ class Transaction(Base):
 
 class AuditLog(Base):
     __tablename__ = 'audit_logs'
+    __table_args__ = (
+        Index('idx_audit_logs_timestamp', 'timestamp'),
+        Index('idx_audit_logs_user', 'user_id'),
+    )
 
     id          = Column(String(16), primary_key=True) # LOG001
     user_id     = Column(String(16), ForeignKey('users.id'), nullable=True)
@@ -263,6 +284,10 @@ class AuditLog(Base):
 
 class Deal(Base):
     __tablename__ = 'deals'
+    __table_args__ = (
+        Index('idx_deals_active_platform', 'active', 'platform'),
+        Index('idx_deals_featured', 'featured', 'active'),
+    )
 
     id           = Column(String(16), primary_key=True)   # DEA001
     product_code = Column(String(60), unique=True, nullable=False, index=True)
