@@ -8,7 +8,8 @@ import type { Deal } from '@/types';
 import {
   Plus, Search, Filter, RefreshCw, Tag, Edit3, Trash2, Copy,
   ToggleLeft, ToggleRight, Star, ChevronRight, X, Loader2,
-  Grid3X3, List, AlertTriangle, Check, Sliders, Zap
+  Grid3X3, List, AlertTriangle, Check, Sliders, Zap,
+  CheckSquare, Square, SortAsc, TrendingUp, BarChart3
 } from 'lucide-react';
 
 function formatINR(n: number) {
@@ -63,7 +64,11 @@ export default function AdminDeals() {
   const [searchQuery, setSearchQuery] = useState('');
   const [platformFilter, setPlatformFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [dealTypeFilter, setDealTypeFilter] = useState('All');
+  const [sortBy, setSortBy] = useState<'newest' | 'price' | 'cashback' | 'slots' | 'claims'>('newest');
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
@@ -111,10 +116,11 @@ export default function AdminDeals() {
         if (statusFilter === 'active') data = data.filter((d: Deal) => d.active);
         if (statusFilter === 'inactive') data = data.filter((d: Deal) => !d.active);
         if (statusFilter === 'featured') data = data.filter((d: Deal) => d.featured);
+        if (dealTypeFilter !== 'All') data = data.filter((d: Deal) => (d.dealType || '').toLowerCase() === dealTypeFilter.toLowerCase());
         setDeals(data);
       }
     } catch { /* silent */ } finally { setLoading(false); }
-  }, [searchQuery, platformFilter, statusFilter]);
+  }, [searchQuery, platformFilter, statusFilter, dealTypeFilter]);
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
@@ -275,9 +281,59 @@ export default function AdminDeals() {
     } catch { /* silent */ }
   };
 
-  const filteredDeals = deals;
+  // Sort the filtered deals
+  const filteredDeals = [...deals].sort((a, b) => {
+    if (sortBy === 'price') return b.price - a.price;
+    if (sortBy === 'cashback') return b.cashback - a.cashback;
+    if (sortBy === 'slots') return b.slots - a.slots;
+    if (sortBy === 'claims') return (b.claimedCount || 0) - (a.claimedCount || 0);
+    // newest: sort by createdAt desc (default)
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
+
   const activeCount = deals.filter(d => d.active).length;
   const featuredCount = deals.filter(d => d.featured).length;
+  const lightningCount = deals.filter(d => d.isLightning).length;
+  const soldOutCount = deals.filter(d => d.slots <= (d.claimedCount || 0)).length;
+
+  // Bulk selection helpers
+  const toggleBulkSelect = (id: string) => {
+    setSelectedDeals(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const selectAll = () => setSelectedDeals(filteredDeals.map(d => d.id));
+  const clearSelection = () => { setSelectedDeals([]); setBulkMode(false); };
+
+  const handleBulkAction = async (action: 'enable' | 'disable' | 'delete') => {
+    if (!selectedDeals.length) return;
+    setBulkLoading(true);
+    try {
+      if (action === 'delete') {
+        // Optimistic removal from UI
+        const toRemove = new Set(selectedDeals);
+        setDeals(prev => prev.filter(d => !toRemove.has(d.id)));
+        const blacklist = JSON.parse(localStorage.getItem('ds_deleted_deal_ids_v2') || '[]');
+        selectedDeals.forEach(id => {
+          const deal = deals.find(d => d.id === id);
+          if (deal) [id, deal.productCode, deal.productName].forEach(v => {
+            if (v && !blacklist.includes(String(v).toLowerCase())) blacklist.push(String(v).toLowerCase());
+          });
+        });
+        localStorage.setItem('ds_deleted_deal_ids_v2', JSON.stringify(blacklist));
+        window.dispatchEvent(new Event('ds_storage_update'));
+        await Promise.all(selectedDeals.map(id => fetch(`/api/deals/${encodeURIComponent(id)}`, { method: 'DELETE' })));
+      } else {
+        await Promise.all(selectedDeals.map(id =>
+          fetch(`/api/deals/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: action === 'enable' }),
+          })
+        ));
+        fetchDeals();
+      }
+      clearSelection();
+    } catch { /* silent */ } finally { setBulkLoading(false); }
+  };
 
   return (
     <>
@@ -303,6 +359,13 @@ export default function AdminDeals() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setBulkMode(!bulkMode); setSelectedDeals([]); }}
+                  className={`btn btn-sm ${bulkMode ? 'btn-primary' : 'btn-ghost'}`}
+                  title="Bulk Select Mode"
+                >
+                  <CheckSquare className="w-4 h-4" /> {bulkMode ? `${selectedDeals.length} selected` : 'Bulk'}
+                </button>
                 <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className="btn btn-ghost btn-sm">
                   {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid3X3 className="w-4 h-4" />}
                 </button>
@@ -315,13 +378,54 @@ export default function AdminDeals() {
               </div>
             </div>
 
+            {/* Bulk Action Bar */}
+            {bulkMode && selectedDeals.length > 0 && (
+              <div className="flex items-center gap-3 p-3 mb-4 rounded-2xl bg-brand-600/10 border border-brand-500/30 animate-fade-up">
+                <span className="text-sm font-bold text-brand-600 dark:text-violet-400">
+                  {selectedDeals.length} deal{selectedDeals.length !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                  <button onClick={selectAll} className="btn btn-ghost btn-sm text-xs">Select All ({filteredDeals.length})</button>
+                  <button
+                    onClick={() => handleBulkAction('enable')}
+                    disabled={bulkLoading}
+                    className="btn btn-sm bg-emerald-500/20 text-emerald-600 hover:bg-emerald-500/30 border-0"
+                  >
+                    {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ToggleRight className="w-3 h-3" />}
+                    Enable
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('disable')}
+                    disabled={bulkLoading}
+                    className="btn btn-sm bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 border-0"
+                  >
+                    {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <ToggleLeft className="w-3 h-3" />}
+                    Disable
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction('delete')}
+                    disabled={bulkLoading}
+                    className="btn btn-sm bg-rose-500/20 text-rose-600 hover:bg-rose-500/30 border-0"
+                  >
+                    {bulkLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                    Delete
+                  </button>
+                  <button onClick={clearSelection} className="btn btn-ghost btn-sm">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Stats Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
               {[
                 { label: 'Total Deals', value: deals.length, color: 'text-brand-600' },
                 { label: 'Active', value: activeCount, color: 'text-emerald-500' },
                 { label: 'Featured', value: featuredCount, color: 'text-amber-500' },
                 { label: 'Inactive', value: deals.length - activeCount, color: 'text-rose-500' },
+                { label: '⚡ Lightning', value: lightningCount, color: 'text-orange-500' },
+                { label: '⚠ Sold Out', value: soldOutCount, color: 'text-slate-400' },
               ].map(s => (
                 <div key={s.label} className="premium-card p-3 text-center">
                   <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
@@ -350,6 +454,17 @@ export default function AdminDeals() {
                 <option value="inactive">Inactive Only</option>
                 <option value="featured">Featured</option>
               </select>
+              <select value={dealTypeFilter} onChange={e => setDealTypeFilter(e.target.value)} className="select text-sm w-auto">
+                <option value="All">All Types</option>
+                {DEAL_TYPES.map(t => <option key={t} value={t}>{t === 'Original' ? '✨ ' : t === 'Exchange' ? '🔄 ' : t === 'Empty' ? '📦 ' : t === 'Review' ? '⭐ ' : t === 'Cashback' ? '💰 ' : '🌟 '}{t}</option>)}
+              </select>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} className="select text-sm w-auto">
+                <option value="newest">Sort: Newest</option>
+                <option value="price">Sort: Price ↓</option>
+                <option value="cashback">Sort: Cut ↓</option>
+                <option value="slots">Sort: Slots ↓</option>
+                <option value="claims">Sort: Claims ↓</option>
+              </select>
             </div>
 
             {/* Deals Grid / List */}
@@ -369,33 +484,48 @@ export default function AdminDeals() {
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredDeals.map(deal => (
-                  <div key={deal.id} className="relative group">
+                  <div key={deal.id} className={`relative group ${bulkMode && selectedDeals.includes(deal.id) ? 'ring-2 ring-brand-500 rounded-2xl' : ''}`}>
+                    {/* Bulk checkbox */}
+                    {bulkMode && (
+                      <button
+                        onClick={() => toggleBulkSelect(deal.id)}
+                        className="absolute top-2 left-2 z-20 w-7 h-7 rounded-lg bg-white dark:bg-slate-800 shadow-md flex items-center justify-center transition-colors"
+                      >
+                        {selectedDeals.includes(deal.id)
+                          ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                          : <Square className="w-4 h-4 text-slate-400" />}
+                      </button>
+                    )}
                     <DealCard deal={deal} onClaim={() => {}} />
                     {/* Admin Action Overlay */}
-                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-                      <button onClick={() => openEdit(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors" title="Edit">
-                        <Edit3 className="w-3.5 h-3.5 text-brand-600" />
-                      </button>
-                      <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Clone">
-                        <Copy className="w-3.5 h-3.5 text-amber-500" />
-                      </button>
-                      <button onClick={() => handleToggleFeatured(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 transition-colors" title="Toggle Featured">
-                        <Star className={`w-3.5 h-3.5 ${deal.featured ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
-                      </button>
-                      <button onClick={() => { setSlotDeal(deal); setNewSlots(String(deal.slots)); setShowSlotModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-blue-50 transition-colors" title="Adjust Slots">
-                        <Sliders className="w-3.5 h-3.5 text-blue-500" />
-                      </button>
-                      <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-rose-50 transition-colors" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      </button>
-                    </div>
+                    {!bulkMode && (
+                      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+                        <button onClick={() => openEdit(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors" title="Edit">
+                          <Edit3 className="w-3.5 h-3.5 text-brand-600" />
+                        </button>
+                        <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Clone">
+                          <Copy className="w-3.5 h-3.5 text-amber-500" />
+                        </button>
+                        <button onClick={() => handleToggleFeatured(deal)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-amber-50 transition-colors" title="Toggle Featured">
+                          <Star className={`w-3.5 h-3.5 ${deal.featured ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
+                        </button>
+                        <button onClick={() => { setSlotDeal(deal); setNewSlots(String(deal.slots)); setShowSlotModal(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-blue-50 transition-colors" title="Adjust Slots">
+                          <Sliders className="w-3.5 h-3.5 text-blue-500" />
+                        </button>
+                        <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 shadow-md flex items-center justify-center hover:bg-rose-50 transition-colors" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        </button>
+                      </div>
+                    )}
                     {/* Active Toggle */}
-                    <button
-                      onClick={() => handleToggleActive(deal)}
-                      className={`absolute bottom-16 right-3 badge text-[10px] ${deal.active ? 'badge-emerald' : 'badge-rose'}`}
-                    >
-                      {deal.active ? '● Live' : '○ Paused'}
-                    </button>
+                    {!bulkMode && (
+                      <button
+                        onClick={() => handleToggleActive(deal)}
+                        className={`absolute bottom-16 right-3 badge text-[10px] ${deal.active ? 'badge-emerald' : 'badge-rose'}`}
+                      >
+                        {deal.active ? '● Live' : '○ Paused'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -405,52 +535,89 @@ export default function AdminDeals() {
                 <table className="data-table">
                   <thead>
                     <tr>
+                      {bulkMode && <th className="w-10"><button onClick={selectAll} className="text-xs text-brand-600 dark:text-violet-400 font-bold">All</button></th>}
                       <th>Product</th>
+                      <th>Type</th>
                       <th>Platform</th>
                       <th>Price</th>
                       <th>Cut</th>
-                      <th>Slots</th>
+                      <th>Slots / Fill</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDeals.map(deal => (
-                      <tr key={deal.id}>
-                        <td>
-                          <div>
-                            <p className="font-semibold text-sm">{deal.productName}</p>
-                            <p className="text-xs text-slate-400">{deal.productCode}</p>
-                          </div>
-                        </td>
-                        <td className="text-sm">{deal.platform}</td>
-                        <td className="font-bold text-sm">{formatINR(deal.price)}</td>
-                        <td className="font-bold text-emerald-600 text-sm">{formatINR(deal.cashback)}</td>
-                        <td>
-                          <span className={`font-bold text-sm ${deal.slots <= 2 ? 'text-rose-500' : deal.slots <= 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                            {deal.slots}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex gap-1 items-center">
-                            <span className={`badge ${deal.active ? 'badge-emerald' : 'badge-rose'} text-[10px]`}>
-                              {deal.active ? 'Active' : 'Paused'}
-                            </span>
-                            {deal.featured && <span className="badge badge-amber text-[10px]">★ Featured</span>}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => openEdit(deal)} className="btn btn-ghost btn-sm px-2"><Edit3 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="btn btn-ghost btn-sm px-2"><Copy className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleToggleActive(deal)} className="btn btn-ghost btn-sm px-2">
-                              {deal.active ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4 text-slate-400" />}
-                            </button>
-                            <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="btn btn-ghost btn-sm px-2 text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredDeals.map(deal => {
+                      const fillPct = deal.slots > 0 ? Math.min(100, Math.round(((deal.claimedCount || 0) / deal.slots) * 100)) : 0;
+                      const dealTypeLabel = deal.dealType?.toLowerCase();
+                      const dealTypeBadgeClass = dealTypeLabel === 'exchange' ? 'badge-blue' : dealTypeLabel === 'empty' ? 'badge-slate' : dealTypeLabel === 'review' ? 'badge-amber' : dealTypeLabel === 'cashback' ? 'badge-emerald' : dealTypeLabel === 'rating' ? 'badge-pink' : 'badge-violet';
+                      const dealTypeEmoji = dealTypeLabel === 'original' ? '✨' : dealTypeLabel === 'exchange' ? '🔄' : dealTypeLabel === 'empty' ? '📦' : dealTypeLabel === 'review' ? '⭐' : dealTypeLabel === 'cashback' ? '💰' : '🌟';
+                      return (
+                        <tr key={deal.id} className={selectedDeals.includes(deal.id) ? 'bg-brand-50/20 dark:bg-violet-950/20' : ''}>
+                          {bulkMode && (
+                            <td>
+                              <button onClick={() => toggleBulkSelect(deal.id)}>
+                                {selectedDeals.includes(deal.id)
+                                  ? <CheckSquare className="w-4 h-4 text-brand-600" />
+                                  : <Square className="w-4 h-4 text-slate-400" />}
+                              </button>
+                            </td>
+                          )}
+                          <td>
+                            <div>
+                              <p className="font-semibold text-sm">{deal.productName}</p>
+                              <p className="text-xs text-slate-400 font-mono">{deal.productCode}</p>
+                            </div>
+                          </td>
+                          <td>
+                            {deal.dealType && (
+                              <span className={`badge ${dealTypeBadgeClass} text-[10px] font-bold`}>
+                                {dealTypeEmoji} {deal.dealType}
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-sm font-medium">{deal.platform}</td>
+                          <td className="font-bold text-sm">{formatINR(deal.price)}</td>
+                          <td className="font-bold text-emerald-600 text-sm">{formatINR(deal.cashback)}</td>
+                          <td>
+                            <div className="min-w-[80px]">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`font-bold text-xs ${deal.slots <= 2 ? 'text-rose-500' : deal.slots <= 5 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                  {(deal.slots || 0) - (deal.claimedCount || 0)}/{deal.slots}
+                                </span>
+                                <span className="text-[10px] text-slate-400">{fillPct}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${fillPct >= 100 ? 'bg-rose-500' : fillPct >= 75 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                  style={{ width: `${Math.max(5, fillPct)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex gap-1 items-center">
+                              <span className={`badge ${deal.active ? 'badge-emerald' : 'badge-rose'} text-[10px]`}>
+                                {deal.active ? 'Live' : 'Paused'}
+                              </span>
+                              {deal.featured && <span className="badge badge-amber text-[10px]">⭐</span>}
+                              {deal.isLightning && <span className="badge bg-orange-100 text-orange-700 text-[10px]">⚡</span>}
+                              {deal.isPrimeExclusive && <span className="badge bg-amber-100 text-amber-700 text-[10px]">👑</span>}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => openEdit(deal)} className="btn btn-ghost btn-sm px-2"><Edit3 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => { setCloneDeal(deal); setShowCloneModal(true); }} className="btn btn-ghost btn-sm px-2"><Copy className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleToggleActive(deal)} className="btn btn-ghost btn-sm px-2">
+                                {deal.active ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4 text-slate-400" />}
+                              </button>
+                              <button onClick={() => { setDeleteDeal(deal); setShowDeleteConfirm(true); }} className="btn btn-ghost btn-sm px-2 text-rose-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
