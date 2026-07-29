@@ -6,10 +6,10 @@ import { Header } from '@/components/Header';
 import { DealCard } from '@/components/DealCard';
 import type { Deal } from '@/types';
 import {
-  Plus, Search, Filter, RefreshCw, Tag, Edit3, Trash2, Copy,
-  ToggleLeft, ToggleRight, Star, ChevronRight, X, Loader2,
-  Grid3X3, List, AlertTriangle, Check, Sliders, Zap,
-  CheckSquare, Square, SortAsc, TrendingUp, BarChart3
+  Plus, Search, RefreshCw, Edit3, Trash2, Copy,
+  ToggleLeft, ToggleRight, Star, X, Loader2,
+  Grid3X3, List, Sliders,
+  CheckSquare, Square
 } from 'lucide-react';
 
 function formatINR(n: number) {
