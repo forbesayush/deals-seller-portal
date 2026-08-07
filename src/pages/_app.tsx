@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { IdleTimeoutWarning } from '@/components/IdleTimeoutWarning';
 import '@/styles/globals.css';
 
 // Import client-side API JWT header interceptor for cloud MongoDB backend sync
@@ -40,6 +41,8 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <Component {...pageProps} />
+      {/* FR-07: Global idle auto-logout warning — active for all authenticated pages */}
+      <IdleTimeoutWarning />
     </QueryClientProvider>
   );
 }

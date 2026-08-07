@@ -124,5 +124,6 @@ class RoleChecker:
 
 # Convenience instances
 require_admin = RoleChecker(["admin"])
-require_staff = RoleChecker(["admin", "manager", "auditor"])
+require_staff = RoleChecker(["admin", "manager", "auditor", "product_manager"])
 require_buyer = RoleChecker(["buyer"])
+require_product_manager = RoleChecker(["product_manager", "admin", "super_admin"])

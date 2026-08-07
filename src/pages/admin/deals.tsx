@@ -8,7 +8,7 @@ import type { Deal } from '@/types';
 import {
   Plus, Search, RefreshCw, Edit3, Trash2, Copy,
   ToggleLeft, ToggleRight, Star, X, Loader2,
-  Grid3X3, List, Sliders,
+  Grid3X3, List, Sliders, Tag, Check, AlertTriangle, Zap,
   CheckSquare, Square
 } from 'lucide-react';
 

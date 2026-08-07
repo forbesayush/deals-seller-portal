@@ -831,3 +831,8 @@ html.dark .liquid-stat-box:hover {
     border-radius: 16px;
   }
 }
+
+/* ── Keyframe Animations ─────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

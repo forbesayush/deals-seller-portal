@@ -19,15 +19,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Expires', '0');
 
       const activeOnly = req.query.active_only === 'true' || session?.role === 'buyer';
-      const cacheKey = `deals_list_${activeOnly ? 'active' : 'all'}_${req.query.q || ''}_${req.query.platform || ''}`;
-      
+      // Fetch tombstones first to incorporate version into cache key
+      const tombstoneDocs = await tombstones.find({}).toArray();
+      const tombstoneVersion = tombstoneDocs.length;
+      const cacheKey = `deals_list_${session?.role || 'guest'}_${activeOnly ? 'active' : 'all'}_${req.query.q || ''}_${req.query.platform || ''}_v${tombstoneVersion}`;
+
       const cached = getCached<any[]>(cacheKey);
       if (cached) {
         return res.status(200).json(cached);
       }
 
-      // Fetch tombstones from MongoDB to exclude any deleted deals
-      const tombstoneDocs = await tombstones.find({}).toArray();
       const deletedSet = new Set(tombstoneDocs.map(t => String(t.targetId).toLowerCase()));
 
       let allDocs = activeOnly
@@ -50,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
-      if (!session || !['admin', 'super_admin', 'manager'].includes(session.role)) {
+      if (!session || !['admin', 'super_admin', 'manager', 'product_manager'].includes(session.role)) {
         return res.status(403).json({ detail: 'Admin access required' });
       }
 

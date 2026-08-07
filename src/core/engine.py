@@ -395,6 +395,7 @@ def delete_order(db: Session, order_id: str, actor: User, ip: str, ua: str):
     db.delete(order)
     db.commit()
     record_audit(db, actor, "Delete Order", "orders", order_id, ip, ua, old_dict, None)
+    return True
 
 # ─────────────────────────────────────────────
 #  REFUND ENGINE LOGIC
@@ -602,10 +603,12 @@ def delete_deal(db: Session, deal_id: str, actor: User, ip: str, ua: str) -> boo
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
 
+    # Safety check: prevent deleting a deal that has existing orders
+    if db.query(Order).filter(Order.deal_id == deal.id).first():
+        raise HTTPException(status_code=400, detail="Cannot delete deal with existing orders")
     old_dict = deal.to_dict()
     db.delete(deal)
     db.commit()
-
     record_audit(db, actor, "Delete Deal", "deals", deal_id, ip, ua, old_dict, None)
     return True
 

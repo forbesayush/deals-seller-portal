@@ -76,9 +76,14 @@ export const useAuth = create<AuthStore>((set) => ({
       await authFetch('/api/auth/logout', { method: 'POST' });
     } catch (e) {/* ignore */}
     setAuthToken(null);
-    // Clear mock session too
-    if (typeof window !== 'undefined') sessionStorage.removeItem('ds_session_user_id');
+    // Clear all session data
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('ds_session_user_id');
+      sessionStorage.removeItem('ds_user_role');
+      sessionStorage.removeItem('jm_session');
+    }
     set({ user: null, isAuthenticated: false });
-    window.location.href = '/login';
+    // FR-08: Redirect to login with logout confirmation banner
+    window.location.href = '/login?loggedOut=1';
   }
 }));

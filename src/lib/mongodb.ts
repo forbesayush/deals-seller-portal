@@ -51,6 +51,11 @@ async function ensureIndexes(db: Db) {
     const wallets = db.collection('wallets');
     const transactions = db.collection('transactions');
     const auditLogs = db.collection('audit_logs');
+    // Auth protocol collections
+    const authEvents = db.collection('auth_events');
+    const loginAttempts = db.collection('login_attempts');
+    const tokenBlacklist = db.collection('token_blacklist');
+    const passwordResets = db.collection('password_resets');
 
     // Asynchronously create indexes without blocking
     Promise.all([
@@ -70,6 +75,16 @@ async function ensureIndexes(db: Db) {
       transactions.createIndex({ orderId: 1 }),
       auditLogs.createIndex({ timestamp: -1 }),
       auditLogs.createIndex({ action: 1 }),
+      // Auth protocol indexes
+      authEvents.createIndex({ timestamp: -1 }),
+      authEvents.createIndex({ action: 1 }),
+      authEvents.createIndex({ userId: 1 }),
+      loginAttempts.createIndex({ identifier: 1, ip: 1 }),
+      loginAttempts.createIndex({ lockedUntil: 1 }),
+      tokenBlacklist.createIndex({ token: 1 }, { unique: true }),
+      tokenBlacklist.createIndex({ expiry: 1 }, { expireAfterSeconds: 0 }), // MongoDB TTL auto-prune
+      passwordResets.createIndex({ tokenHash: 1 }),
+      passwordResets.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }), // TTL auto-prune
     ]).catch(err => {
       console.warn('[MongoDB Indexing Warning]', err.message);
     });

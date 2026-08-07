@@ -283,6 +283,44 @@ class AuditLog(Base):
 
 
 class Deal(Base):
+
+# New Product model for product catalog management
+class Product(Base):
+    __tablename__ = 'products'
+    __table_args__ = (
+        Index('idx_products_sku', 'sku'),
+        Index('idx_products_active', 'active'),
+    )
+
+    id          = Column(String(16), primary_key=True)   # PRD001
+    sku         = Column(String(60), unique=True, nullable=False, index=True)
+    name        = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    category    = Column(String(60), nullable=True)
+    price       = Column(Float, default=0.0)
+    stock       = Column(Integer, default=0)
+    active      = Column(Boolean, default=True)
+    image_url   = Column(String(500), nullable=True)
+    rating      = Column(Float, default=4.0)
+    created_at  = Column(String(30), nullable=True)
+    updated_at  = Column(String(30), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'sku': self.sku,
+            'name': self.name,
+            'description': self.description,
+            'category': self.category,
+            'price': self.price,
+            'stock': self.stock,
+            'active': self.active,
+            'imageUrl': self.image_url,
+            'rating': self.rating,
+            'createdAt': self.created_at,
+            'updatedAt': self.updated_at,
+        }
+
     __tablename__ = 'deals'
     __table_args__ = (
         Index('idx_deals_active_platform', 'active', 'platform'),
